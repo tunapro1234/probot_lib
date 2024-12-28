@@ -14,11 +14,10 @@ public:
     // Constructor with dependencies
     BaseSlider(BaseFeedbackMotor& feedbackMotor, 
                unsigned long updateInterval = 100, 
-               unsigned long maxDelay = 200, 
-               bool enableLogging = false)
+               unsigned long maxDelay = 200)
         : motor(feedbackMotor), 
           sliderMode(SliderMode::Manual),
-          updateHelper(updateInterval, maxDelay, enableLogging) {}
+          updateHelper(updateInterval, maxDelay) {}
     
     virtual ~BaseSlider() {}
     

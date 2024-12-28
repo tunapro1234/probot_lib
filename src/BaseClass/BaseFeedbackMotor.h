@@ -17,10 +17,10 @@ class BaseFeedbackMotor {
 public:
     // Constructor with dependencies
     BaseFeedbackMotor(BaseMotorController& motorController, BaseEncoder& encoder, PIDController& pidController,
-                     unsigned long updateInterval = 100, unsigned long maxDelay = 200, bool enableLogging = false)
+                     unsigned long updateInterval = 100, unsigned long maxDelay = 200)
         : motor(motorController), encoder(encoder), pid(pidController),
           currentMode(DriveMode::PowerDrive), targetValue(0.0f),
-          updateHelper(updateInterval, maxDelay, enableLogging) {}
+          updateHelper(updateInterval, maxDelay) {}
 
     virtual ~BaseFeedbackMotor() {}
 
