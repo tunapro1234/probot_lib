@@ -1,7 +1,7 @@
 #ifndef BasicEncoder_h
 #define BasicEncoder_h
 
-#include "BaseEncoder.h"
+#include "../BaseClass/BaseEncoder.h"
 
 class BasicEncoder : public BaseEncoder {
   public:

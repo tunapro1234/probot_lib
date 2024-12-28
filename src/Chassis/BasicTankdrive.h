@@ -1,7 +1,7 @@
 #ifndef BasicTankdrive_h
 #define BasicTankdrive_h
 
-#include "BaseMotorController.h"
+#include "../BaseClass/BaseMotorController.h"
 
 class BasicTankdrive {
   public:

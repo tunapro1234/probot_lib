@@ -1,7 +1,7 @@
 #ifndef BasicMotorController_h
 #define BasicMotorController_h
 
-#include "BaseMotorController.h"
+#include "../BaseClass/BaseMotorController.h"
 
 class BasicMotorController : public BaseMotorController {
   public:
