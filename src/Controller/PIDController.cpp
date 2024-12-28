@@ -1,36 +1,40 @@
 #include "PIDController.h"
 
+// Existing Constructor
 PIDController::PIDController(float kp, float ki, float kd)
-  : Kp(kp), Ki(ki), Kd(kd), setpoint(0.0), integral(0.0), previousError(0.0), lastTime(millis()) {}
+    : kp(kp), ki(ki), kd(kd), setpoint(0), integral(0), previousError(0) {}
 
+// New Constructor with PIDCoefficients
+PIDController::PIDController(const PIDCoefficients& coefficients)
+    : kp(coefficients.getKp()), ki(coefficients.getKi()), kd(coefficients.getKd()), 
+      setpoint(0), integral(0), previousError(0) {}
+
+// Overloaded setTunings with individual parameters
 void PIDController::setTunings(float kp, float ki, float kd) {
-  Kp = kp;
-  Ki = ki;
-  Kd = kd;
+    this->kp = kp;
+    this->ki = ki;
+    this->kd = kd;
 }
 
-void PIDController::setSetpoint(float set) {
-  setpoint = set;
+// Overloaded setTunings with PIDCoefficients
+void PIDController::setTunings(const PIDCoefficients& coefficients) {
+    this->kp = coefficients.getKp();
+    this->ki = coefficients.getKi();
+    this->kd = coefficients.getKd();
 }
 
+// Compute PID Output
 float PIDController::compute(float input) {
-  unsigned long now = millis();
-  float dt = (now - lastTime) / 1000.0;
-  if (dt <= 0.0) return 0.0;
+    float error = setpoint - input;
+    integral += error;
+    float derivative = error - previousError;
+    previousError = error;
 
-  float error = setpoint - input;
-  integral += error * dt;
-  float derivative = (error - previousError) / dt;
-  float output = Kp * error + Ki * integral + Kd * derivative;
-
-  previousError = error;
-  lastTime = now;
-
-  return constrain(output, -1.0, 1.0);
+    return (kp * error) + (ki * integral) + (kd * derivative);
 }
 
+// Reset State
 void PIDController::reset() {
-  integral = 0.0;
-  previousError = 0.0;
-  lastTime = millis();
+    integral = 0;
+    previousError = 0;
 }
