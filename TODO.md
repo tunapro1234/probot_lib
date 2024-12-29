@@ -1,11 +1,13 @@
- ## Pazar
- - [ ] add limits to motor controllers
+## Pazar
  - [ ] generic slider
  - [ ] nfr slider
  - [ ] generic arm
  - [ ] basic feedback tankdrive
- - [ ] complex tankdrive
+ - [ ] base robot, otonom ve teleop arasında ayrım yapabilmeli
  - [ ] otonom
+
+ - [ ] add limits to motor controllers
+ - [ ] complex tankdrive
  - [ ] basic mecanum drive
 
 ## Pazartesi
