@@ -1,40 +1,58 @@
 #include "PIDController.h"
+#include <math.h>
 
-// Existing Constructor
-PIDController::PIDController(float kp, float ki, float kd)
-    : kp(kp), ki(ki), kd(kd), setpoint(0), integral(0), previousError(0) {}
+// Constructor
+PIDController::PIDController(const PIDCoefficients& coeffs, float tolerance)
+    : coefficients(coeffs), setpoint(0.0f), integral(0.0f), lastError(0.0f),
+      tolerance(tolerance) {}
 
-// New Constructor with PIDCoefficients
-PIDController::PIDController(const PIDCoefficients& coefficients)
-    : kp(coefficients.getKp()), ki(coefficients.getKi()), kd(coefficients.getKd()), 
-      setpoint(0), integral(0), previousError(0) {}
+PIDController::PIDController(const PIDCoefficients& coeffs)
+    : coefficients(coeffs), setpoint(0.0f), integral(0.0f), lastError(0.0f),
+      tolerance(0.0f) {}
 
-// Overloaded setTunings with individual parameters
-void PIDController::setTunings(float kp, float ki, float kd) {
-    this->kp = kp;
-    this->ki = ki;
-    this->kd = kd;
+
+// Set PID Coefficients
+void PIDController::setCoefficients(const PIDCoefficients& coeffs) {
+    coefficients = coeffs;
 }
 
-// Overloaded setTunings with PIDCoefficients
-void PIDController::setTunings(const PIDCoefficients& coefficients) {
-    this->kp = coefficients.getKp();
-    this->ki = coefficients.getKi();
-    this->kd = coefficients.getKd();
-}
-
-// Compute PID Output
-float PIDController::compute(float input) {
-    float error = setpoint - input;
-    integral += error;
-    float derivative = error - previousError;
-    previousError = error;
-
-    return (kp * error) + (ki * integral) + (kd * derivative);
+// Set Setpoint
+void PIDController::setSetpoint(float setpoint) {
+    this->setpoint = setpoint;
+    reset();
 }
 
 // Reset State
 void PIDController::reset() {
-    integral = 0;
-    previousError = 0;
+    integral = 0.0f;
+    lastError = 0.0f;
+}
+
+// Compute Control Output
+float PIDController::compute(float currentMeasurement) {
+    float error = setpoint - currentMeasurement;
+    integral += error;
+    float derivative = error - lastError;
+    lastError = error;
+
+    return (coefficients.getKp() * error) + 
+           (coefficients.getKi() * integral) + 
+           (coefficients.getKd() * derivative);
+}
+
+// Set Position and Velocity Tolerance
+void PIDController::setTolerance(float tolerance) {
+    this->tolerance = tolerance;
+}
+
+// Check if at Setpoint
+bool PIDController::isAtSetpoint(float currentMeasurement) const {
+    float positionError = fabs(setpoint - currentMeasurement);
+
+    return (positionError <= tolerance);
+}
+
+// Get Current Coefficients
+PIDCoefficients PIDController::getCoefficients() const {
+    return coefficients;
 }

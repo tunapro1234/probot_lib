@@ -5,30 +5,30 @@
 
 class PIDController {
 public:
-    // Existing Constructor
-    PIDController(float kp = 0.0, float ki = 0.0, float kd = 0.0);
+    PIDController(const PIDCoefficients& coeffs);
 
-    // New Constructor with PIDCoefficients
-    PIDController(const PIDCoefficients& coefficients);
+    PIDController(const PIDCoefficients& coeffs, float tolerance);
 
-    // Set PID Tunings
-    void setTunings(float kp, float ki, float kd);
-    void setTunings(const PIDCoefficients& coefficients); // Overloaded method
-
-    // Compute Output
-    float compute(float input);
-
-    // Reset Controller State
+    void setCoefficients(const PIDCoefficients& coeffs);
+    void setSetpoint(float setpoint);
     void reset();
 
-private:
-    float kp; // Proportional Gain
-    float ki; // Integral Gain
-    float kd; // Derivative Gain
+    float compute(float currentMeasurement);
 
-    float setpoint;   // Desired Value
-    float integral;   // Integral Term
-    float previousError; // Last Error
+    // Tolerance Methods
+    void setTolerance(float tolerance);
+    bool isAtSetpoint(float currentMeasurement) const;
+
+    // Get Current Coefficients
+    PIDCoefficients getCoefficients() const;
+
+private:
+    PIDCoefficients coefficients; // Store PID coefficients
+    float setpoint;
+    float integral;
+    float lastError;
+
+    float tolerance;
 };
 
 #endif
