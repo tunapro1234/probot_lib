@@ -25,11 +25,11 @@ public:
     void update() override;
     void reset() override;
 
-    void setPositionTarget(float target) override;
+    void setPositionTarget(long target) override;
     void setVelocityTarget(float target) override;
 
     bool isAtTarget() override;
-    void setPositionTolerance(float tolerance) override;
+    void setPositionTolerance(uint tolerance) override;
     void setVelocityTolerance(float tolerance) override;
 
     float getVelocity() override;

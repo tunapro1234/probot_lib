@@ -56,16 +56,22 @@ void CustomFeedbackMotor::reset() {
 }
 
 // Set Position Target
-void CustomFeedbackMotor::setPositionTarget(float target) {
-    positionalMode = true;
-    pid.setCoefficients(positionCoeffs);
+void CustomFeedbackMotor::setPositionTarget(long target) {
+    if (!positionalMode) {
+        positionalMode = true;
+        pid.setCoefficients(positionCoeffs);
+        pid.reset()
+    }
     pid.setSetpoint(target);
 }
 
 // Set Velocity Target (in RPM)
 void CustomFeedbackMotor::setVelocityTarget(float target) {
-    positionalMode = false;
-    pid.setCoefficients(velocityCoeffs);
+    if (positionalMode) {
+        positionalMode = false;
+        pid.setCoefficients(velocityCoeffs);
+        pid.reset();
+    }
     pid.setSetpoint(target);
 }
 
@@ -79,7 +85,7 @@ bool CustomFeedbackMotor::isAtTarget() {
 }
 
 // Set Position Tolerance
-void CustomFeedbackMotor::setPositionTolerance(float tolerance) {
+void CustomFeedbackMotor::setPositionTolerance(uint tolerance) {
     positionTolerance = tolerance;
     pid.setTolerance(positionTolerance);
 }
