@@ -22,7 +22,7 @@ bool UpdateHelper::checkTimeout() {
   unsigned long currentTime = millis();
   if ((currentTime - lastUpdateTime) > maxDelay) {
     if (loggingEnabled && !hasLogged) {
-      Serial.println("Warning: Update called too late!");
+      Serial.println(F("Warning: Update called too late!"));
       hasLogged = true; // Ensure only one log
       return true;
     }

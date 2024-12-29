@@ -1,5 +1,5 @@
 ## Pazar
- - [ ] generic slider
+ - [x] generic slider
  - [ ] nfr slider
  - [ ] generic arm
  - [ ] basic feedback tankdrive
