@@ -38,6 +38,10 @@ float UpdateHelper::getLastOutput() const {
   return lastOutput;
 }
 
+float UpdateHelper::getLastUpdateTime() const {
+  return lastUpdateTime;
+}
+
 void UpdateHelper::setInterval(unsigned long interval) {
   updateInterval = interval;
 }

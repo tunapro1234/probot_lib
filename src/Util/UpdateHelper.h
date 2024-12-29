@@ -22,6 +22,8 @@ class UpdateHelper {
     // Get the cached last output
     float getLastOutput() const;
     
+    float getLastUpdateTime() const;
+
     // Set a new update interval
     void setInterval(unsigned long interval);
     
