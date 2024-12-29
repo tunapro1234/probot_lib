@@ -3,7 +3,8 @@
 
 // Motor and Encoder Pins
 const int MOTOR_PWM = 9;    // PWM pin for motor speed
-const int MOTOR_DIR = 8;    // Direction pin for motor
+const int MOTOR_DIR1 = 8;    // Dir1 pin for motor
+const int MOTOR_DIR2 = 7;    // Dir2 pin for motor
 const int ENCODER_PIN_A = 2; // Encoder channel A
 const int ENCODER_PIN_B = 3; // Encoder channel B
 
@@ -17,7 +18,7 @@ const int POT_TARGET = A3; // Potentiometer for Target
 PIDCoefficients pidCoeffs(1.0, 0.1, 0.05);
 
 // Motor and Encoder Instances
-BasicMotorController motor(MOTOR_PWM, MOTOR_DIR);
+BasicMotorController motor(MOTOR_PWM, MOTOR_DIR1, MOTOR_DIR2);
 BasicEncoder encoder(ENCODER_PIN_A, ENCODER_PIN_B);
 
 // Feedback Motor Instance

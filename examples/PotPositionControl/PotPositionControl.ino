@@ -3,7 +3,7 @@
 // Motor and Encoder Pins
 const int MOTOR_PWM = 9;  // PWM pin for motor speed
 const int MOTOR_DIR1 = 8;  // Dir1 pin for motor
-const int MOTOR_DIR2 = 8;  // Dir2 pin for motor
+const int MOTOR_DIR2 = 7;  // Dir2 pin for motor
 const int ENCODER_PIN_A = 2; // Encoder channel A
 const int ENCODER_PIN_B = 3; // Encoder channel B
 
