@@ -18,7 +18,6 @@ CustomFeedbackMotor::CustomFeedbackMotor(BaseMotorController& motorController,
       pid(velocityCoeffs, velocityTolerance), // Initialize PID with velocity coefficients
       updateHelper(updateInterval, maxDelay),
       positionalMode(false),
-      targetValue(0.0f),
       positionTolerance(positionTolerance),
       velocityTolerance(velocityTolerance),
       ticksPerRotation(ticksPerRotation) {}
@@ -52,7 +51,6 @@ void CustomFeedbackMotor::update() {
 void CustomFeedbackMotor::reset() {
     pid.reset();
     motor.setSpeed(0);
-    targetValue = 0.0f;
     positionalMode = false;
     updateHelper.setLastOutput(0.0f);
 }
@@ -60,7 +58,6 @@ void CustomFeedbackMotor::reset() {
 // Set Position Target
 void CustomFeedbackMotor::setPositionTarget(float target) {
     positionalMode = true;
-    targetValue = target;
     pid.setCoefficients(positionCoeffs);
     pid.setSetpoint(target);
 }
@@ -68,7 +65,6 @@ void CustomFeedbackMotor::setPositionTarget(float target) {
 // Set Velocity Target (in RPM)
 void CustomFeedbackMotor::setVelocityTarget(float target) {
     positionalMode = false;
-    targetValue = target;
     pid.setCoefficients(velocityCoeffs);
     pid.setSetpoint(target);
 }
@@ -108,12 +104,12 @@ float CustomFeedbackMotor::getPosition() {
 
 // Get Velocity Target
 float CustomFeedbackMotor::getVelocityTarget() {
-    return positionalMode ? 0.0 : targetValue;
+    return positionalMode ? 0.0 : pid.getSetpoint();
 }
 
 // Get Position Target
 float CustomFeedbackMotor::getPositionTarget() {
-    return positionalMode ? targetValue : 0.0;
+    return positionalMode ? pid.getSetpoint() : 0.0;
 }
 
 // Set Position PID Coefficients

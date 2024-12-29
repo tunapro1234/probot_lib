@@ -55,7 +55,6 @@ private:
     UpdateHelper updateHelper;
 
     bool positionalMode;
-    float targetValue;
     float positionTolerance;
     float velocityTolerance;
 
@@ -64,7 +63,6 @@ private:
     void applyCoefficients(const PIDCoefficients& coeffs);
     void handlePositionMode();
     void handleVelocityMode();
-    float calculateRPM() const;
 };
 
 #endif
