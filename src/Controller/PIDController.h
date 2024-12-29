@@ -9,12 +9,16 @@ public:
 
     void setCoefficients(const PIDCoefficients& coeffs);
     void setSetpoint(float setpoint);
+    float getSetpoint();
+
     void reset();
 
     float compute(float currentMeasurement);
 
     // Tolerance Methods
     void setTolerance(float tolerance);
+    float getTolerance();
+
     bool isAtSetpoint(float currentMeasurement) const;
 
     // Get Current Coefficients

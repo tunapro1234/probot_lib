@@ -14,7 +14,11 @@ void PIDController::setCoefficients(const PIDCoefficients& coeffs) {
 // Set Setpoint
 void PIDController::setSetpoint(float setpoint) {
     this->setpoint = setpoint;
-    reset();
+}
+
+// Get Setpoint
+float PIDController::getSetpoint() {
+    return this->setpoint;
 }
 
 // Reset State
@@ -38,6 +42,11 @@ float PIDController::compute(float currentMeasurement) {
 // Set Position and Velocity Tolerance
 void PIDController::setTolerance(float tolerance) {
     this->tolerance = tolerance;
+}
+
+// Set Position and Velocity Tolerance
+float PIDController::getTolerance() {
+    return this->tolerance;
 }
 
 // Check if at Setpoint
