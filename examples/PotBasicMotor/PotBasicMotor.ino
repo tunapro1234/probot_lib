@@ -20,13 +20,13 @@ void loop() {
     int potValue = analogRead(POT_PIN);
     float target = map(analogRead(POT_PIN), 0, 1023, 0, 100) / 100.;
 
-    motor.setSpeed(target); 
+    motor.setPower(target); 
 
     // Display current motor state
     Serial.print("Pot Reading: ");
     Serial.print(potValue);
     Serial.print("Current Power: ");
-    Serial.println(motor.getSpeed());
+    Serial.println(motor.getPower());
 
     motor.update();
     delay(10); // Loop delay

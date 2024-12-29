@@ -15,7 +15,7 @@ public:
     virtual void setVelocityTarget(float target) = 0;
 
     virtual bool isAtTarget() = 0;
-    virtual void setPositionTolerance(uint tolerance) = 0;
+    virtual void setPositionTolerance(unsigned int tolerance) = 0;
     virtual void setVelocityTolerance(float tolerance) = 0;
 
     virtual float getVelocity() = 0;

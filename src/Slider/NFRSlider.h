@@ -3,7 +3,7 @@
 
 #include "../BaseClass/BaseSlider.h"
 #include "../Controller/PIDCoefficients.h"
-#include "NFRFeedbackMotor.h"
+#include "../MotorController/NFRFeedbackMotor.h"
 
 #define NFRSLIDER_LENGTH_LIMIT 50.0f // Predefined length in cm
 #define NFRSLIDER_COUNTS_PER_CM 100.0f // Predefined encoder counts per cm
@@ -21,7 +21,7 @@ public:
     bool isAtTarget() override;
 
 private:
-    NFRFeedbackMotor motor;
+    NFRFeedbackMotor *motor;
     void safetyCheck();
 };
 

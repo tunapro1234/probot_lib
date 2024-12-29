@@ -10,8 +10,8 @@ void BasicTankdrive::begin() {
 }
 
 void BasicTankdrive::setMotorPowers(float leftPower, float rightPower) {
-  leftMotor.setSpeed(leftPower);
-  rightMotor.setSpeed(rightPower);
+  leftMotor.setPower(leftPower);
+  rightMotor.setPower(rightPower);
 }
 
 void BasicTankdrive::stop() {

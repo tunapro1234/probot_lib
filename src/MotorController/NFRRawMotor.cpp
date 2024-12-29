@@ -19,12 +19,17 @@ void NFRRawMotor::setPower(float power) {
     Serial.println(power);
 }
 
-// Reset Motor
-void NFRRawMotor::reset() {
+// Get Motor Power
+float NFRRawMotor::getPower() {
+    return power;
+}
+
+// Stop Motor
+void NFRRawMotor::stop() {
     power = 0.0f;
     Serial.print(F("Motor "));
     Serial.print(motorID);
-    Serial.println(F(" Reset."));
+    Serial.println(F(" Stopped"));
 }
 
 // Get Motor ID

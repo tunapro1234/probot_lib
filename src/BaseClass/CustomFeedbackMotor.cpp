@@ -34,7 +34,7 @@ void CustomFeedbackMotor::begin() {
 // Update Loop
 void CustomFeedbackMotor::update() {
     if (!updateHelper.shouldUpdate()) {
-        motor.setSpeed(updateHelper.getLastOutput());
+        motor.setPower(updateHelper.getLastOutput());
         return;
     }
 
@@ -50,7 +50,7 @@ void CustomFeedbackMotor::update() {
 // Reset Motor State
 void CustomFeedbackMotor::reset() {
     pid.reset();
-    motor.setSpeed(0);
+    motor.setPower(0);
     positionalMode = false;
     updateHelper.setLastOutput(0.0f);
 }
@@ -85,7 +85,7 @@ bool CustomFeedbackMotor::isAtTarget() {
 }
 
 // Set Position Tolerance
-void CustomFeedbackMotor::setPositionTolerance(uint tolerance) {
+void CustomFeedbackMotor::setPositionTolerance(unsigned int tolerance) {
     positionTolerance = tolerance;
     pid.setTolerance(positionTolerance);
 }
@@ -154,7 +154,7 @@ void CustomFeedbackMotor::applyCoefficients(const PIDCoefficients& coeffs) {
 void CustomFeedbackMotor::handlePositionMode() {
     float currentPosition = static_cast<float>(encoder.getCount());
     float output = pid.compute(currentPosition);
-    motor.setSpeed(output);
+    motor.setPower(output);
     updateHelper.setLastOutput(output);
 }
 
@@ -162,6 +162,6 @@ void CustomFeedbackMotor::handlePositionMode() {
 void CustomFeedbackMotor::handleVelocityMode() {
     float currentSpeed = getVelocity();
     float output = pid.compute(currentSpeed);
-    motor.setSpeed(output);
+    motor.setPower(output);
     updateHelper.setLastOutput(output);
 }

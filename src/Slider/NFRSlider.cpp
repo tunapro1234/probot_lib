@@ -1,8 +1,9 @@
 #include "NFRSlider.h"
 #include <Arduino.h>
 
-NFRSlider::NFRSlider(int motorID)
-    : motor(motorID) {}
+NFRSlider::NFRSlider(int motorID) {
+    motor = new NFRFeedbackMotor(motorID);
+}
 
 void NFRSlider::begin() {
     motor.begin();

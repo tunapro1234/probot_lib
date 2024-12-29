@@ -26,7 +26,7 @@ void NFRFeedbackMotor::reset() {
 }
 
 // Set Position Target
-void NFRFeedbackMotor::setPositionTarget(float target) {
+void NFRFeedbackMotor::setPositionTarget(long target) {
     this->target = target;
     positionalMode = true;
     pidController.setSetpoint(target);
@@ -45,7 +45,7 @@ bool NFRFeedbackMotor::isAtTarget() {
 }
 
 // Set Position Tolerance
-void NFRFeedbackMotor::setPositionTolerance(float tolerance) {
+void NFRFeedbackMotor::setPositionTolerance(unsigned int tolerance) {
     positionPID.tolerance = tolerance;
     pidController.setTolerance(tolerance);
 }

@@ -9,7 +9,8 @@ public:
 
     void begin() override;
     void setPower(float power) override;
-    void reset() override;
+    float getPower() override;
+    void stop() override;
 
     int getID() const;
 

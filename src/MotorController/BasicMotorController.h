@@ -7,8 +7,8 @@ class BasicMotorController : public BaseMotorController {
   public:
     BasicMotorController(int pwmPin, int dirPin1, int dirPin2);
     void begin() override;
-    void setSpeed(float speed) override; // -1.0 to 1.0
-    float getSpeed() override; // -1.0 to 1.0
+    void setPower(float speed) override; // -1.0 to 1.0
+    float getPower() override; // -1.0 to 1.0
     void stop() override;
   
   private:

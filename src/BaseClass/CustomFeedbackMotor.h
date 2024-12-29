@@ -29,7 +29,7 @@ public:
     void setVelocityTarget(float target) override;
 
     bool isAtTarget() override;
-    void setPositionTolerance(uint tolerance) override;
+    void setPositionTolerance(unsigned int tolerance) override;
     void setVelocityTolerance(float tolerance) override;
 
     float getVelocity() override;
