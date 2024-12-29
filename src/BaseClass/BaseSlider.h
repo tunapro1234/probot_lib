@@ -3,22 +3,8 @@
 
 #include "BaseFeedbackMotor.h"
 
-// Enumeration for slider modes if needed
-enum class SliderMode {
-    Manual,
-    Automatic
-};
-
 class BaseSlider {
 public:
-    // Constructor with dependencies
-    BaseSlider(BaseFeedbackMotor& feedbackMotor, 
-               unsigned long updateInterval = 100, 
-               unsigned long maxDelay = 200)
-        : motor(feedbackMotor), 
-          sliderMode(SliderMode::Manual),
-          updateHelper(updateInterval, maxDelay) {}
-    
     virtual ~BaseSlider() {}
     
     // Initialize the slider
@@ -32,16 +18,6 @@ public:
     
     // Get current position
     virtual long getPosition() = 0;
-    
-    // Set slider mode
-    void setSliderMode(SliderMode mode) {
-        sliderMode = mode;
-    }
-    
-protected:
-    BaseFeedbackMotor& motor;
-    SliderMode sliderMode;
-    UpdateHelper updateHelper;
 };
 
 #endif
