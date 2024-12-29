@@ -23,4 +23,7 @@
 ## Perşembe
  - [ ] Probot ilb ve probot lib bloklar entegrasyonu
 
+## Sonrası
+ - [ ] NFR Feedback Motor için gerçek kodları yaz (motor sürücünün üretilmiş olması gerek)
+ - [ ] NFR Slider için PID yap
 
