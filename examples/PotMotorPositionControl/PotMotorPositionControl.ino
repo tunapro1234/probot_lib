@@ -29,12 +29,15 @@ void setup() {
     feedbackMotor.setVelocityTolerance(1.0); // ±1 RPM for velocity
 
     // Set initial velocity target
-    feedbackMotor.setVelocityTarget(100.0); // Target speed: 100 RPM
+    feedbackMotor.setPositiontarget(0.0); // Target speed: 100 RPM
 }
 
 void loop() {
-    // Update feedback motor control
-    feedbackMotor.update();
+    // Read potentiometer value
+    int potValue = analogRead(POT_PIN);
+    long target = map(analogRead(POT_PIN), 0, 1023, 0, 500);
+
+    feedbackMotor.setPositionTarget(target);
 
     // Display current motor state
     Serial.print("Current Position: ");
@@ -48,5 +51,7 @@ void loop() {
         Serial.println("Target Reached!");
     }
 
+    // Update feedback motor control
+    feedbackMotor.update();
     delay(10); // Loop delay
 }

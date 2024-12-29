@@ -32,6 +32,7 @@ void setup() {
 
     // Set initial PID Tolerances
     feedbackMotor.setPositionTolerance(5.0);
+    feedbackMotor.setPositionTarget(0.0);
 
     Serial.println("PID Learning Example Initialized");
 }
@@ -61,5 +62,5 @@ void loop() {
     Serial.print(" | Position: "); Serial.print(feedbackMotor.getPosition());
     Serial.print(" | At Target: "); Serial.println(feedbackMotor.isAtTarget() ? "Yes" : "No");
 
-    delay(10); // Slow down the refresh rate
+    delay(10);
 }
