@@ -32,11 +32,11 @@ public:
     void setPositionTolerance(float tolerance) override;
     void setVelocityTolerance(float tolerance) override;
 
-    double getVelocity() override;
-    double getPosition() override;
+    float getVelocity() override;
+    float getPosition() override;
 
-    double getVelocityTarget() override;
-    double getPositionTarget() override;
+    float getVelocityTarget() override;
+    float getPositionTarget() override;
 
     void setPositionPID(const PIDCoefficients& coeffs) override;
     void setVelocityPID(const PIDCoefficients& coeffs) override;
@@ -64,7 +64,7 @@ private:
     void applyCoefficients(const PIDCoefficients& coeffs);
     void handlePositionMode();
     void handleVelocityMode();
-    double calculateRPM() const;
+    float calculateRPM() const;
 };
 
 #endif

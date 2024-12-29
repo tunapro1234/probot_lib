@@ -17,7 +17,9 @@ public:
     virtual void update() = 0;
     
     // Get current position
-    virtual long getPosition() = 0;
+    virtual float getPosition() = 0;
+
+    virtual float getTargetPosition() = 0;
 };
 
 #endif

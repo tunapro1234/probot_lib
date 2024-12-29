@@ -95,24 +95,24 @@ void CustomFeedbackMotor::setVelocityTolerance(float tolerance) {
 }
 
 // Get Current Velocity (RPM)
-double CustomFeedbackMotor::getVelocity() {
+float CustomFeedbackMotor::getVelocity() {
     float deltaTicks = static_cast<float>(encoder.getCount());
     float deltaTime = static_cast<float>(updateHelper.getLastUpdateTime()) / 1000.0f; // ms to seconds
     return (deltaTicks / ticksPerRotation) * (60.0f / deltaTime);
 }
 
 // Get Current Position (Ticks)
-double CustomFeedbackMotor::getPosition() {
-    return static_cast<double>(encoder.getCount());
+float CustomFeedbackMotor::getPosition() {
+    return static_cast<float>(encoder.getCount());
 }
 
 // Get Velocity Target
-double CustomFeedbackMotor::getVelocityTarget() {
+float CustomFeedbackMotor::getVelocityTarget() {
     return positionalMode ? 0.0 : targetValue;
 }
 
 // Get Position Target
-double CustomFeedbackMotor::getPositionTarget() {
+float CustomFeedbackMotor::getPositionTarget() {
     return positionalMode ? targetValue : 0.0;
 }
 

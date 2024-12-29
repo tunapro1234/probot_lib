@@ -18,11 +18,11 @@ public:
     virtual void setPositionTolerance(float tolerance) = 0;
     virtual void setVelocityTolerance(float tolerance) = 0;
 
-    virtual double getVelocity() = 0;
-    virtual double getPosition() = 0;
+    virtual float getVelocity() = 0;
+    virtual float getPosition() = 0;
 
-    virtual double getVelocityTarget() = 0;
-    virtual double getPositionTarget() = 0;
+    virtual float getVelocityTarget() = 0;
+    virtual float getPositionTarget() = 0;
 
     // Set PID Coefficients
     virtual void setPositionPID(const PIDCoefficients& coeffs) = 0;
