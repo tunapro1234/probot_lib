@@ -2,14 +2,9 @@
 #include <math.h>
 
 // Constructor
-PIDController::PIDController(const PIDCoefficients& coeffs, float tolerance)
+PIDController::PIDController(const PIDCoefficients& coeffs, float tolerance=0)
     : coefficients(coeffs), setpoint(0.0f), integral(0.0f), lastError(0.0f),
       tolerance(tolerance) {}
-
-PIDController::PIDController(const PIDCoefficients& coeffs)
-    : coefficients(coeffs), setpoint(0.0f), integral(0.0f), lastError(0.0f),
-      tolerance(0.0f) {}
-
 
 // Set PID Coefficients
 void PIDController::setCoefficients(const PIDCoefficients& coeffs) {

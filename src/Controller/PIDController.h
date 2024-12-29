@@ -5,9 +5,7 @@
 
 class PIDController {
 public:
-    PIDController(const PIDCoefficients& coeffs);
-
-    PIDController(const PIDCoefficients& coeffs, float tolerance);
+    PIDController(const PIDCoefficients& coeffs, float tolerance=0);
 
     void setCoefficients(const PIDCoefficients& coeffs);
     void setSetpoint(float setpoint);
