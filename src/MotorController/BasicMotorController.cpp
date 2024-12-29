@@ -12,6 +12,7 @@ void BasicMotorController::begin() {
 
 void BasicMotorController::setSpeed(float speed) {
   speed = constrain(speed, -1.0, 1.0);
+  this->speed = speed;
   int pwmValue = abs(speed) * 255;
 
   if (speed > 0) {
@@ -26,6 +27,10 @@ void BasicMotorController::setSpeed(float speed) {
   }
 
   analogWrite(pwmPin, pwmValue);
+}
+
+float BasicMotorController::getSpeed() {
+  return this->speed;
 }
 
 void BasicMotorController::stop() {
