@@ -62,10 +62,16 @@ void NFRFeedbackMotor::update()
 // Reset Motor State
 void NFRFeedbackMotor::reset()
 {
+    stop();
+    positionalMode = false;
+}
+
+// Reset Motor State
+void NFRFeedbackMotor::stop()
+{
     pid.reset();
     // motor.setPower(0);
     setMotorPower(0);
-    positionalMode = false;
     updateHelper.setLastOutput(0.0f);
 }
 
