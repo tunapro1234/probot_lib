@@ -1,29 +1,26 @@
-## Pazar
  - [x] generic slider
  - [ ] nfr slider
- - [ ] generic arm
- - [ ] basic feedback tankdrive
- - [ ] base robot, otonom ve teleop arasında ayrım yapabilmeli
- - [ ] otonom
+ - [x] basic feedback tankdrive
 
  - [ ] add limits to motor controllers
  - [ ] complex tankdrive
  - [ ] basic mecanum drive
 
-## Pazartesi
- - [ ] Esp web arayüzü başla
-
-## Salı
- - [ ] Esp web arayüzü bitir
+ - [ ] Esp web arayüzü
  - [ ] Web arayüzü ve kütüphane entegrasyonu
 
-## Çarşamba
  - [ ] Probot blok düzenlemeleri
+ - [ ] Probot lib ve probot lib bloklar entegrasyonu
 
-## Perşembe
- - [ ] Probot ilb ve probot lib bloklar entegrasyonu
+
+## Gelecek
+ - [ ] generic arm
+ - [ ] base robot, otonom ve teleop arasında ayrım yapabilmeli
+ - [ ] otonom
 
 ## Sonrası
+ - [ ] NFR FeedbackMotor için velocity PID yap
+ - [ ] NFR FeedbackMotor için position PID yap
  - [ ] NFR Feedback Motor için gerçek kodları yaz (motor sürücünün üretilmiş olması gerek)
  - [ ] NFR Slider için PID yap
 
