@@ -18,6 +18,7 @@
 
 // Chassis
 #include "Chassis/BasicTankdrive.h"
+#include "Chassis/FeedbackTankdrive.h"
 
 // Sliders
 #include "Slider/GenericSlider.h"
