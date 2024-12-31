@@ -1,20 +1,22 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
-#include <ArduinoJson.h>  // Make sure to install ArduinoJson library via Library Manager
-#include "index_html.h"   // Our HTML page
+#include <ArduinoJson.h>    // Required for JSON parsing
+#include "index_html.h"     // Our multi-page HTML
 
-// The AP password
+// Password for the AP
 const char* AP_PASS = "robotpro1234";
 
-// Create a web server on port 80
+// Web server on port 80
 ESP8266WebServer server(80);
 
-// Generate a unique SSID by appending the last 3 bytes of the MAC address
+/****************************************************
+ * Generate a unique SSID by appending last 3 bytes of MAC
+ ****************************************************/
 String generateSSID() {
   uint8_t mac[6];
   WiFi.softAPmacAddress(mac);
 
-  // Convert the last 3 bytes to hex
+  // Convert last 3 bytes to hex
   String macID = String(mac[3], HEX) + String(mac[4], HEX) + String(mac[5], HEX);
   macID.toUpperCase();
 
@@ -22,81 +24,73 @@ String generateSSID() {
   return "probot_" + macID;
 }
 
-// Serve the main page (from index_html.h)
+/****************************************************
+ * Serve the main HTML page (sidebar + multiple sections)
+ ****************************************************/
 void handleRoot() {
   server.send_P(200, "text/html", MAIN_page);
 }
 
-// Parse JSON with all button states + axes and print to Serial
-void handleControllerUpdate() {
-  // We'll read the POST body which contains JSON data
+/****************************************************
+ * Receive JSON from Joystick Test page
+ * (axes + buttons), but do nothing with it here.
+ ****************************************************/
+void handleUpdateController() {
   if (server.method() == HTTP_POST) {
-    // The JSON object might be relatively small, but we need a buffer:
-    // e.g. 32 for overhead + up to 64 for axes + 32 for buttons ...
-    // We'll try 256. Adjust as needed if you have more data.
-    const size_t capacity = 256;
-    StaticJsonDocument<capacity> doc;
-
-    // Parse the incoming JSON
+    // Parse JSON (axes/buttons)
+    StaticJsonDocument<256> doc;
     DeserializationError error = deserializeJson(doc, server.arg("plain"));
     if (error) {
-      Serial.print("JSON parse error: ");
-      Serial.println(error.c_str());
       server.send(400, "text/plain", "Bad JSON");
       return;
     }
 
-    // "axes" is an array, "buttons" is an array of booleans
-    if (doc.containsKey("axes") && doc.containsKey("buttons")) {
-      JsonArray axes = doc["axes"];
-      JsonArray buttons = doc["buttons"];
-
-      Serial.println("\n--- Controller Update ---");
-
-      // Print Axes
-      Serial.print("Axes: ");
-      for (size_t i = 0; i < axes.size(); i++) {
-        float val = axes[i];
-        Serial.print(val, 2); // 2 decimal places
-        if (i < axes.size() - 1) Serial.print(", ");
-      }
-      Serial.println();
-
-      // Print Buttons
-      Serial.print("Buttons: ");
-      for (size_t i = 0; i < buttons.size(); i++) {
-        bool pressed = buttons[i];
-        Serial.print(pressed ? "1" : "0");
-        if (i < buttons.size() - 1) Serial.print(", ");
-      }
-      Serial.println("\n------------------------");
-    }
-    else {
-      Serial.println("Invalid JSON structure");
-    }
-
+    // We do not do anything with doc["axes"] or doc["buttons"] here.
     server.send(200, "text/plain", "OK");
   } else {
     server.send(405, "text/plain", "Method Not Allowed");
   }
 }
 
+/****************************************************
+ * Handle robot control commands (Init, Start, Stop)
+ * We just print them here; do your logic as needed.
+ ****************************************************/
+void handleRobotControl() {
+  if (server.hasArg("cmd")) {
+    String cmd = server.arg("cmd");
+    // Do your actual logic here
+    Serial.print("[Robot Control] Command received: ");
+    Serial.println(cmd);
+
+    // Acknowledge
+    server.send(200, "text/plain", "OK");
+  } else {
+    server.send(400, "text/plain", "Missing 'cmd' argument");
+  }
+}
+
+/****************************************************
+ * Return a placeholder battery voltage (12.0).
+ * Replace with actual reading logic if you have it.
+ ****************************************************/
+void handleGetBattery() {
+  server.send(200, "text/plain", "12.0"); // e.g., 12.0 V
+}
+
 void setup() {
   Serial.begin(115200);
   delay(100);
 
-  // Configure Wi-Fi in AP mode
+  // Set AP mode
   WiFi.mode(WIFI_AP);
 
-  // Generate a unique SSID
+  // Create a unique SSID
   String uniqueSSID = generateSSID();
-
-  // Create the AP
   WiFi.softAP(uniqueSSID.c_str(), AP_PASS);
 
-  // Print info
   IPAddress myIP = WiFi.softAPIP();
-  Serial.println("\n=== ProBot Gamepad AP ===");
+  Serial.println("\n=== ProBot Multi-Page AP ===");
   Serial.print("SSID: ");
   Serial.println(uniqueSSID);
   Serial.print("Password: ");
@@ -104,13 +98,15 @@ void setup() {
   Serial.print("AP IP address: ");
   Serial.println(myIP);
 
-  // Set up web endpoints
+  // Routes
   server.on("/", handleRoot);
-  server.on("/updateController", handleControllerUpdate);
+  server.on("/updateController", handleUpdateController);
+  server.on("/robotControl", handleRobotControl);
+  server.on("/getBattery", handleGetBattery);
 
   // Start server
   server.begin();
-  Serial.println("Web server started. Open browser at http://192.168.4.1/");
+  Serial.println("Web server started. Browse to http://192.168.4.1/");
 }
 
 void loop() {
