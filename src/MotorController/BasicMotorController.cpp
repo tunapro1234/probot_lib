@@ -1,7 +1,7 @@
 #include "BasicMotorController.h"
 
-BasicMotorController::BasicMotorController(int pwm, int dir1, int dir2)
-  : pwmPin(pwm), dirPin1(dir1), dirPin2(dir2) {}
+BasicMotorController::BasicMotorController(int pwm, int dir1, int dir2, bool isReversed)
+  : pwmPin(pwm), dirPin1(dir1), dirPin2(dir2), isReversed(isReversed) {}
 
 void BasicMotorController::begin() {
   pinMode(pwmPin, OUTPUT);
@@ -11,14 +11,14 @@ void BasicMotorController::begin() {
 }
 
 void BasicMotorController::setPower(float speed) {
-  speed = constrain(speed, -1.0, 1.0);
-  this->speed = speed;
-  int pwmValue = abs(speed) * 255;
+  this->speed = constrain(speed, -1.0, 1.0);
+  this->speed = isReversed ? -this->speed : this->speed;
+  int pwmValue = abs(this->speed) * 255;
 
-  if (speed > 0) {
+  if (this->speed > 0) {
     digitalWrite(dirPin1, HIGH);
     digitalWrite(dirPin2, LOW);
-  } else if (speed < 0) {
+  } else if (this->speed < 0) {
     digitalWrite(dirPin1, LOW);
     digitalWrite(dirPin2, HIGH);
   } else {

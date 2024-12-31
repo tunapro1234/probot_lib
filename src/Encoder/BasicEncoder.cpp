@@ -2,7 +2,7 @@
 
 BasicEncoder* BasicEncoder::instance = nullptr;
 
-BasicEncoder::BasicEncoder(int a, int b) : pinA(a), pinB(b), count(0) {
+BasicEncoder::BasicEncoder(int a, int b, bool isReversed) : pinA(a), pinB(b), isReversed(isReversed), count(0) {
   instance = this;
 }
 
@@ -16,12 +16,13 @@ long BasicEncoder::getCount() {
   noInterrupts();
   long currentCount = count;
   interrupts();
-  return currentCount;
+  return isReversed ? -currentCount : currentCount;
 }
 
 void BasicEncoder::reset() {
   noInterrupts();
   count = 0;
+  isReversed = false;
   interrupts();
 }
 

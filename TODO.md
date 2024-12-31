@@ -8,10 +8,11 @@
  - [x] Basic Encoder
  - [x] Base Feedback Motor
  - [x] Custom Feedback Motor
+ - [x] Motor Direction Reverse
+ - [x] Encoder Direction Reverse
+ - [ ] Base Robot
  - [ ] Base Gyro
  - [ ] MPU 6050
- - [ ] Motor Direction Reverse
- - [ ] Encoder Direction Reverse
 
 
 ## Chasis
@@ -19,6 +20,7 @@
  - [x] Feedback Tank Drive
  - [x] Feedback Tank Drive
  - [x] Basic Mecanum
+ - [x] Add limits to motor controllers
  - [ ] Complex Feedback Tank Drive
  - [ ] Odometry
  - [ ] Feedback Mecanum with odometry
@@ -30,19 +32,23 @@
  - [x] NFR Slider
 
 # Driver Station
+## Arayüz
+ - [x] Web arayüzü ilk deneme
+ - [x] Gamepad abstract interface
+ - [x] Generic Gamepad
+ - [ ] Web arayüzü joystick seçme selectorında ufak bir sıkıntı var ona bak
+ - [ ] Yarışma gamepadi desteği (Toplantı sonrası kesinleşecek)
+ - [ ] On Screen Joystick eklenebilir
+ - [ ] Arayüz güzelleştirmeleri
+ - [ ] Batarya miktarı yazabilir (elektronik sisteme bağlı, yine toplantı sonrası)
+
 ## ESP
  - [x] Esp web arayüzü ilk deneme
  - [x] Web arayüzü ve kütüphane entegrasyonu
- - [x] Gamepad abstract interface
- - [x] Generic Gamepad
- - [ ] Daha çok controller desteği eklenebilir
- - [ ] On Screen Joystick eklenebilir
- - [ ] Arayüz güzelleştirmeleri
- - [ ] Batarya miktarı yazabilir (elektronik sisteme bağlı)
 
 ## Arduino
- - [ ] Arduino sığma kontrolü
- - [ ] Sığmıyorsa minimal versiyon yazılabilir
+ - [x] Arduino sığma kontrolü (Megaya sığıyor)
+ - [ ] Arduino özel minimal web sayfası (2026 yarışması için)
 
 
 # Probot Blocks
@@ -54,8 +60,6 @@
 
 # Gelecek
 ## Toplantı sonrası yapılacak değişiklikler
- - [ ] add limits to motor controllers
- - [ ] Web arayüzü joystick seçme selectorında ufak bir sıkıntı var ona bak
  - [x] base robot, otonom ve teleop arasında ayrım yapabilmeli
  - [ ] otonom
 
