@@ -3,10 +3,10 @@
 // Constructor
 NFRFeedbackMotor::NFRFeedbackMotor(
                                    const unsigned int &id,
-                                   unsigned long updateInterval = NFRFM_DEFAULT_UPDATE_INTERVAL,
-                                   unsigned long maxDelay = NFRFM_DEFAULT_MAX_DELAY,
-                                   float positionTolerance = NFRFM_DEFAULT_POS_TOL,
-                                   float velocityTolerance = NFRFM_DEFAULT_VEL_POL
+                                   unsigned long updateInterval,
+                                   unsigned long maxDelay,
+                                   float positionTolerance,
+                                   float velocityTolerance
                                    )
     : positionCoeffs(NFRFM_POS_PID_COEFS),
       velocityCoeffs(NFRFM_VEL_PID_COEFS),

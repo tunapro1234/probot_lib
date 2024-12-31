@@ -2,7 +2,7 @@
 #include <math.h>
 
 // Constructor
-PIDController::PIDController(const PIDCoefficients& coeffs, float tolerance=0)
+PIDController::PIDController(const PIDCoefficients& coeffs, float tolerance)
     : coefficients(coeffs), setpoint(0.0f), integral(0.0f), lastError(0.0f),
       tolerance(tolerance) {}
 
