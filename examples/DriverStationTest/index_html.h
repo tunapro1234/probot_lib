@@ -1,76 +1,80 @@
 #pragma once
 #include <pgmspace.h>
 
-// Basit joystick sayfası: Gamepad API ile eksen verisini okur ve
-// bir fetch isteğiyle NodeMCU'ya gönderir.
+// Minimal HTML for reading all axes/buttons from the first connected gamepad.
+// Sends data as a JSON POST to "/updateController".
 const char MAIN_page[] PROGMEM = R"=====(
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <title>Joystick Deneme</title>
-</head>
-<body>
-  <h1>Joystick Testi</h1>
-  <p>Bilgisayarınıza bir gamepad/joystick bağlayın ve herhangi bir butona basarak tarayıcıya tanıtın. Ardından eksenler değiştikçe NodeMCU’ya veri gönderilecektir.</p>
-  <div id="status">Henüz Joystick bağlanmadı.</div>
-  <script>
-    let gamepads = {};
+  <head>
+    <meta charset="UTF-8">
+    <title>Gamepad Full Read</title>
+  </head>
+  <body>
+    <h1>Gamepad Full Read</h1>
+    <p>Connect a controller, press any button to register it, and watch the NodeMCU serial output!</p>
+    <div id="status">No gamepad detected.</div>
+    <script>
+      let gamepads = {};
 
-    function updateGamepads() {
-      // Bağlı gamepadleri al
-      const connected = navigator.getGamepads ? navigator.getGamepads() : [];
-      for (let i = 0; i < connected.length; i++) {
-        const g = connected[i];
-        if (g) {
-          gamepads[g.index] = g;
+      function updateGamepads() {
+        const gpList = navigator.getGamepads ? navigator.getGamepads() : [];
+        for (let i = 0; i < gpList.length; i++) {
+          const gp = gpList[i];
+          if (gp) {
+            gamepads[gp.index] = gp;
+          }
         }
       }
-    }
 
-    function sendJoystickData(xVal, yVal) {
-      // xVal ve yVal’i /joystick endpoint’ine GET isteğiyle gönderiyoruz
-      fetch(`/joystick?x=${xVal}&y=${yVal}`)
-        .then(r => console.log(`Joystick verisi gonderildi: x=${xVal}, y=${yVal}`))
-        .catch(e => console.error(e));
-    }
+      async function sendControllerData(gp) {
+        // Build an object with axes and button states
+        const data = {
+          axes: gp.axes,
+          buttons: gp.buttons.map(btn => btn.pressed) // true/false for each
+        };
 
-    function gamepadLoop() {
-      updateGamepads();
-
-      // Sadece ilk (index=0) gamepad’e odaklanıyoruz (birden fazla olabilir).
-      const gp = gamepads[0];
-      if (gp) {
-        document.getElementById('status').innerText = `Gamepad: ${gp.id}`;
-        
-        // Örnek: gp.axes[0] (X ekseni), gp.axes[1] (Y ekseni)
-        let xAxis = gp.axes[0] || 0.0;
-        let yAxis = gp.axes[1] || 0.0;
-
-        // Aşırı sıklıkta çağırmamak için isterseniz bir threshold kontrolü ekleyebilirsiniz.
-        // Burada basitlik için her frame gönderiyoruz:
-        sendJoystickData(xAxis.toFixed(2), yAxis.toFixed(2));
+        // Send via POST as JSON
+        try {
+          await fetch('/updateController', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+        } catch (err) {
+          console.error('Error sending controller data:', err);
+        }
       }
 
-      requestAnimationFrame(gamepadLoop);
-    }
+      function gamepadLoop() {
+        updateGamepads();
 
-    window.addEventListener('load', () => {
-      // gamepad bağlandığında / ayrıldığında tetiklenen event’ler
-      window.addEventListener("gamepadconnected", e => {
-        console.log("Gamepad baglandi:", e.gamepad);
-        document.getElementById('status').innerText = `Gamepad baglandi: ${e.gamepad.id}`;
+        // We'll only look at the first controller (index=0) for simplicity
+        const gp = gamepads[0];
+        if (gp) {
+          document.getElementById('status').innerText = `Gamepad: ${gp.id} — Axes: ${gp.axes.length}, Buttons: ${gp.buttons.length}`;
+          sendControllerData(gp);
+        }
+
+        requestAnimationFrame(gamepadLoop);
+      }
+
+      // Listen for gamepad connect/disconnect
+      window.addEventListener('gamepadconnected', e => {
+        console.log('Gamepad connected:', e.gamepad);
+        document.getElementById('status').innerText = 'Gamepad connected!';
       });
-      window.addEventListener("gamepaddisconnected", e => {
-        console.log("Gamepad ayrildi:", e.gamepad);
-        document.getElementById('status').innerText = "Gamepad baglantisi kesildi.";
+      window.addEventListener('gamepaddisconnected', e => {
+        console.log('Gamepad disconnected:', e.gamepad);
+        document.getElementById('status').innerText = 'Gamepad disconnected.';
         delete gamepads[e.gamepad.index];
       });
 
-      // Sürekli joystick verilerini kontrol et
-      requestAnimationFrame(gamepadLoop);
-    });
-  </script>
-</body>
+      // On page load, start the animation loop
+      window.addEventListener('load', () => {
+        requestAnimationFrame(gamepadLoop);
+      });
+    </script>
+  </body>
 </html>
 )=====";

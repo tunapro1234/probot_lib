@@ -5,6 +5,7 @@
  - [ ] add limits to motor controllers
  - [ ] complex tankdrive
  - [ ] basic mecanum drive
+ - [ ] MPU6050 ve gyro interfacei
 
  - [ ] Esp web arayüzü
  - [ ] Web arayüzü ve kütüphane entegrasyonu

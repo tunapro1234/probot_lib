@@ -1,116 +1,118 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
+#include <ArduinoJson.h>  // Make sure to install ArduinoJson library via Library Manager
+#include "index_html.h"   // Our HTML page
 
-#include "index_html.h"
-
-// Herkesin kullanacağı parola (Access Point için):
+// The AP password
 const char* AP_PASS = "robotpro1234";
 
+// Create a web server on port 80
 ESP8266WebServer server(80);
 
-// Dahili LED (NodeMCU'da D4 = GPIO2), test amaçlı kullanabiliriz
-const int LED_PIN = LED_BUILTIN;
-
-// ----------------------------
-// Benzersiz SSID üreten fonksiyon
+// Generate a unique SSID by appending the last 3 bytes of the MAC address
 String generateSSID() {
   uint8_t mac[6];
   WiFi.softAPmacAddress(mac);
-  // Son 3 baytı hex olarak birleştir
+
+  // Convert the last 3 bytes to hex
   String macID = String(mac[3], HEX) + String(mac[4], HEX) + String(mac[5], HEX);
   macID.toUpperCase();
-  // "probot_" + macID => Örneğin: probot_AB12F3
-  String ssid = "probot_" + macID;
-  return ssid;
+
+  // e.g. "probot_AB12F3"
+  return "probot_" + macID;
 }
 
-// ----------------------------
-// mDNS başlatan fonksiyon (AP modunda her cihazda çalışmayabilir)
-void setupMDNS(const char* hostName) {
-  if (MDNS.begin(hostName)) {
-    Serial.println("mDNS baslatildi. 'probot.local' olarak erisilebilir.");
-  } else {
-    Serial.println("mDNS baslatilamadi (AP modunda destegi sinirli olabilir).");
-  }
-}
-
-// ----------------------------
-// "/" isteğini karşılayan fonksiyon: index_html.h içeriğini gönderiyor
+// Serve the main page (from index_html.h)
 void handleRoot() {
   server.send_P(200, "text/html", MAIN_page);
 }
 
-// ----------------------------
-// "/joystick" isteğini karşılayan fonksiyon: x ve y parametresi geliyor
-void handleJoystick() {
-  if (server.hasArg("x") && server.hasArg("y")) {
-    String xVal = server.arg("x");
-    String yVal = server.arg("y");
-    
-    // Bu noktada xVal ve yVal değerlerini float’a çevirip
-    // motor kontrolü, servo, vb. istediğiniz işlemleri yapabilirsiniz.
-    // Şimdilik sadece Serial’a yazdırıyoruz.
-    Serial.print("Joystick -> X: ");
-    Serial.print(xVal);
-    Serial.print(", Y: ");
-    Serial.println(yVal);
+// Parse JSON with all button states + axes and print to Serial
+void handleControllerUpdate() {
+  // We'll read the POST body which contains JSON data
+  if (server.method() == HTTP_POST) {
+    // The JSON object might be relatively small, but we need a buffer:
+    // e.g. 32 for overhead + up to 64 for axes + 32 for buttons ...
+    // We'll try 256. Adjust as needed if you have more data.
+    const size_t capacity = 256;
+    StaticJsonDocument<capacity> doc;
 
-    // LED'i basitçe yanıp sönsün diye örnek:
-    // X > 0.5 ise LED'i aç, aksi halde kapat. (Aktif düşük olabileceğini unutmayın.)
-    float xFloat = xVal.toFloat();
-    if (xFloat > 0.5) {
-      digitalWrite(LED_PIN, LOW);  // Aktif düşük LED
-    } else {
-      digitalWrite(LED_PIN, HIGH);
+    // Parse the incoming JSON
+    DeserializationError error = deserializeJson(doc, server.arg("plain"));
+    if (error) {
+      Serial.print("JSON parse error: ");
+      Serial.println(error.c_str());
+      server.send(400, "text/plain", "Bad JSON");
+      return;
     }
-  }
 
-  // İstemciye yanıt
-  server.send(200, "text/plain", "Joystick verisi alindi.");
+    // "axes" is an array, "buttons" is an array of booleans
+    if (doc.containsKey("axes") && doc.containsKey("buttons")) {
+      JsonArray axes = doc["axes"];
+      JsonArray buttons = doc["buttons"];
+
+      Serial.println("\n--- Controller Update ---");
+
+      // Print Axes
+      Serial.print("Axes: ");
+      for (size_t i = 0; i < axes.size(); i++) {
+        float val = axes[i];
+        Serial.print(val, 2); // 2 decimal places
+        if (i < axes.size() - 1) Serial.print(", ");
+      }
+      Serial.println();
+
+      // Print Buttons
+      Serial.print("Buttons: ");
+      for (size_t i = 0; i < buttons.size(); i++) {
+        bool pressed = buttons[i];
+        Serial.print(pressed ? "1" : "0");
+        if (i < buttons.size() - 1) Serial.print(", ");
+      }
+      Serial.println("\n------------------------");
+    }
+    else {
+      Serial.println("Invalid JSON structure");
+    }
+
+    server.send(200, "text/plain", "OK");
+  } else {
+    server.send(405, "text/plain", "Method Not Allowed");
+  }
 }
 
-// ----------------------------
 void setup() {
   Serial.begin(115200);
   delay(100);
 
-  // LED ayarı (NodeMCU dahili LED)
-  pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, HIGH); // Başlangıçta kapalı
-
-  // Access Point moduna geç
+  // Configure Wi-Fi in AP mode
   WiFi.mode(WIFI_AP);
-  
-  // Benzersiz SSID üret
+
+  // Generate a unique SSID
   String uniqueSSID = generateSSID();
 
-  // AP oluştur
+  // Create the AP
   WiFi.softAP(uniqueSSID.c_str(), AP_PASS);
 
+  // Print info
   IPAddress myIP = WiFi.softAPIP();
-
-  Serial.println("\n=== ProBot Joystick AP Olusturuldu ===");
+  Serial.println("\n=== ProBot Gamepad AP ===");
   Serial.print("SSID: ");
   Serial.println(uniqueSSID);
-  Serial.print("Sifre: ");
+  Serial.print("Password: ");
   Serial.println(AP_PASS);
-  Serial.print("IP Adresi: ");
+  Serial.print("AP IP address: ");
   Serial.println(myIP);
 
-  // mDNS olayı (AP modunda her zaman garantili değil)
-  setupMDNS("probot");
-
-  // Web sunucusu yönlendirmeleri
+  // Set up web endpoints
   server.on("/", handleRoot);
-  server.on("/joystick", handleJoystick);
+  server.on("/updateController", handleControllerUpdate);
 
-  // Sunucuyu başlat
+  // Start server
   server.begin();
-  Serial.println("Web sunucusu baslatildi. Tarayicida IP adresine girerek erisebilirsiniz.");
+  Serial.println("Web server started. Open browser at http://192.168.4.1/");
 }
 
-// ----------------------------
 void loop() {
   server.handleClient();
 }
