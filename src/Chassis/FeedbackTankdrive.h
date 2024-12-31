@@ -20,13 +20,16 @@ class FeedbackTankdrive {
     void reset();
     void stop();
 
-    void setMotorVelocities(float leftVelocity, float rightVelocity);
+    void drive(float forwardSpeed, float rotationalSpeed);
+    void setMotorVelocities(float leftVelocity, float rightVelocity); // Eski metod
 
   private:
     float gearboxRatio;
     float wheelDiameterCM;
     BaseFeedbackMotor& leftMotor;
     BaseFeedbackMotor& rightMotor;
+
+    float calculateRPM(float velocity); // Yardımcı metod
 };
 
 #endif

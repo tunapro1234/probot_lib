@@ -6,13 +6,16 @@
 class BasicTankdrive {
   public:
     BasicTankdrive(BaseMotorController& leftMotor, BaseMotorController& rightMotor);
+    
     void begin();
-    void setMotorPowers(float leftPower, float rightPower); // -1.0 to 1.0
+    void drive(float forwardSpeed, float rotationalSpeed); // -1.0 to 1.0
     void stop();
   
   private:
     BaseMotorController& leftMotor;
     BaseMotorController& rightMotor;
+
+    void setMotorPowers(float leftPower, float rightPower); // İçsel motor gücü ayarı
 };
 
 #endif
