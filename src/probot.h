@@ -5,6 +5,10 @@
 #include "BaseClass/Robot.h"
 #include "DriverStation/DriverStationNodeMCU.h"
 
+// Gamepads
+#include "BaseClass/BaseGamepad.h"
+#include "Gamepad/TunaGamepad.h"
+
 // Raw Motor Controllers (without encoders)
 #include "MotorController/BasicMotorController.h"
 #include "MotorController/NFRRawMotor.h"

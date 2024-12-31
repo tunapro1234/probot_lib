@@ -1,9 +1,9 @@
 #include <probot.h>
 
-DriverStationNodeMCU driverStation;
+DriverStation driverStation;
 unsigned long last_print = 0;
 
-void printJoystickData() {
+void printGamepadData() {
     // Print current joystick axis and button counts
     int axisCount = driverStation.getJoystickAxisCount();
     int buttonCount = driverStation.getJoystickButtonCount();
@@ -44,6 +44,6 @@ void loop() {
 
     if (millis() - last_print > 1000) {
         last_print = millis();
-        printJoystickData();
+        printGamepadData();
     }
 }

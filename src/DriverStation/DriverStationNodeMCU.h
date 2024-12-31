@@ -1,3 +1,4 @@
+// #ifdef ESP32
 #ifndef DRIVER_STATION_NODEMCU_H
 #define DRIVER_STATION_NODEMCU_H
 
@@ -17,20 +18,20 @@ enum class RobotStatus {
     STOP
 };
 
-class DriverStationNodeMCU {
+class DriverStation {
 public:
-    DriverStationNodeMCU(const char* apPass = "robotpro1234");
+    DriverStation(const char* apPass = "robotpro1234");
 
     void begin();
     void handleClient();
 
     // Getters
-    float getJoystickAxis(int axis);
-    bool getJoystickButton(int button);
-    RobotStatus getRobotStatus();
-    int getClientCount();
-    int getJoystickAxisCount();
-    int getJoystickButtonCount();
+    float getJoystickAxis(int axis) const;
+    bool getJoystickButton(int button) const;
+    RobotStatus getRobotStatus() const;
+    int getClientCount() const;
+    int getJoystickAxisCount() const;
+    int getJoystickButtonCount() const;
 
 
     // Setter
@@ -66,3 +67,4 @@ private:
 };
 
 #endif // DRIVER_STATION_NODEMCU_H
+// #endif // ESP32

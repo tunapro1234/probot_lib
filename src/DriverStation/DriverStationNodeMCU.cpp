@@ -1,7 +1,7 @@
 #include "DriverStationNodeMCU.h"
 
 // Constructor
-DriverStationNodeMCU::DriverStationNodeMCU(const char* apPass)
+DriverStation::DriverStation(const char* apPass)
     : AP_PASS(apPass), server(80),
       robotStatus(RobotStatus::INIT), enableAutonomous(false), autoPeriod(30), batteryVoltage(12.3), clientCount(0) {
     for (int i = 0; i < JOYSTICK_MAX_AXIS_COUNT; i++) {
@@ -13,7 +13,7 @@ DriverStationNodeMCU::DriverStationNodeMCU(const char* apPass)
 }
 
 // Generate unique SSID
-String DriverStationNodeMCU::generateSSID() {
+String DriverStation::generateSSID() {
     uint8_t mac[6];
     WiFi.softAPmacAddress(mac);
     String macID = String(mac[3], HEX) + String(mac[4], HEX) + String(mac[5], HEX);
@@ -22,12 +22,12 @@ String DriverStationNodeMCU::generateSSID() {
 }
 
 // Serve main HTML
-void DriverStationNodeMCU::handleRoot() {
+void DriverStation::handleRoot() {
     server.send_P(200, "text/html", MAIN_page);
 }
 
 // // Joystick data endpoint 
-// void DriverStationNodeMCU::handleUpdateController() {
+// void DriverStation::handleUpdateController() {
 //     if (server.method() == HTTP_POST) {
 //         StaticJsonDocument<256> doc;
 //         DeserializationError error = deserializeJson(doc, server.arg("plain"));
@@ -57,7 +57,7 @@ void DriverStationNodeMCU::handleRoot() {
 // }
 
 // Joystick data endpoint 
-void DriverStationNodeMCU::handleUpdateController() {
+void DriverStation::handleUpdateController() {
     if (server.method() == HTTP_POST) {
         StaticJsonDocument<256> doc;
         DeserializationError error = deserializeJson(doc, server.arg("plain"));
@@ -109,7 +109,7 @@ void DriverStationNodeMCU::handleUpdateController() {
 
 
 // Robot control endpoint
-void DriverStationNodeMCU::handleRobotControl() {
+void DriverStation::handleRobotControl() {
     if (server.hasArg("cmd")) {
         String cmd = server.arg("cmd");
         bool autoFlag = (server.hasArg("auto") && server.arg("auto") == "1");
@@ -143,12 +143,12 @@ void DriverStationNodeMCU::handleRobotControl() {
 }
 
 // Battery endpoint
-void DriverStationNodeMCU::handleGetBattery() {
+void DriverStation::handleGetBattery() {
     server.send(200, "text/plain", String(batteryVoltage, 1));
 }
 
 // Begin the server
-void DriverStationNodeMCU::begin() {
+void DriverStation::begin() {
     Serial.begin(115200);
     delay(100);
 
@@ -162,23 +162,23 @@ void DriverStationNodeMCU::begin() {
     IPAddress myIP = WiFi.softAPIP();
     Serial.println("AP IP: " + myIP.toString());
 
-    server.on("/", std::bind(&DriverStationNodeMCU::handleRoot, this));
-    server.on("/updateController", std::bind(&DriverStationNodeMCU::handleUpdateController, this));
-    server.on("/robotControl", std::bind(&DriverStationNodeMCU::handleRobotControl, this));
-    server.on("/getBattery", std::bind(&DriverStationNodeMCU::handleGetBattery, this));
+    server.on("/", std::bind(&DriverStation::handleRoot, this));
+    server.on("/updateController", std::bind(&DriverStation::handleUpdateController, this));
+    server.on("/robotControl", std::bind(&DriverStation::handleRobotControl, this));
+    server.on("/getBattery", std::bind(&DriverStation::handleGetBattery, this));
 
     server.begin();
     Serial.println("Server started.");
 }
 
 // Handle incoming clients
-void DriverStationNodeMCU::handleClient() {
+void DriverStation::handleClient() {
     server.handleClient();
     clientCount = WiFi.softAPgetStationNum();
 }
 
 // --- Getter Methods ---
-float DriverStationNodeMCU::getJoystickAxis(int axis) {
+float DriverStation::getJoystickAxis(int axis) const {
     if (axis < 0 || axis >= JOYSTICK_MAX_AXIS_COUNT) {
         Serial.println(F("Invalid Joystick Axis"));
         return 0.0;
@@ -186,7 +186,7 @@ float DriverStationNodeMCU::getJoystickAxis(int axis) {
     return joystickAxes[axis];
 }
 
-bool DriverStationNodeMCU::getJoystickButton(int button) {
+bool DriverStation::getJoystickButton(int button) const {
     if (button < 0 || button >= JOYSTICK_MAX_BUTTON_COUNT) {
         Serial.println(F("Invalid Joystick Button"));
         return 0.0;
@@ -194,30 +194,30 @@ bool DriverStationNodeMCU::getJoystickButton(int button) {
     return joystickButtons[button];
 }
 
-int DriverStationNodeMCU::getJoystickAxisCount() {
+int DriverStation::getJoystickAxisCount() const {
     return joystickAxisCount;
 }
 
-int DriverStationNodeMCU::getJoystickButtonCount() {
+int DriverStation::getJoystickButtonCount() const {
     return joystickButtonCount;
 }
 
 
-RobotStatus DriverStationNodeMCU::getRobotStatus() {
+RobotStatus DriverStation::getRobotStatus() const {
     return robotStatus;
 }
 
-int DriverStationNodeMCU::getClientCount() {
+int DriverStation::getClientCount() const {
     return clientCount;
 }
 
 // --- Setter Methods ---
-void DriverStationNodeMCU::setBatteryVoltage(float voltage) {
+void DriverStation::setBatteryVoltage(float voltage) {
     batteryVoltage = voltage;
 }
 
 // --- Helper ---
-String DriverStationNodeMCU::robotStatusToString(RobotStatus status) {
+String DriverStation::robotStatusToString(RobotStatus status) {
     switch (status) {
         case RobotStatus::INIT: return "INIT";
         case RobotStatus::START: return "START";
