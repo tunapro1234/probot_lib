@@ -28,6 +28,5 @@ void loop() {
     Serial.print("Current Power: ");
     Serial.println(motor.getPower());
 
-    motor.update();
     delay(10); // Loop delay
 }
