@@ -18,10 +18,9 @@
  - [x] Basic Tank Drive
  - [x] Feedback Tank Drive
  - [x] Feedback Tank Drive
+ - [x] Basic Mecanum
  - [ ] Complex Feedback Tank Drive
  - [ ] Odometry
- - [ ] Basic Mecanum
- - [ ] Feedback Mecanum
  - [ ] Feedback Mecanum with odometry
 
 ## Subsystems
