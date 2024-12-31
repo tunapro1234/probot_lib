@@ -27,8 +27,8 @@ void PIDController::reset() {
     lastError = 0.0f;
 }
 
-// Compute Control Output
-float PIDController::compute(float currentMeasurement) {
+// calculate Control Output
+float PIDController::calculate(float currentMeasurement) {
     float error = setpoint - currentMeasurement;
     integral += error;
     float derivative = error - lastError;

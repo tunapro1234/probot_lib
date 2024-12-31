@@ -13,7 +13,7 @@ public:
 
     void reset();
 
-    float compute(float currentMeasurement);
+    float calculate(float currentMeasurement);
 
     // Tolerance Methods
     void setTolerance(float tolerance);
