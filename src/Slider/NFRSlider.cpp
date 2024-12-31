@@ -11,9 +11,15 @@ void NFRSlider::begin() {
 }
 
 void NFRSlider::setTargetLength(float length) {
-    if (length < 0) length = 0;
-    if (length > NFRSLIDER_LENGTH_LIMIT) length = NFRSLIDER_LENGTH_LIMIT;
-    motor->setPositionTarget(length * NFRSLIDER_COUNTS_PER_CM);
+    if (length < 0) {
+        Serial.println(F("Error: Target length below 0, clamping to 0"));
+        motor->setPositionTarget(0);
+    } else if (length > NFRSLIDER_LENGTH_LIMIT) {
+        Serial.println(F("Error: Target length exceeds maximum limit, clamping to max length"));
+        motor->setPositionTarget(mapLengthToTicks(NFRSLIDER_LENGTH_LIMIT));
+    } else {
+        motor->setPositionTarget(mapLengthToTicks(length));
+    }
 }
 
 void NFRSlider::update() {
@@ -22,11 +28,11 @@ void NFRSlider::update() {
 }
 
 float NFRSlider::getLength() {
-    return motor->getPosition() / NFRSLIDER_COUNTS_PER_CM;
+    return mapTicksToLength(motor->getPosition());
 }
 
 float NFRSlider::getTargetLength() {
-    return motor->getPositionTarget() / NFRSLIDER_COUNTS_PER_CM;
+    return mapTicksToLength(motor->getPositionTarget());
 }
 
 float NFRSlider::getMaxLength() {
@@ -37,8 +43,23 @@ bool NFRSlider::isAtTarget() {
     return motor->isAtTarget();
 }
 
+float NFRSlider::mapTicksToLength(float ticks) {
+    return ticks / NFRSLIDER_COUNTS_PER_CM;
+}
+
+float NFRSlider::mapLengthToTicks(float length) {
+    return length * NFRSLIDER_COUNTS_PER_CM;
+}
+
+// Internal Safety Check
 void NFRSlider::safetyCheck() {
-    if (motor->getPosition() > NFRSLIDER_LENGTH_LIMIT * NFRSLIDER_COUNTS_PER_CM) {
-        motor->setPositionTarget(NFRSLIDER_LENGTH_LIMIT * NFRSLIDER_COUNTS_PER_CM);
+    float currentPosition = motor->getPosition();
+
+    if (currentPosition < 0) {
+        Serial.println(F("Warning: Slider exceeded minimum limit, resetting to 0"));
+        motor->setPositionTarget(0);
+    } else if (currentPosition > mapLengthToTicks(NFRSLIDER_LENGTH_LIMIT)) {
+        Serial.println(F("Warning: Slider exceeded maximum limit, resetting to max length"));
+        motor->setPositionTarget(mapLengthToTicks(NFRSLIDER_LENGTH_LIMIT));
     }
 }
