@@ -2,12 +2,30 @@
 #define NFRFeedbackMotor_h
 
 #include "../BaseClass/BaseFeedbackMotor.h"
-#include "../Controller/PIDCoefficients.h"
 #include "../Controller/PIDController.h"
+#include "../Controller/PIDCoefficients.h"
+#include "../Util/UpdateHelper.h"
+
+#define NFRFM_CPR 360
+#define NFRFM_VEL_PID_COEFS (PIDCoefficients(1.0, 0.1, 0.05))
+#define NFRFM_POS_PID_COEFS (PIDCoefficients(1.0, 0.1, 0.05))
+
+#define NFRFM_DEFAULT_VEL_POL 10
+#define NFRFM_DEFAULT_UPDATE_INTERVAL 10
+#define NFRFM_DEFAULT_MAX_DELAY 10
+#define NFRFM_DEFAULT_POS_TOL 10
+#define NFRFM_DEFAULT_VEL_POL 10
+
 
 class NFRFeedbackMotor : public BaseFeedbackMotor {
 public:
-    NFRFeedbackMotor(int id);
+    NFRFeedbackMotor(
+        const unsigned int &id,
+        unsigned long updateInterval = NFRFM_DEFAULT_UPDATE_INTERVAL, 
+        unsigned long maxDelay = NFRFM_DEFAULT_MAX_DELAY,
+        float positionTolerance = NFRFM_DEFAULT_POS_TOL,
+        float velocityTolerance = NFRFM_DEFAULT_VEL_POL
+    );
 
     void begin() override;
     void update() override;
@@ -32,15 +50,24 @@ public:
     bool isPositional() const override;
     bool isVelocity() const override;
 
-    int getID() const;
-
 private:
-    int motorID;
-    PIDCoefficients positionPID;
-    PIDCoefficients speedPID;
-    PIDController pidController;
-    float target;
+    PIDController pid;
+
+    PIDCoefficients positionCoeffs;
+    PIDCoefficients velocityCoeffs;
+
+    UpdateHelper updateHelper;
+
     bool positionalMode;
+    float positionTolerance;
+    float velocityTolerance;
+
+    void applyCoefficients(const PIDCoefficients& coeffs);
+    void handlePositionMode();
+    void handleVelocityMode();
+
+    void setMotorPower(float power);
+    long getEncoderCounts();
 };
 
 #endif
