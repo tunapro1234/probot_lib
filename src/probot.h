@@ -1,6 +1,10 @@
 #ifndef probot_h
 #define probot_h
 
+// Fundamentals
+#include "BaseClass/Robot.h"
+#include "DriverStation/DriverStationNodeMCU.h"
+
 // Raw Motor Controllers (without encoders)
 #include "MotorController/BasicMotorController.h"
 #include "MotorController/NFRRawMotor.h"

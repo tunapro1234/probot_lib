@@ -4,7 +4,12 @@
 // - Settings (checkbox placeholder)
 //
 #pragma once
+
+#ifdef ESP32
 #include <pgmspace.h>
+#else
+#include <avr/pgmspace.h>
+#endif
 
 const char MAIN_page[] PROGMEM = R"=====(
 
