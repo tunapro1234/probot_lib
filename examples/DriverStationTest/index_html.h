@@ -1,12 +1,10 @@
-#pragma once
-#include <pgmspace.h>
-
 // Single HTML page with sidebar navigation:
 // - Main Drive (joystick status, battery voltage, init/start/stop button)
 // - Joystick Test (shows axes & buttons)
 // - Settings (checkbox placeholder)
 //
-// Joystick detection is done client-side. If found, main-drive indicator goes green, otherwise red.
+#pragma once
+#include <pgmspace.h>
 
 const char MAIN_page[] PROGMEM = R"=====(
 
@@ -72,7 +70,22 @@ const char MAIN_page[] PROGMEM = R"=====(
       display: inline-block;
       margin: 8px 0;
     }
-    /* Joystick Test boxes */
+    .disabledNotice {
+      color: red;
+      font-weight: bold;
+      margin-left: 8px;
+    }
+    .inlineLabel {
+      display: inline-block;
+      width: 180px;
+    }
+    /* Make the Init/Start/Stop button BIG */
+    #robotButton {
+      font-size: 1.2em;
+      padding: 10px 20px;
+      margin-top: 10px;
+    }
+    /* Joystick Test area */
     #axisData, #buttonData {
       border: 1px solid #ccc;
       background: #f9f9f9;
@@ -99,38 +112,76 @@ const char MAIN_page[] PROGMEM = R"=====(
     <!-- MAIN DRIVE PAGE -->
     <div id="mainDrive" class="page-section active">
       <h1>Main Drive</h1>
+
+      <!-- Joystick status indicator -->
       <p>
-        Joystick Status:
+        <strong>Joystick Status:</strong>
         <span id="joystickStatusTxt">Not Connected</span>
         <span id="joystickIndicator" class="indicator"></span>
       </p>
+
+      <!-- Battery Voltage -->
       <p>
-        Battery Voltage:
+        <strong>Battery Voltage:</strong>
         <span id="batteryVoltage" class="batteryBox">--</span>
+        <span id="lowBatteryNotice" class="disabledNotice" style="display:none;">
+          Battery Too Low!
+        </span>
       </p>
+
+      <!-- Enable Autonomous + Period input -->
+      <p>
+        <label>
+          <input type="checkbox" id="enableAutonomous" />
+          Enable Autonomous
+        </label>
+      </p>
+      <p>
+        <label class="inlineLabel">Autonomous Period Length:</label>
+        <input type="number" id="autoPeriod" value="30" style="width:60px;" /> (seconds)
+      </p>
+
+      <!-- Robot Button (Init -> Start -> Stop) -->
       <p>
         <button id="robotButton" onclick="handleRobotButton()">Init</button>
       </p>
+
     </div>
 
     <!-- JOYSTICK TEST PAGE -->
     <div id="joystickTest" class="page-section">
       <h1>Joystick Test</h1>
-      <p>Connect a controller, press a button to register, and move the sticks. Axes and buttons will be shown here.</p>
-      <div id="joystickStatus">No gamepad detected.</div>
-      <h2>Axes</h2>
+      <p>
+        Connect one or more controllers, press a button to register them, then pick which to use:
+        <select id="joystickSelect" onchange="changeSelectedGamepad()">
+          <option value="-1">No Gamepad</option>
+        </select>
+      </p>
+      <h2>Selected Gamepad Info</h2>
+      <div id="joystickStatus">No gamepad selected.</div>
+      <h3>Axes</h3>
       <div id="axisData">No data yet...</div>
-      <h2>Buttons</h2>
+      <h3>Buttons</h3>
       <div id="buttonData">No data yet...</div>
     </div>
 
     <!-- SETTINGS PAGE -->
     <div id="settings" class="page-section">
       <h1>Settings</h1>
-      <label>
-        <input type="checkbox" id="someSetting" />
-        <span>Some Setting</span>
-      </label>
+      <!-- On-Screen Joystick (enabled by default) -->
+      <p>
+        <label>
+          <input type="checkbox" id="onScreenJoystick" checked />
+          Enable On-Screen Joystick (not implemented yet)
+        </label>
+      </p>
+      <!-- NEW: "Allow robot to run if the battery is too low" -->
+      <p>
+        <label>
+          <input type="checkbox" id="allowLowBattery" />
+          Allow robot to run if the battery is too low
+        </label>
+      </p>
       <p>(You can fill in additional settings later.)</p>
     </div>
   </div>
@@ -146,20 +197,36 @@ const char MAIN_page[] PROGMEM = R"=====(
     }
 
     /*******************************************************
-     * MAIN DRIVE: ROBOT BUTTON (Init → Start → Stop → Init)
+     * GLOBALS
      *******************************************************/
-    let robotState = "init"; 
-    // We'll cycle: init -> start -> stop -> init ...
+    let robotState = "init";   // can be init, start, stop
+    let batteryValue = 0;      // read from server
+    let selectedGamepadIndex = -1; // which gamepad user selected (-1 = none)
+
+    /*******************************************************
+     * MAIN DRIVE: ROBOT BUTTON (Init → Start → Stop → Init)
+     * Now also respects "allowLowBattery" setting
+     *******************************************************/
     async function handleRobotButton() {
-      let cmd = "";
-      switch(robotState) {
-        case "init": cmd = "init"; break;
-        case "start": cmd = "start"; break;
-        case "stop":  cmd = "stop"; break;
+      const allowLowBattery = document.getElementById('allowLowBattery').checked;
+      if (!allowLowBattery && batteryValue < 11.0) {
+        alert("Battery too low to proceed! (Change settings if you want to allow.)");
+        return;
       }
 
+      let cmd = "";
+      switch(robotState) {
+        case "init":  cmd = "init";  break;
+        case "start": cmd = "start"; break;
+        case "stop":  cmd = "stop";  break;
+      }
+
+      const enableAuto = document.getElementById('enableAutonomous').checked;
+      const autoLen    = document.getElementById('autoPeriod').value;
+
+      const url = `/robotControl?cmd=${cmd}&auto=${enableAuto ? 1 : 0}&autoLen=${autoLen}`;
       try {
-        const response = await fetch(`/robotControl?cmd=${cmd}`);
+        const response = await fetch(url);
         if (!response.ok) {
           console.error("Failed to send robot command", cmd);
           return;
@@ -169,7 +236,7 @@ const char MAIN_page[] PROGMEM = R"=====(
         return;
       }
 
-      // After sending the command successfully, move to next state
+      // Cycle the robot state
       if (robotState === "init") {
         robotState = "start";
         document.getElementById('robotButton').textContent = "Start";
@@ -184,25 +251,41 @@ const char MAIN_page[] PROGMEM = R"=====(
 
     /*******************************************************
      * MAIN DRIVE: BATTERY VOLTAGE
+     * Fetched every 2s from /getBattery
      *******************************************************/
     async function updateBatteryVoltage() {
       try {
         const resp = await fetch('/getBattery');
         if (!resp.ok) return;
-        const voltage = await resp.text();
-        document.getElementById('batteryVoltage').textContent = voltage + " V";
+        const voltageStr = await resp.text(); // e.g. "12.3"
+        batteryValue = parseFloat(voltageStr);
+        const batteryEl = document.getElementById('batteryVoltage');
+        batteryEl.textContent = batteryValue.toFixed(1) + " V";
+
+        const allowLowBattery = document.getElementById('allowLowBattery').checked;
+        const lowBatNotice = document.getElementById('lowBatteryNotice');
+
+        // Show "Battery Too Low!" if < 11.0, unless user allows low battery
+        if (!allowLowBattery && batteryValue < 11.0) {
+          lowBatNotice.style.display = "inline";
+        } else {
+          lowBatNotice.style.display = "none";
+        }
       } catch (err) {
         console.error("Battery fetch error:", err);
       }
     }
 
     /*******************************************************
-     * JOYSTICK DETECTION
+     * JOYSTICK / GAMEPAD HANDLING
+     * We can connect multiple gamepads, user picks one from a <select>
      *******************************************************/
     let gamepads = {};
 
     function updateGamepads() {
       const gpList = navigator.getGamepads ? navigator.getGamepads() : [];
+      // Clear gamepads object
+      gamepads = {};
       for (let i = 0; i < gpList.length; i++) {
         const gp = gpList[i];
         if (gp) {
@@ -211,8 +294,41 @@ const char MAIN_page[] PROGMEM = R"=====(
       }
     }
 
-    // Send full data to /updateController
+    // Build the <select> dropdown with all recognized gamepads
+    function rebuildGamepadSelect() {
+      const selectEl = document.getElementById('joystickSelect');
+      // Clear out old options except the first
+      while (selectEl.options.length > 1) {
+        selectEl.remove(1); 
+      }
+      // Add each recognized gamepad
+      for (let idx in gamepads) {
+        const gp = gamepads[idx];
+        const option = document.createElement('option');
+        option.value = idx;
+        option.text = `${gp.id} (index ${gp.index})`;
+        selectEl.add(option);
+      }
+      // If there's at least one gamepad, default to the first
+      if (Object.keys(gamepads).length > 0 && selectedGamepadIndex < 0) {
+        const firstIdx = Object.keys(gamepads)[0];
+        selectEl.value = firstIdx;
+        selectedGamepadIndex = parseInt(firstIdx);
+      }
+    }
+
+    // Called when user picks a new gamepad from the dropdown
+    function changeSelectedGamepad() {
+      const val = document.getElementById('joystickSelect').value;
+      selectedGamepadIndex = parseInt(val);
+      if (isNaN(selectedGamepadIndex)) {
+        selectedGamepadIndex = -1;
+      }
+    }
+
+    // Send full data to /updateController if robotState == "start"
     async function sendGamepadData(gp) {
+      if (robotState !== "start") return; // only send if started
       const data = {
         axes: gp.axes,
         buttons: gp.buttons.map(btn => btn.pressed)
@@ -249,39 +365,39 @@ const char MAIN_page[] PROGMEM = R"=====(
       buttonEl.innerHTML = btnHTML;
     }
 
-    // This loop runs ~60 FPS
+    // Joystick loop ~60 FPS
     function gamepadLoop() {
       updateGamepads();
-      const gp = gamepads[0]; // focus on the first gamepad
+      rebuildGamepadSelect();
 
-      // MAIN DRIVE joystick indicator
+      // Decide which gamepad to use
+      const gp = gamepads[selectedGamepadIndex];
+      // Main Drive page indicator
       const indicator = document.getElementById('joystickIndicator');
       const indicatorTxt = document.getElementById('joystickStatusTxt');
 
       if (gp) {
-        // Turn the indicator GREEN
         indicator.style.background = "green";
         indicatorTxt.textContent = "Connected";
-
-        // Joystick Test page display
         displayJoystickData(gp);
-
-        // Send data to NodeMCU
         sendGamepadData(gp);
       } else {
-        // Turn the indicator RED
         indicator.style.background = "red";
         indicatorTxt.textContent = "Not Connected";
+        // Joystick Test page display
+        document.getElementById('joystickStatus').textContent = "No gamepad selected.";
+        document.getElementById('axisData').innerHTML = "No data yet...";
+        document.getElementById('buttonData').innerHTML = "No data yet...";
       }
 
       requestAnimationFrame(gamepadLoop);
     }
 
     // Detect connect/disconnect
-    window.addEventListener('gamepadconnected', (e) => {
+    window.addEventListener('gamepadconnected', e => {
       console.log("Gamepad connected:", e.gamepad);
     });
-    window.addEventListener('gamepaddisconnected', (e) => {
+    window.addEventListener('gamepaddisconnected', e => {
       console.log("Gamepad disconnected:", e.gamepad);
       delete gamepads[e.gamepad.index];
     });
@@ -290,15 +406,11 @@ const char MAIN_page[] PROGMEM = R"=====(
      * ON PAGE LOAD
      *******************************************************/
     window.addEventListener('load', () => {
-      // Kick off gamepad loop
       requestAnimationFrame(gamepadLoop);
-
-      // Fetch battery voltage every 2 seconds
       updateBatteryVoltage();
       setInterval(updateBatteryVoltage, 2000);
     });
   </script>
-
 </body>
 </html>
 
