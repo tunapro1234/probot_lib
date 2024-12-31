@@ -10,6 +10,7 @@ public:
     virtual void begin() = 0;
     virtual void update() = 0;
     virtual void reset() = 0;
+    virtual void stop() = 0;
 
     virtual void setPositionTarget(long target) = 0;
     virtual void setVelocityTarget(float target) = 0;

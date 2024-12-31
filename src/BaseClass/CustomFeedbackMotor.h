@@ -24,6 +24,7 @@ public:
     void begin() override;
     void update() override;
     void reset() override;
+    void stop() override;
 
     void setPositionTarget(long target) override;
     void setVelocityTarget(float target) override;

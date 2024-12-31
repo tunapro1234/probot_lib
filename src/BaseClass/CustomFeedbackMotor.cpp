@@ -49,9 +49,14 @@ void CustomFeedbackMotor::update() {
 
 // Reset Motor State
 void CustomFeedbackMotor::reset() {
+    stop();
+    positionalMode = false;
+}
+
+// Stop Motor
+void CustomFeedbackMotor::stop() {
     pid.reset();
     motor.setPower(0);
-    positionalMode = false;
     updateHelper.setLastOutput(0.0f);
 }
 
