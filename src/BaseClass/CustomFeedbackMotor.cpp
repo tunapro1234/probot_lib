@@ -60,7 +60,7 @@ void CustomFeedbackMotor::setPositionTarget(long target) {
     if (!positionalMode) {
         positionalMode = true;
         pid.setCoefficients(positionCoeffs);
-        pid.reset()
+        pid.reset();
     }
     pid.setSetpoint(target);
 }
@@ -153,7 +153,7 @@ void CustomFeedbackMotor::applyCoefficients(const PIDCoefficients& coeffs) {
 // Handle Position Mode
 void CustomFeedbackMotor::handlePositionMode() {
     float currentPosition = static_cast<float>(encoder.getCount());
-    float output = pid.compute(currentPosition);
+    float output = pid.calculate(currentPosition);
     motor.setPower(output);
     updateHelper.setLastOutput(output);
 }
@@ -161,7 +161,7 @@ void CustomFeedbackMotor::handlePositionMode() {
 // Handle Velocity Mode (RPM-Based)
 void CustomFeedbackMotor::handleVelocityMode() {
     float currentSpeed = getVelocity();
-    float output = pid.compute(currentSpeed);
+    float output = pid.calculate(currentSpeed);
     motor.setPower(output);
     updateHelper.setLastOutput(output);
 }
