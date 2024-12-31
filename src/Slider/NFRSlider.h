@@ -7,10 +7,12 @@
 
 #define NFRSLIDER_LENGTH_LIMIT 50.0f // Predefined length in cm
 #define NFRSLIDER_COUNTS_PER_CM 100.0f // Predefined encoder counts per cm
+#define NFRSLIDER_POSITION_PID_COEFFICIENTS PIDCoefficients(1.0, 0.1, 0.05)
+
 
 class NFRSlider : public BaseSlider {
 public:
-    NFRSlider(int motorID);
+    NFRSlider(const unsigned int &motorID);
 
     void begin() override;
     void setTargetLength(float length) override;
