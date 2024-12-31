@@ -1,6 +1,6 @@
 #include <probot.h>
 
-DriverStation driverStation("robotpro1234");
+DriverStation driverStation();
 TunaGamepad tuna_pad(&driverStation);
 unsigned long last_print = 0;
 
