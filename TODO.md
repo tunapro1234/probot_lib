@@ -36,6 +36,8 @@
  - [x] Web arayüzü ilk deneme
  - [x] Gamepad abstract interface
  - [x] Generic Gamepad
+ - [x] Josytick veri gönderme modu hatası
+ - [ ] Tek Kullanıcı Kısıtlaması
  - [ ] Web arayüzü joystick seçme selectorında ufak bir sıkıntı var ona bak
  - [ ] Yarışma gamepadi desteği (Toplantı sonrası kesinleşecek)
  - [ ] On Screen Joystick eklenebilir

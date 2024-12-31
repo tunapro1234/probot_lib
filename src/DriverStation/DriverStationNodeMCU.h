@@ -12,7 +12,7 @@
 #define JOYSTICK_MAX_BUTTON_COUNT 20
 
 // Enum for Robot Status
-enum class RobotStatus {
+enum class DSRobotStatus {
     INIT,
     START,
     STOP
@@ -28,11 +28,13 @@ public:
     // Getters
     float getJoystickAxis(int axis) const;
     bool getJoystickButton(int button) const;
-    RobotStatus getRobotStatus() const;
+    DSRobotStatus getRobotStatus() const;
     int getClientCount() const;
     int getJoystickAxisCount() const;
     int getJoystickButtonCount() const;
 
+    bool isAutonomousEnabled() const;
+    int getAutoPeriodLength() const;
 
     // Setter
     void setBatteryVoltage(float voltage);
@@ -42,9 +44,9 @@ private:
     ESP8266WebServer server;
 
     // Robot state
-    std::atomic<RobotStatus> robotStatus;
+    std::atomic<DSRobotStatus> robotStatus;
     std::atomic<bool> enableAutonomous;
-    std::atomic<int> autoPeriod;
+    std::atomic<int> autoPeriodLength;
     std::atomic<float> batteryVoltage;
 
     // Joystick state
@@ -63,7 +65,7 @@ private:
     void handleRobotControl();
     void handleGetBattery();
 
-    String robotStatusToString(RobotStatus status); // Helper for status conversion
+    String robotStatusToString(DSRobotStatus status); // Helper for status conversion
 };
 
 #endif // DRIVER_STATION_NODEMCU_H

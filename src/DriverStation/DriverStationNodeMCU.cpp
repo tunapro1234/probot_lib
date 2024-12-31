@@ -3,7 +3,7 @@
 // Constructor
 DriverStation::DriverStation(const char* apPass)
     : AP_PASS(apPass), server(80),
-      robotStatus(RobotStatus::INIT), enableAutonomous(false), autoPeriod(30), batteryVoltage(12.3), clientCount(0) {
+      robotStatus(DSRobotStatus::INIT), enableAutonomous(false), autoPeriodLength(30), batteryVoltage(12.3), clientCount(0) {
     for (int i = 0; i < JOYSTICK_MAX_AXIS_COUNT; i++) {
         joystickAxes[i] = 0.0;
     }
@@ -120,14 +120,14 @@ void DriverStation::handleRobotControl() {
             return;
         }
 
-        if (cmd == "init") robotStatus = RobotStatus::INIT;
-        else if (cmd == "start") robotStatus = RobotStatus::START;
-        else if (cmd == "stop") robotStatus = RobotStatus::STOP;
+        if (cmd == "init") robotStatus = DSRobotStatus::INIT;
+        else if (cmd == "start") robotStatus = DSRobotStatus::START;
+        else if (cmd == "stop") robotStatus = DSRobotStatus::STOP;
 
         enableAutonomous = autoFlag;
-        autoPeriod = autoLen;
+        autoPeriodLength = autoLen;
 
-        if (robotStatus == RobotStatus::START) {
+        if (robotStatus == DSRobotStatus::START) {
             digitalWrite(LED_BUILTIN, LOW); // LED ON
         } else {
             digitalWrite(LED_BUILTIN, HIGH); // LED OFF
@@ -203,7 +203,7 @@ int DriverStation::getJoystickButtonCount() const {
 }
 
 
-RobotStatus DriverStation::getRobotStatus() const {
+DSRobotStatus DriverStation::getRobotStatus() const {
     return robotStatus;
 }
 
@@ -217,11 +217,20 @@ void DriverStation::setBatteryVoltage(float voltage) {
 }
 
 // --- Helper ---
-String DriverStation::robotStatusToString(RobotStatus status) {
+String DriverStation::robotStatusToString(DSRobotStatus status) {
     switch (status) {
-        case RobotStatus::INIT: return "INIT";
-        case RobotStatus::START: return "START";
-        case RobotStatus::STOP: return "STOP";
+        case DSRobotStatus::INIT: return "INIT";
+        case DSRobotStatus::START: return "START";
+        case DSRobotStatus::STOP: return "STOP";
         default: return "UNKNOWN";
     }
+}
+
+
+bool DriverStation::isAutonomousEnabled() const {
+    return enableAutonomous;
+}
+
+int DriverStation::getAutoPeriodLength() const {
+    return autoPeriodLength;
 }

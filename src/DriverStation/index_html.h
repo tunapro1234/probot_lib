@@ -331,9 +331,10 @@ const char MAIN_page[] PROGMEM = R"=====(
       }
     }
 
-    // Send full data to /updateController if robotState == "start"
+    // Send full data to /updateController if robotState == "stop"
+    // stop olduğu zaman robot start konumunda oluyor
     async function sendGamepadData(gp) {
-      if (robotState !== "start") return; // only send if started
+      if (robotState !== "stop") return; // only send if started
       const data = {
         axes: gp.axes,
         buttons: gp.buttons.map(btn => btn.pressed)
