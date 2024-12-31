@@ -10,6 +10,8 @@
  - [x] Custom Feedback Motor
  - [ ] Base Gyro
  - [ ] MPU 6050
+ - [ ] Motor Direction Reverse
+ - [ ] Encoder Direction Reverse
 
 
 ## Chasis
