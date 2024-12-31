@@ -2,102 +2,115 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 
-// Harici HTML içeriğini aldığımız başlık dosyası:
 #include "index_html.h"
 
-// AP şifremiz (herkesin bağlanacağı parola):
+// Herkesin kullanacağı parola (Access Point için):
 const char* AP_PASS = "robotpro1234";
 
-// Web sunucusu 80 portu:
 ESP8266WebServer server(80);
 
-// Dahili LED (NodeMCU D4 = GPIO2) veya farklı pin kullanabilirsiniz
+// Dahili LED (NodeMCU'da D4 = GPIO2), test amaçlı kullanabiliriz
 const int LED_PIN = LED_BUILTIN;
 
-// ---------------------------------------------------------
-// 1) Benzersiz SSID üretmek için MAC adresinin son 3 baytını ekleyen fonksiyon
+// ----------------------------
+// Benzersiz SSID üreten fonksiyon
 String generateSSID() {
-  // MAC adresini al
   uint8_t mac[6];
   WiFi.softAPmacAddress(mac);
-
-  // Son 3 baytı hex formatında birleştirip büyük harfe çeviriyoruz
+  // Son 3 baytı hex olarak birleştir
   String macID = String(mac[3], HEX) + String(mac[4], HEX) + String(mac[5], HEX);
   macID.toUpperCase();
-
-  // Nihai SSID: "probot_" + son 3 bayt
+  // "probot_" + macID => Örneğin: probot_AB12F3
   String ssid = "probot_" + macID;
   return ssid;
 }
 
-// ---------------------------------------------------------
-// 2) mDNS’i başlatan fonksiyon (AP modunda her zaman garanti çalışmaz, 
-//    çoğu cihazda STA modunda sorunsuzdur.)
+// ----------------------------
+// mDNS başlatan fonksiyon (AP modunda her cihazda çalışmayabilir)
 void setupMDNS(const char* hostName) {
   if (MDNS.begin(hostName)) {
     Serial.println("mDNS baslatildi. 'probot.local' olarak erisilebilir.");
   } else {
-    Serial.println("mDNS baslatilamadi (AP modunda destek sinirli olabilir).");
+    Serial.println("mDNS baslatilamadi (AP modunda destegi sinirli olabilir).");
   }
 }
 
-// ---------------------------------------------------------
-// "/" isteğini karşılayan, index_html.h içindeki sayfayı gönderen fonksiyon
+// ----------------------------
+// "/" isteğini karşılayan fonksiyon: index_html.h içeriğini gönderiyor
 void handleRoot() {
   server.send_P(200, "text/html", MAIN_page);
 }
 
-// ---------------------------------------------------------
-// Slider değerini alan endpoint: "/slider?val=X"
-void handleSlider() {
-  if (server.hasArg("val")) {
-    String val = server.arg("val");
-    Serial.println("Slider Value: " + val);
+// ----------------------------
+// "/joystick" isteğini karşılayan fonksiyon: x ve y parametresi geliyor
+void handleJoystick() {
+  if (server.hasArg("x") && server.hasArg("y")) {
+    String xVal = server.arg("x");
+    String yVal = server.arg("y");
+    
+    // Bu noktada xVal ve yVal değerlerini float’a çevirip
+    // motor kontrolü, servo, vb. istediğiniz işlemleri yapabilirsiniz.
+    // Şimdilik sadece Serial’a yazdırıyoruz.
+    Serial.print("Joystick -> X: ");
+    Serial.print(xVal);
+    Serial.print(", Y: ");
+    Serial.println(yVal);
+
+    // LED'i basitçe yanıp sönsün diye örnek:
+    // X > 0.5 ise LED'i aç, aksi halde kapat. (Aktif düşük olabileceğini unutmayın.)
+    float xFloat = xVal.toFloat();
+    if (xFloat > 0.5) {
+      digitalWrite(LED_PIN, LOW);  // Aktif düşük LED
+    } else {
+      digitalWrite(LED_PIN, HIGH);
+    }
   }
-  server.send(200, "text/plain", "OK");
+
+  // İstemciye yanıt
+  server.send(200, "text/plain", "Joystick verisi alindi.");
 }
 
+// ----------------------------
 void setup() {
   Serial.begin(115200);
   delay(100);
 
-  // LED çıkış ayarı (NodeMCU dahili LED genelde aktif düşük)
+  // LED ayarı (NodeMCU dahili LED)
   pinMode(LED_PIN, OUTPUT);
-  digitalWrite(LED_PIN, HIGH); // İlk durumda "kapalı"
+  digitalWrite(LED_PIN, HIGH); // Başlangıçta kapalı
 
-  // 1) Access Point modunu başlat
+  // Access Point moduna geç
   WiFi.mode(WIFI_AP);
-
-  // 2) SSID’yi MAC'e göre üret
+  
+  // Benzersiz SSID üret
   String uniqueSSID = generateSSID();
 
-  // 3) Access Point’i oluştur
+  // AP oluştur
   WiFi.softAP(uniqueSSID.c_str(), AP_PASS);
 
-  // Seri Monitör’e bilgi yaz
-  Serial.println("\n=== ProBot AP Olusturuldu ===");
+  IPAddress myIP = WiFi.softAPIP();
+
+  Serial.println("\n=== ProBot Joystick AP Olusturuldu ===");
   Serial.print("SSID: ");
   Serial.println(uniqueSSID);
   Serial.print("Sifre: ");
   Serial.println(AP_PASS);
-
-  IPAddress myIP = WiFi.softAPIP();
   Serial.print("IP Adresi: ");
   Serial.println(myIP);
 
-  // 4) mDNS hizmetini başlat (AP modunda deneme amaçlı)
+  // mDNS olayı (AP modunda her zaman garantili değil)
   setupMDNS("probot");
 
-  // 5) Web sunucusu endpoint’leri
+  // Web sunucusu yönlendirmeleri
   server.on("/", handleRoot);
-  server.on("/slider", handleSlider);
+  server.on("/joystick", handleJoystick);
 
-  // 6) Sunucuyu başlat
+  // Sunucuyu başlat
   server.begin();
   Serial.println("Web sunucusu baslatildi. Tarayicida IP adresine girerek erisebilirsiniz.");
 }
 
+// ----------------------------
 void loop() {
-  // Web sunucusu isteklerini yönet
   server.handleClient();
 }
