@@ -55,7 +55,7 @@ bool TunaGamepad::getButton(Button button) const {
     int logicalIndex = static_cast<int>(button); // Convert enum to int
 
     // Benim gamepad biraz ilginç çalışıyor ondan biraz değişiklik yapmam gerekiyor
-    if (4 <= logicalIndex || logicalIndex <= 7) { 
+    if (4 <= logicalIndex && logicalIndex <= 7) { 
         float dpadValue = driverStation->getJoystickAxis(9); 
 
         // DpadUp

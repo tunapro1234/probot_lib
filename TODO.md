@@ -35,6 +35,7 @@
  - [x] Gamepad abstract interface
  - [x] Generic Gamepad
  - [ ] Daha çok controller desteği eklenebilir
+ - [ ] On Screen Joystick eklenebilir
  - [ ] Arayüz güzelleştirmeleri
  - [ ] Batarya miktarı yazabilir (elektronik sisteme bağlı)
 
