@@ -1,7 +1,7 @@
 #ifndef BasicMecanumDrive_h
 #define BasicMecanumDrive_h
 
-#include "BaseMotorController.h"
+#include "../BaseClass/BaseMotorController.h"
 #include <Arduino.h>
 
 class BasicMecanumDrive {

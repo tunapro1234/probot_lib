@@ -2,7 +2,8 @@
 #define FeedbackTankdrive_h
 
 #include "../BaseClass/BaseFeedbackMotor.h"
-
+#include <Arduino.h>
+ 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif

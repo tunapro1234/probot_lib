@@ -13,9 +13,9 @@
 
 // Enum for Robot Status
 enum class DSRobotStatus {
-    INIT,
-    START,
-    STOP
+    INIT=0,
+    START=1,
+    STOP=2
 };
 
 class DriverStation {

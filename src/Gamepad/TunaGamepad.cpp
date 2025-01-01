@@ -1,6 +1,8 @@
 #include "TunaGamepad.h"
 
 // Constructor
+TunaGamepad::TunaGamepad(const Robot& robot) : TunaGamepad(robot.getDriverStation()) { }
+
 TunaGamepad::TunaGamepad(const DriverStation* ds) : driverStation(ds) {
     if (!driverStation) {
         Serial.println("Error: Null pointer passed to TunaGamepad constructor!");

@@ -3,7 +3,7 @@
 // Constructor
 DriverStation::DriverStation(const char* apPass)
     : AP_PASS(apPass), server(80),
-      robotStatus(DSRobotStatus::INIT), enableAutonomous(false), autoPeriodLength(30), batteryVoltage(12.3), clientCount(0) {
+      robotStatus(DSRobotStatus::STOP), enableAutonomous(false), autoPeriodLength(30), batteryVoltage(12.3), clientCount(0) {
     for (int i = 0; i < JOYSTICK_MAX_AXIS_COUNT; i++) {
         joystickAxes[i] = 0.0;
     }
@@ -126,12 +126,6 @@ void DriverStation::handleRobotControl() {
 
         enableAutonomous = autoFlag;
         autoPeriodLength = autoLen;
-
-        if (robotStatus == DSRobotStatus::START) {
-            digitalWrite(LED_BUILTIN, LOW); // LED ON
-        } else {
-            digitalWrite(LED_BUILTIN, HIGH); // LED OFF
-        }
 
         Serial.print("[Robot Control] Status=");
         Serial.println(robotStatusToString(robotStatus));

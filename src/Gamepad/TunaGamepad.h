@@ -1,6 +1,7 @@
 #ifndef TUNA_GAMEPAD_H
 #define TUNA_GAMEPAD_H
 
+#include "../BaseClass/Robot.h"
 #include "../BaseClass/BaseGamepad.h"
 #include "../DriverStation/DriverStationNodeMCU.h"
 
@@ -43,6 +44,7 @@ private:
 
 
 public:
+    explicit TunaGamepad(const Robot& robot);
     explicit TunaGamepad(const DriverStation* ds);
 
     void update() override;

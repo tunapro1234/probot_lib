@@ -1,8 +1,6 @@
 #ifndef probot_h
 #define probot_h
 
-#include "Robot/Robot.h"
-
 // Fundamentals
 #include "BaseClass/Robot.h"
 #include "DriverStation/DriverStationNodeMCU.h"

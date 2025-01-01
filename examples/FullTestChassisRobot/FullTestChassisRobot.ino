@@ -16,7 +16,7 @@
 Robot robot;
 
 // Gamepad, driver station üzerinden gelen verileri işleyecek
-TunaGamepad tuna_pad(&robot);
+TunaGamepad tuna_pad(robot);
 
 // Motor ve encoder pinleri
 BasicMotorController left_motor(LEFT_MOTOR_PWM, LEFT_MOTOR_DIR1, LEFT_MOTOR_DIR2);
@@ -29,7 +29,7 @@ BasicTankdrive tankdrive(left_motor, right_motor);
 void robotInit() {
     // Robot başlatıldığında yapılacak işlemler
     tankdrive.begin();
-    Serial.print("Robot Init called!!")
+    Serial.print("Robot Init called!!");
 }
 
 void autoLoop() {
