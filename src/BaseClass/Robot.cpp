@@ -124,10 +124,7 @@ void Robot::setTeleopInitialized(bool status) {
 Robot robot;
 
 void setup() {
-    Serial.begin(115200);
     robot.begin();
-
-    Serial.println("Probot initialized!");
 }
 
 void loop() {
@@ -153,7 +150,7 @@ void loop() {
             robotInit();
             robot.setRobotInitialized(true);
         }
-        robotInitLoop();
+        // robotInitLoop();
     }
 
     else if (robot.getMode() == RobotMode::AUTONOMOUS) {

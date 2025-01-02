@@ -63,7 +63,7 @@ void setup();
 void loop();
 
 void robotInit();
-void robotInitLoop();
+// void robotInitLoop();
 void robotEnd();
 void autoInit();
 void autoLoop();
