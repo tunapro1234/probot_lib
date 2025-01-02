@@ -10,7 +10,7 @@
  - [x] Custom Feedback Motor
  - [x] Motor Direction Reverse
  - [x] Encoder Direction Reverse
- - [ ] Base Robot
+ - [x] Base Robot
  - [ ] Base Gyro
  - [ ] MPU 6050
 
@@ -31,6 +31,10 @@
  - [x] Generic Slider
  - [x] NFR Slider
 
+### Arm
+ - [ ] Base Arm
+ - [ ] NFR Arm
+
 # Driver Station
 ## Arayüz
  - [x] Web arayüzü ilk deneme
@@ -38,7 +42,7 @@
  - [x] Generic Gamepad
  - [x] Josytick veri gönderme modu hatası
  - [ ] Tek Kullanıcı Kısıtlaması
- - [ ] Web arayüzü joystick seçme selectorında ufak bir sıkıntı var ona bak
+ - [ ] Web arayüzü joystick seçme selectorında ufak bir sıkıntı var
  - [ ] Yarışma gamepadi desteği (Toplantı sonrası kesinleşecek)
  - [ ] On Screen Joystick eklenebilir
  - [ ] Arayüz güzelleştirmeleri
@@ -59,15 +63,4 @@
  - [ ] Probot arayüz düzenleme
  - [ ] Probot program kurulum geliştirme
 
-
-# Gelecek
-## Toplantı sonrası yapılacak değişiklikler
- - [x] base robot, otonom ve teleop arasında ayrım yapabilmeli
- - [ ] otonom
-
-## Ürünler Çıktıktan Sonrası
- - [ ] NFR FeedbackMotor için velocity PID yap
- - [ ] NFR FeedbackMotor için position PID yap
- - [ ] NFR Feedback Motor için gerçek kodları yaz (motor sürücünün üretilmiş olması gerek)
- - [ ] NFR Slider için PID yap
 
