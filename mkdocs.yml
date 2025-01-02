@@ -1,0 +1,30 @@
+site_name: Probot Lib Documentation
+site_description: Arduino tabanlı robot kütüphanesi dokümantasyonu.
+site_author: Tuna Gül
+repo_url: https://github.com/tunapro1234/probot_lib
+edit_uri: ""
+
+# Tema Ayarı
+theme:
+  name: material
+  palette:
+    primary: indigo
+    accent: blue
+
+# Navbar Ayarı
+nav:
+  - Anasayfa: index.md
+  - Örnekler:
+      - Blink: examples/RobotBlink.md
+  - API Referansı: API.md
+  - Katkıda Bulunma: contributing.md
+  - Lisans: LICENSE.md
+
+# Eklentiler (Opsiyonel)
+plugins:
+  - search
+
+# Diller ve Yerelleştirme
+extra:
+  generator: false
+  language: tr
