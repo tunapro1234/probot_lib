@@ -1,14 +1,46 @@
 # Probot Lib
 
-Probot Lib, Arduino tabanlı MEB robot yarışmalarında hızlı ve güvenilir bir başlangıç yapmanız için hazırlanmış bir kütüphanedir. ESP32‑S3 üzerinde çalışır, teleoperasyon ve otonom modlar için zamanlayıcı, durum yönetimi, sürücü istasyonu (Wi‑Fi), joystick/gampad girişi, PID tabanlı kontrolörler ve örnek uygulamalar içerir. Kütüphane modülerdir; motor, enkoder ve led gibi cihaz soyutlamaları ile kontrol katmanları birlikte çalışır.
+Bu depo, MEB robot yarışmaları için pratik, güvenilir ve sade bir başlangıç kütüphanesidir. ESP32‑S3 üzerinde çalışır; teleoperasyon ve otonom modları destekler.
 
-Kütüphane, iki çekirdeğin görev dağılımını kullanır: bir çekirdek kullanıcı arayüzü ve girişleri işlerken diğer çekirdek kontrol döngüleri ve kullanıcı kodunu yürütür. Yapılandırılmış yaşam döngüsü sayesinde robotInit, teleopInit/teleopLoop ve autonomousInit/autonomousLoop fonksiyonları ile kodunuzu temiz bir şekilde bölümlendirebilirsiniz. Sürücü İstasyonu, cihazın bir erişim noktası olarak yayın yapmasını sağlar ve güvenli bağlantı için en az sekiz karakterli bir şifre zorunludur.
+- Dokümanlar: https://docs.probotstudio.com/
+- Kaynak kod: https://github.com/tunapro1234/probot-lib
 
-Projeyi klonladıktan sonra Arduino ortamında Examples menüsü üzerinden örnekleri derleyebilir ve doğrudan deneyebilirsiniz. Varsayılan örnekler BlinkPid gibi basit denemelerden, kapalı çevrim motor kontrolü ve tank sürüşüne kadar farklı seviyelerde işlevler sunar. Kod yapısı okunabilirlik ve güvenilirliğe öncelik verir; zamanlayıcı ve bekçi köpeği (watchdog) ile görevler denetlenir, durum servisi üzerinden robotun fazı ve zamanlaması izlenir.
+## Nedir, ne sağlar?
+Probot Lib, takımların temel altyapı ile uğraşmadan doğrudan robotlarına odaklanabilmeleri için yazıldı. Amaç; kurulumda sürünmemek, yarışma gününde sürpriz yaşamamak ve yeni başlayan öğrencilerin hızla sonuç almasını sağlamak.
 
-Depo adresi günceldir ve proje bundan sonra probot-lib adıyla sürdürülür. Kaynak kod ve sorun takip için GitHub üzerindeki depo kullanılmalıdır. Belgeler ve örneklerin barındırıldığı site GitHub Pages üzerinde barındırılır ve docs.probotstudio.com alan adı üzerinden yayınlanır. Yeni linkler aşağıdadır.
+- Basit başlangıç: Örnekler üzerinden "çalışan" bir robota hızlıca ulaşılır.
+- Tutarlı çalışma: Kontrol döngüleri ve görev zamanlaması önceden çözümlenmiştir.
+- Sürücü istasyonu: Wi‑Fi üzerinden tarayıcı tabanlı arayüz ve joystick girişi.
+- Modüler yapı: Motor, enkoder, LED ve denetleyiciler (PID vb.) birlikte çalışır.
+- Genişletilebilirlik: Kendi cihaz/alt sistemlerinizi eklemek kolaydır.
 
-Kaynak kod: https://github.com/tunapro1234/probot-lib
-Belgeler: https://docs.probotstudio.com/
+Detaylar, kurulum ve kullanım senaryoları için dokümana bakın: https://docs.probotstudio.com/
 
-Lisans bilgisi ve katkı rehberi depoda yer alır. Geri bildirim ve katkılar memnuniyetle karşılanır; hata bildirmek veya öneride bulunmak için GitHub Issues bölümünü kullanabilirsiniz. Kullanım senaryoları geliştikçe belgeleri sade ve anlaşılır tutmaya özen göstereceğiz. Şu anki yapı ESP32‑S3 üzerinde yoğunlaşmıştır; farklı donanımlar eklenirse belgeler güncellenecektir.
+## Hızlı bakış (özet)
+- Hedef kart: ESP32‑S3 (diğerleri için uyarlama yapılabilir)
+- Örnekler: `File > Examples > Probot Lib` altında
+- Seri haberleşme: 115200 baud
+
+## Katkıda bulunma
+Katkılarınızı bekliyoruz. Küçük düzeltmelerden yeni örneklere kadar her katkı değerlidir.
+
+- Issue açın: Hata, öneri veya soru → "Issues" kısmından
+- Küçük PR'lar: Net kapsamlı, odaklı değişiklikler hızlıca gözden geçirilir
+- Yeni örnekler: Öğrencilerin hızlıca anlayacağı sade örnekler tercih edilir
+
+PR sürecinde açıklayıcı başlık/açıklama, küçük parçalı commit’ler ve mümkünse kısa bir test notu rica ederiz. Büyük değişiklikler için önce bir tartışma başlatmanız iyi olur.
+
+## Lisans
+Proje MIT lisansı ile yayımlanır. Ticari kullanım için ek olarak Commons Clause koşulu geçerlidir.
+
+- MIT: `LICENSE`
+- Commons Clause (satış kısıtı ve ticari lisans için iletişim): `LICENSE-commercial`
+
+Ticari lisans veya özel destek için iletişim: tunagul54@gmail.com
+
+## Durum ve yol haritası
+- `stable`: Hazır, tek commit’lik sade geçmiş
+- `dev`: Geliştirme dalı
+- `legacy`: Eski sürümler (inceleme amaçlı)
+
+Geri bildirim, soru ve önerilerinizi bekliyoruz. Amacımız; öğrencilerin hızlıca üretmesine yardım eden güvenilir ve anlaşılır bir temel sunmak.
