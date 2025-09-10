@@ -1,81 +1,121 @@
 # Katkı Rehberi (TR)
 
-Teşekkürler! Bu projeye katkı sağlamak için aşağıdaki adımları izleyin.
+Katkınız için teşekkürler! Aşağıdaki rehber; nasıl çalıştığımızı, hangi dala PR açmanız gerektiğini ve iyi bir hata raporu/PR için neler beklediğimizi özetler.
 
-## Başlangıç
-- Depoyu Arduino/libraries/probot-lib altına koyun veya kökteki tek Makefile’ı kullanın.
-- Gerekli: arduino-cli, ESP32 core, Adafruit NeoPixel (builtin LED için).
+## Çalışma Akışı ve Dallar
+- `dev`: Aktif geliştirme dalı. Tüm değişiklikler önce buraya gelir.
+- `stable`: Yayınlanan sürüm. Doğrudan commit yapılmaz; `dev` → PR/merge ile güncellenir.
+- `gh-pages`: Dokümantasyon sitesi (https://docs.probotstudio.com/) bu daldan yayınlanır.
+- `legacy`: Eski kütüphane yapısı, yalnızca inceleme amaçlı.
 
-### Örnekleri derleme (tek Makefile)
-- Örnekleri listele: `make list`
+Önerilen akış:
+1) `dev` üzerinden bir feature dalı açın: `feature/…`, `fix/…`, `docs/…`
+2) Küçük ve odaklı değişiklikler yapın, örnekleri/README’yi gerekiyorsa güncelleyin
+3) PR’ı `dev` hedefine açın; kısa açıklama, test adımları ve ekran çıktısı ekleyin
+4) Onay sonrası `dev`’e birleştirilir; yayın döngüsünde `stable` güncellenir
+
+Dokümantasyon katkıları için: İçerik `gh-pages` dalında tutulur. Doküman PR’larını `gh-pages` hedefine açın.
+
+## Geliştirme Ön Koşulları
+- Arduino IDE 2.x veya `arduino-cli`
+- ESP32 core (ESP32‑S3 hedef kart)
+- (Varsa) ilgili sensör/sürücü kütüphaneleri
+
+> Not: Kütüphane **ESP32‑S3** hedeflenerek geliştirilmiştir. Diğer mikrokontrolcüler teknik olarak uyarlanabilir; ancak resmi destek kapsamı dışındadır. Önerilen kart: Boardoza Pulse S32‑S3 — satın alma: https://boardoza.com/product/boardoza-pulse-s32-s3-breakout-board/
+
+## Örnekleri Derlemek (Makefile)
+- Listele: `make list`
 - Derle: `make build EXAMPLE=ClosedLoopDemo`
 - Yükle: `make upload EXAMPLE=ClosedLoopDemo PORT=/dev/ttyACM0`
-- Seri monitör: `make serial`
+- Seri monitör: `make serial` (115200 baud)
 
-## Geliştirme İlkeleri
-- Küçük ve odaklı PR’lar gönderin.
-- Yeni özellikleri örneklerle gösterin/güncelleyin.
-- Mevcut kod stiline ve formatına uyun.
-- Public header kırıyorsanız örnekleri de güncelleyin.
+## Kod Stili ve İlkeler
+- Anlamlı isimler; 1–2 harfli değişkenlerden kaçının
+- Guard clause kullanın; kenar durumları önce ele alın
+- Yorumları kısa ve “neden” odaklı tutun
+- Boş `catch` kullanmayın; hataları anlamlı şekilde ele alın
+- Public header değişikliklerinde örnekleri ve dokümanı da güncelleyin
+- Değişiklikleri küçük PR’lara bölün; inceleme ve geri dönüş hızlanır
 
-## Kod Stili
-- Anlamlı, açıklayıcı isimler; 1–2 harfli isimlerden kaçının.
-- Guard clause kullanın; kenar durumları önce ele alın.
-- Kısa ve “neden” odaklı yorumlar yazın.
-- (Desteklenen platformlarda) işe yaramayan try/catch kullanmayın.
+Commit mesajları (öneri): `feat: …`, `fix: …`, `docs: …`, `refactor: …`, `chore: …`
 
-## Test
-- `ClosedLoopDemo` ve `LoopPeriodStress` derleyerek kontrol döngüsü ve scheduler’ı doğrulayın.
-- Platform sürücüleri `src/platform/<soc>/drivers/` altında ve makrolarla koşullandırılmış olmalı.
+## Test Beklentileri
+- En az bir örneği derleyip çalıştırın (örn. `ClosedLoopDemo`, `BasicTankDrive`)
+- Seri loglarıyla temel akışı doğrulayın (115200 baud)
+- Sürücü istasyonu/joystick varsa kısa bir manuel senaryo ekleyin
 
-## Hata Bildirme
-- Kart, ESP32 core sürümü ve örnek adıyla birlikte bildirin.
-- Seri loglar, yeniden üretim adımları, beklenen/gerçek davranışları ekleyin.
+## Hata Bildirme (Issues)
+İyi bir hata raporu hızlı çözüm getirir. Lütfen şunları ekleyin:
+- Kart ve ESP32 core sürümü (örn. Boardoza Pulse S32‑S3, ESP32 core X.Y.Z)
+- Örnek adı veya minimal kod parçası
+- Seri loglar ve yeniden üretim adımları
+- Beklenen davranış vs. gerçekleşen davranış
+- İlgili commit SHA/branch
+
+Hataları GitHub Issues’dan bildirin; doğrudan destek için WhatsApp: **+90 538 040 81 48**
 
 ## Lisans
-- MIT + Commons Clause (LICENSE ve LICENSE-commercial bakın).
-
-## İletişim
-- Sürdürüm: Tuna Gül <tunagul54@gmail.com>
+- MIT + Commons Clause (bkz. `LICENSE` ve `LICENSE-commercial`)
+- Ticari lisans/kurumsal destek: tunagul54@gmail.com
 
 ---
 
 # Contributing Guide (EN)
 
-Thanks for your interest in contributing!
+Thanks for contributing! This guide summarizes the workflow, branches, and what we expect in issues/PRs.
 
-## Getting Started
-- Place this repo under Arduino/libraries/probot-lib or use the unified Makefile.
-- Requirements: arduino-cli, ESP32 core, Adafruit NeoPixel (for builtin LED).
+## Workflow and Branches
+- `dev`: Active development. Open PRs against this branch.
+- `stable`: Release branch. Updated via merges from `dev`.
+- `gh-pages`: Documentation site (https://docs.probotstudio.com/) is published from here.
+- `legacy`: Previous library layout for reference only.
 
-### Build examples (unified Makefile)
-- List examples: `make list`
-- Build example: `make build EXAMPLE=ClosedLoopDemo`
+Recommended flow:
+1) Branch off `dev`: `feature/...`, `fix/...`, `docs/...`
+2) Keep PRs small and focused; update examples/docs when user-facing behavior changes
+3) Open a PR to `dev` with clear description and test steps
+4) After review, merge into `dev`; `stable` is updated in the release cycle
+
+Documentation contributions: open PRs targeting `gh-pages`.
+
+## Prerequisites
+- Arduino IDE 2.x or `arduino-cli`
+- ESP32 core (target: ESP32‑S3)
+- Additional libs for specific sensors/drivers when needed
+
+> Note: The library targets **ESP32‑S3**. Other MCUs may be possible but are not officially supported. Recommended board: Boardoza Pulse S32‑S3 — purchase: https://boardoza.com/product/boardoza-pulse-s32-s3-breakout-board/
+
+## Building Examples (Makefile)
+- List: `make list`
+- Build: `make build EXAMPLE=ClosedLoopDemo`
 - Upload: `make upload EXAMPLE=ClosedLoopDemo PORT=/dev/ttyACM0`
-- Serial monitor: `make serial`
+- Serial monitor: `make serial` (115200 baud)
 
-## Development Guidelines
-- Prefer small, focused PRs.
-- Add/update examples to demonstrate new features.
-- Match formatting and existing code style.
-- If you break public headers, update examples accordingly.
+## Code Style and Principles
+- Clear, descriptive names; avoid 1–2 letter identifiers
+- Prefer guard clauses and handle edge cases first
+- Keep comments brief and “why”-focused
+- Avoid empty catch blocks; handle errors meaningfully
+- If public headers change, update examples and docs accordingly
+- Split work into small PRs for faster reviews
 
-## Code Style
-- Clear, descriptive names (avoid 1–2 letter identifiers).
-- Use guard clauses; handle edge cases first.
-- Keep comments brief; explain the “why,” not the “how.”
-- Avoid empty catch blocks (where applicable).
+Commit message convention (suggested): `feat: …`, `fix: …`, `docs: …`, `refactor: …`, `chore: …`
 
-## Testing
-- Compile `ClosedLoopDemo` and `LoopPeriodStress` to validate control loop and scheduler.
-- Put platform drivers under `src/platform/<soc>/drivers/` and gate them with macros.
+## Testing Expectations
+- Compile and run at least one example (e.g., `ClosedLoopDemo`, `BasicTankDrive`)
+- Validate basic flow via serial logs (115200 baud)
+- If applicable, include a short manual scenario for driver station/joystick
 
 ## Reporting Issues
-- Include board, ESP32 core version, and example name.
-- Provide serial logs, repro steps, and expected vs actual behavior.
+Please include:
+- Board and ESP32 core version (e.g., Boardoza Pulse S32‑S3, ESP32 core X.Y.Z)
+- Example name or minimal repro code
+- Serial logs and reproduction steps
+- Expected vs actual behavior
+- Relevant commit SHA/branch
+
+Report via GitHub Issues; for direct support: WhatsApp **+90 538 040 81 48**
 
 ## License
-- MIT + Commons Clause (see LICENSE and LICENSE-commercial).
-
-## Contact
-- Maintainer: Tuna Gül <tunagul54@gmail.com> 
+- MIT + Commons Clause (see `LICENSE` and `LICENSE-commercial`)
+- Commercial licensing/support: tunagul54@gmail.com 
