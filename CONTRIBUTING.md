@@ -52,7 +52,7 @@ Commit mesajları (öneri): `feat: …`, `fix: …`, `docs: …`, `refactor: …
 - Beklenen davranış vs. gerçekleşen davranış
 - İlgili commit SHA/branch
 
-Hataları GitHub Issues’dan bildirin; doğrudan destek için WhatsApp: **+90 538 040 81 48**
+Hataları GitHub Issues’dan bildirin; doğrudan destek için WhatsApp: **+90 538 040 81 48** (Tuna Gül)
 
 ## Lisans
 - MIT + Commons Clause (bkz. `LICENSE` ve `LICENSE-commercial`)
@@ -114,7 +114,7 @@ Please include:
 - Expected vs actual behavior
 - Relevant commit SHA/branch
 
-Report via GitHub Issues; for direct support: WhatsApp **+90 538 040 81 48**
+Report via GitHub Issues; for direct support: WhatsApp **+90 538 040 81 48** (Tuna Gül)
 
 ## License
 - MIT + Commons Clause (see `LICENSE` and `LICENSE-commercial`)
