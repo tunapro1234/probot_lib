@@ -1,0 +1,51 @@
+#ifndef PROBOT_IO_GAMEPAD_HPP
+#define PROBOT_IO_GAMEPAD_HPP
+#pragma once
+#include <stdint.h>
+
+namespace probot::io {
+  struct GamepadSnapshot {
+    uint32_t ms;
+    uint32_t seq;
+    uint32_t axisCount;
+    uint32_t buttonCount;
+    float    axes[20];
+    bool     buttons[20];
+  };
+
+  class IGamepadSource {
+  public:
+    virtual GamepadSnapshot read() const = 0;
+    virtual ~IGamepadSource() {}
+  };
+
+  class GamepadService : public IGamepadSource {
+  public:
+    GamepadService(){ _cur=0; GamepadSnapshot z{}; _buf[0]=z; _buf[1]=z; }
+
+    void write(uint32_t now_ms, const float* axes, uint32_t nAxis, const bool* buttons, uint32_t nButton){
+      uint32_t cur = __atomic_load_n(&_cur, __ATOMIC_SEQ_CST);
+      uint32_t w   = 1u - cur;
+      GamepadSnapshot s = _buf[cur];
+      s.ms = now_ms;
+      s.seq++;
+      s.axisCount = (nAxis>20?20:nAxis);
+      s.buttonCount = (nButton>20?20:nButton);
+      for (uint32_t i=0;i<s.axisCount;i++){ s.axes[i] = axes[i]; }
+      for (uint32_t i=0;i<s.buttonCount;i++){ s.buttons[i] = buttons[i]; }
+      __atomic_thread_fence(__ATOMIC_SEQ_CST);
+      _buf[w] = s;
+      __atomic_store_n(&_cur, w, __ATOMIC_SEQ_CST);
+    }
+
+    GamepadSnapshot read() const override {
+      uint32_t idx = __atomic_load_n(&_cur, __ATOMIC_SEQ_CST);
+      return _buf[idx];
+    }
+
+  private:
+    mutable GamepadSnapshot _buf[2];
+    mutable volatile uint32_t _cur;
+  };
+}
+#endif // PROBOT_IO_GAMEPAD_HPP 
