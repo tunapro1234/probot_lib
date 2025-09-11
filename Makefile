@@ -14,12 +14,6 @@ SKETCH_DIR  := $(EXAMPLES_DIR)/$(EXAMPLE)
 EXTRA_FLAGS_COMMON := -DESP32S3 -DARDUINO_USB_MODE=1 -DARDUINO_USB_CDC_ON_BOOT=1
 EXTRA_FLAGS        :=
 
-# WiFi AP password injection (must be >= 8 chars)
-# Usage: make build EXAMPLE=Basic WIFI_PWD=yourpassword
-ifdef WIFI_PWD
-EXTRA_FLAGS += -DPROBOT_WIFI_AP_PASSWORD=\"$(WIFI_PWD)\"
-endif
-
 # Auto flags per example
 ifeq ($(EXAMPLE),LoopPeriodStress)
 EXTRA_FLAGS += -DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1
@@ -30,7 +24,7 @@ endif
 all: help
 
 help:
-	@echo "Usage: make build EXAMPLE=<Name> [WIFI_PWD=<password>]"
+	@echo "Usage: make build EXAMPLE=<Name>"
 	@echo "Examples directory: $(EXAMPLES_DIR)"
 	@echo "Targets: build, upload, serial, clean, list"
 
