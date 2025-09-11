@@ -25,7 +25,7 @@ Bu topluluğun amacı, herkesin kendini güvende hissettiği, öğrenmeye ve ür
 Bu kurallar, depo içindeki tüm alanlarda (Issues, PR’lar, Discussions), çevrimiçi/çevrimdışı etkinliklerde ve projeyi temsilen bulunduğunuz tüm ortamlarda geçerlidir.
 
 ## İhlal Bildirimi
-Uygunsuz davranışları şu adrese bildirebilirsiniz: tunagul54@gmail.com
+Uygunsuz davranışları şu adrese bildirebilirsiniz: tunagul54@gmail.com veya WhatsApp: +90 538 040 81 48
 - Bildirimler gizli tutulur; en kısa sürede dönüş yapılır.
 - Kritik güvenlik/güvenlik‑dışı acil durumlarda platform kuralları da devreye alınabilir.
 
@@ -75,7 +75,7 @@ Our goal is to maintain a safe, helpful, and welcoming community where people ca
 Applies to all project spaces (Issues, PRs, Discussions), events (online/offline), and any public representation of the project.
 
 ## Reporting
-Report unacceptable behavior to: tunagul54@gmail.com
+Report unacceptable behavior to: tunagul54@gmail.com or WhatsApp: +90 538 040 81 48
 - Reports are confidential; you will receive a timely acknowledgement.
 - In urgent cases, platform policies may also be invoked as appropriate.
 
