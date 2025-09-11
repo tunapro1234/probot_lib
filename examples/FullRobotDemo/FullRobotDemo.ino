@@ -1,4 +1,5 @@
 #include <probot.h>
+#include <probot/io/joystick_api.hpp>
 
 // Bu örnek, daha tamamlanmış bir robot iskeleti gösterir:
 // - TankDrive şasi (teleop + otonom)
@@ -52,24 +53,20 @@ void robotEnd(){
 }
 
 // Yardımcı fonksiyonlar
-static void handleIntakeAndShooter(const probot::io::GamepadSnapshot& s){
-  bool intake_in  = (s.buttonCount>BTN_INTAKE_IN)  ? s.buttons[BTN_INTAKE_IN]  : false;
-  bool shoot      = (s.buttonCount>BTN_SHOOT)      ? s.buttons[BTN_SHOOT]      : false;
+static void handleIntakeAndShooter(const probot::io::joystick_api::Joystick& js){
+  bool intake_in  = js.getRawButton(BTN_INTAKE_IN);
+  bool shoot      = js.getRawButton(BTN_SHOOT);
 
-  // Intake: basılı iken içeri alma
   if (g_intakeMotor){ g_intakeMotor->setPower(intake_in ? 800 : 0, g_owner); }
-
-  // Shooter: basılı iken yüksek güçte fırlatma
   if (g_shooterMotor){ g_shooterMotor->setPower(shoot ? 1000 : 0, g_owner); }
 }
 
-static void handleClimb(const probot::io::GamepadSnapshot& s){
-  bool open  = (s.buttonCount>BTN_CLIMB_OPEN)  ? s.buttons[BTN_CLIMB_OPEN]  : false;
-  bool close = (s.buttonCount>BTN_CLIMB_CLOSE) ? s.buttons[BTN_CLIMB_CLOSE] : false;
+static void handleClimb(const probot::io::joystick_api::Joystick& js){
+  bool open  = js.getRawButton(BTN_CLIMB_OPEN);
+  bool close = js.getRawButton(BTN_CLIMB_CLOSE);
 
   if (!g_sliderL || !g_sliderR) return;
 
-  // Açma: belirli uzunluğa git (ör. 40 cm), 2 sn bekle, sonra kapat (0 cm)
   if (open){
     g_sliderL->setTargetLength(40.0f); g_sliderR->setTargetLength(40.0f);
     uint32_t t0 = millis(); while (millis()-t0 < 2000){ g_sliderL->update(millis(), 20); g_sliderR->update(millis(), 20); delay(20);} 
@@ -84,23 +81,27 @@ static void handleClimb(const probot::io::GamepadSnapshot& s){
 }
 
 void teleopInit(){
+  // Mapping değiştirmek için (varsayılan: "logitech-f310"):
+  // probot::io::joystick_mapping::setActiveByName("standard");
+  // probot::io::joystick_mapping::setActiveByName("logitech-f310");
+  // probot::io::joystick_mapping::setActiveByName("axis9-dpad");
   Serial.println("[FullRobot] teleopInit: Tank sürüş + intake/shooter + climb");
 }
 
 void teleopLoop(){
-  auto s = probot::io::gamepad().read();
+  auto js = probot::io::joystick_api::makeDefault();
 
   // Tank sürüş: sol Y ve sağ Y eksenleri
   if (g_chassis){
-    float left_axis  = (s.axisCount>1)? s.axes[1] : 0.0f;
-    float right_axis = (s.axisCount>3)? s.axes[3] : 0.0f;
+    float left_axis  = js.getLeftY();
+    float right_axis = js.getRightY();
     float max_vel = 100.0f;
     g_chassis->setVelocity(left_axis*max_vel, right_axis*max_vel);
     g_chassis->update(millis(), 20);
   }
 
-  handleIntakeAndShooter(s);
-  handleClimb(s);
+  handleIntakeAndShooter(js);
+  handleClimb(js);
 
   delay(20);
 }

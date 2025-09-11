@@ -1,4 +1,5 @@
 #include <probot.h>
+#include <probot/io/joystick_api.hpp>
 
 // Bu örnek, tank şasi (BasicTankDrive) ile teleop sürüşünü gösterir.
 // Sol çubuk Y sol teker, sağ çubuk Y sağ teker hızını belirler.
@@ -25,14 +26,18 @@ void robotEnd() {
 }
 
 void teleopInit() {
+  // Mapping değiştirmek için (varsayılan: "logitech-f310"):
+  // probot::io::joystick_mapping::setActiveByName("standard");
+  // probot::io::joystick_mapping::setActiveByName("logitech-f310");
+  // probot::io::joystick_mapping::setActiveByName("axis9-dpad");
   Serial.println("[TankTeleop] teleopInit: Joystick ile tank sürüş");
 }
 
 void teleopLoop() {
   if (!g_chassis) { delay(50); return; }
-  auto s = probot::io::gamepad().read();
-  float left_axis  = (s.axisCount>1)? s.axes[1] : 0.0f; // sol Y
-  float right_axis = (s.axisCount>3)? s.axes[3] : 0.0f; // sağ Y
+  auto js = probot::io::joystick_api::makeDefault();
+  float left_axis  = js.getLeftY();  // sol Y
+  float right_axis = js.getRightY(); // sağ Y
 
   float max_vel = 100.0f; // birim/s örnek
   g_chassis->setVelocity(left_axis*max_vel, right_axis*max_vel);

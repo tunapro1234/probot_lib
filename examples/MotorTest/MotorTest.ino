@@ -1,4 +1,5 @@
 #include <probot.h>
+#include <probot/io/joystick_api.hpp>
 
 // Bu örnek, joystick'ten gelen bir eksen değerini (-1..1)
 // ham motor gücüne (PWM ölçeği -1000..1000) direkt olarak eşler.
@@ -30,12 +31,16 @@ void robotEnd() {
 }
 
 void teleopInit() {
+  // Mapping değiştirmek için (varsayılan: "logitech-f310"):
+  // probot::io::joystick_mapping::setActiveByName("standard");
+  // probot::io::joystick_mapping::setActiveByName("logitech-f310");
+  // probot::io::joystick_mapping::setActiveByName("axis9-dpad");
   Serial.println("[MotorTest] teleopInit: Joystick ekseni motora güç olarak yazılacak");
 }
 
 void teleopLoop() {
-  auto s = probot::io::gamepad().read();
-  float axis = (s.axisCount > 1) ? s.axes[1] : 0.0f; // Örn: sol çubuk Y
+  auto js = probot::io::joystick_api::makeDefault();
+  float axis = js.getLeftY(); // Örn: sol çubuk Y
   int16_t power = (int16_t)(axis * 1000.0f);
   if (g_motor) {
     g_motor->setPower(power, g_owner);

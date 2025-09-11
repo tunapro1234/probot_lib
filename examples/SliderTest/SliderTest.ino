@@ -1,4 +1,5 @@
 #include <probot.h>
+#include <probot/io/joystick_api.hpp>
 
 // Bu örnek, Slider nesnesini D-Pad ile 10/20/30/40 cm hedeflerine taşımayı dener.
 // Slider, bir ClosedLoopMotor (veya grup) üzerinden konum modunda sürülür.
@@ -22,19 +23,23 @@ void robotEnd() {
 }
 
 void teleopInit() {
+  // Mapping değiştirmek için (varsayılan: "logitech-f310"):
+  // probot::io::joystick_mapping::setActiveByName("standard");
+  // probot::io::joystick_mapping::setActiveByName("logitech-f310");
+  // probot::io::joystick_mapping::setActiveByName("axis9-dpad");
   Serial.println("[SliderTest] teleopInit: D-Pad ile 10/20/30/40 cm hedefleri");
 }
 
 void teleopLoop() {
   if (!g_slider) { delay(200); return; }
-  auto s = probot::io::gamepad().read();
+  auto js = probot::io::joystick_api::makeDefault();
 
-  // D-Pad buton indeksleri: örnek değerler (UI kaynaklı olabilir)
-  // Up=4, Down=5, Left=6, Right=7 mapping'ini TunaGamepad DPad kısmı üzerinden paylaştık.
-  bool up    = (s.buttonCount>4) ? s.buttons[4] : false;
-  bool down  = (s.buttonCount>5) ? s.buttons[5] : false;
-  bool left  = (s.buttonCount>6) ? s.buttons[6] : false;
-  bool right = (s.buttonCount>7) ? s.buttons[7] : false;
+  // Basit D-Pad: Up/Down/Left/Right (POV 0/180/270/90)
+  int pov = js.getPOV();
+  bool up    = (pov == 0);
+  bool down  = (pov == 180);
+  bool left  = (pov == 270);
+  bool right = (pov == 90);
 
   if (up)    { g_slider->setTargetLength(10.0f); Serial.println("[SliderTest] Hedef: 10 cm"); }
   if (down)  { g_slider->setTargetLength(20.0f); Serial.println("[SliderTest] Hedef: 20 cm"); }

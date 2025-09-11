@@ -1,4 +1,5 @@
 #include <probot.h>
+#include <probot/io/joystick_api.hpp>
 
 // Bu örnek, kapalı çevrim (ClosedLoopMotor) bir motoru joystick ile sürer.
 // Sol çubuk Y ekseni hız referansı, D-Pad (ör. butonlar) ise mod geçişi gibi kullanılabilir.
@@ -27,13 +28,17 @@ void robotEnd() {
 }
 
 void teleopInit() {
+  // Mapping değiştirmek için (varsayılan: "logitech-f310"):
+  // probot::io::joystick_mapping::setActiveByName("standard");
+  // probot::io::joystick_mapping::setActiveByName("logitech-f310");
+  // probot::io::joystick_mapping::setActiveByName("axis9-dpad");
   Serial.println("[CLMTest] teleopInit: Joystick ile hız/konum kontrolü");
 }
 
 void teleopLoop() {
   if (!g_clm) { delay(200); return; }
-  auto s = probot::io::gamepad().read();
-  float axis = (s.axisCount > 1) ? s.axes[1] : 0.0f; // sol çubuk Y
+  auto js = probot::io::joystick_api::makeDefault();
+  float axis = js.getLeftY(); // sol çubuk Y
   float vel_ref = axis * 100.0f; // örnek: 100 birim/s maksimum hız
   g_clm->setSetpoint(vel_ref, probot::controllers::ControlType::kVelocity);
   g_clm->update(millis(), 20);

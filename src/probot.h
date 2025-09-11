@@ -12,7 +12,6 @@
 #include <probot/io/joystick.hpp>
 #include <probot/io/time.hpp>
 #include <probot/io/gamepad.hpp>
-#include <probot/io/tuna_gamepad.hpp>
 
 // Devices
 #include <probot/devices/leds/builtin.hpp>
