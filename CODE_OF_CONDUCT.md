@@ -1,79 +1,92 @@
 # Davranış Kuralları (TR)
 
-## Taahhüdümüz
-Topluluk üyeleri, katkıcılar ve liderler olarak; yaş, beden, görünür/görünmez engel, etnik köken, cinsiyet kimliği/ifadesi, deneyim düzeyi, eğitim, sosyo‑ekonomik durum, milliyet, görünüm, ırk, din, cinsel kimlik ve yönelim farkı gözetmeksizin herkese tacizden uzak bir ortam sağlamayı taahhüt ederiz.
+Bu topluluğun amacı, herkesin kendini güvende hissettiği, öğrenmeye ve üretmeye odaklanabildiği bir ortam kurmaktır. Hepimiz farklı geçmişlerden geliyoruz; bu çeşitliliği bir güç olarak görür, birbirimize saygı ve nezaketle yaklaşırız.
 
-Açık, kapsayıcı ve sağlıklı bir topluluk için saygılı ve yapıcı davranırız.
+## Değerlerimiz
+- Saygı ve empati: Önce anlamaya çalışır, iyi niyet varsayarız.
+- Açıklık ve netlik: Geri bildirimi somut, eyleme dönük ve nazik veririz.
+- Paylaşım ve kredi: Bilgiyi paylaşır, emeği görünür kılar, teşekkür ederiz.
+- Öğrenme kültürü: Hatalardan ders çıkarır, “neden”i konuşur, gelişime alan açarız.
 
-## Standartlarımız
-- Empati ve nezaket göstermek
-- Farklı görüş ve deneyimlere saygı duymak
-- Yapıcı geribildirim vermek ve almak
-- Hatalarımızdan etkilenmiş kişilerden özür dileyip ders çıkarmak
-- Bireysel çıkar yerine topluluğun iyiliğine odaklanmak
+## Kabul Edilebilir Davranışlar
+- Yeni gelenlere destek olmak; basit anlatmak, kaynak göstermek
+- Anlaşmazlıklarda kişiyi değil problemi konuşmak
+- Görüş ayrılıklarında veriye ve somut örneklere dayalı ilerlemek
+- Genel yarara odaklanmak, kişisel saldırılardan kaçınmak
 
-Kabul edilemez davranış örnekleri:
-- Cinselleştirilmiş dil/görseller, istenmeyen cinsel ilgi
-- Trolleme, hakaret, kişisel/siyasi saldırılar
-- Kamuya açık veya özel taciz
-- Açık rıza olmadan başkasının özel bilgilerini yayımlamak
-- Profesyonel ortamda uygunsuz sayılabilecek diğer davranışlar
-
-## Uygulama ve Sorumluluklar
-Topluluk liderleri, bu standartları netleştirir ve uygular. Uygunsuz, tehditkâr veya zararlı davranışlarda adil yaptırım uygular.
+## Kabul Edilemez Davranışlar
+- Taciz, ayrımcılık, nefret söylemi
+- Cinselleştirilmiş dil/görsel ve istenmeyen cinsel ilgi
+- Tehdit, kişisel saldırı, trolleme, sürekli provokasyon
+- İfşa (doxxing) ve kişisel verileri izinsiz paylaşma
+- Spam, konu dışı ısrarlı paylaşımlar, platform kurallarına aykırılık
 
 ## Kapsam
-Bu kurallar tüm topluluk alanlarında ve topluluğu temsilen bulunulan kamu alanlarında geçerlidir.
+Bu kurallar, depo içindeki tüm alanlarda (Issues, PR’lar, Discussions), çevrimiçi/çevrimdışı etkinliklerde ve projeyi temsilen bulunduğunuz tüm ortamlarda geçerlidir.
 
 ## İhlal Bildirimi
-Uygunsuz davranışları şu adresten bildirebilirsiniz: tunagul54@gmail.com.
-Tüm şikayetler hızlı ve adil şekilde incelenecektir. Bildireni korumak esastır.
+Uygunsuz davranışları şu adrese bildirebilirsiniz: tunagul54@gmail.com veya WhatsApp: +90 538 040 81 48
+- Bildirimler gizli tutulur; en kısa sürede dönüş yapılır.
+- Kritik güvenlik/güvenlik‑dışı acil durumlarda platform kuralları da devreye alınabilir.
 
-## Yaptırım İlkeleri (Özet)
-1. Düzeltme
-2. Uyarı
-3. Geçici Yasak
-4. Kalıcı Yasak
+## Yaptırım İlkeleri
+Topluluk sorumluları adil, ölçülü ve tutarlı şekilde hareket eder:
+1. Hatırlatma ve yönlendirme
+2. Yazılı uyarı
+3. Geçici kısıtlama (katılım/söz hakkı)
+4. Kalıcı kısıtlama/çıkarma
+
+İtiraz süreci e‑posta ile yürütülür. Çıkar çatışması olan durumlarda ilgili sorumlular karar sürecinden çekilir.
+
+## Uygulama
+- Gizlilik: Bildirimler yalnızca gerekli kişilerle sınırlı paylaşılır.
+- Minimum Gereklilik: Sorunu çözmek için en hafif yeterli adım tercih edilir.
+- Kayıt: Önemli kararlar kısa bir not olarak saklanır (iç süreç).
 
 ## Atıf
-Bu metin, Contributor Covenant 2.1 sürümünden uyarlanmıştır: https://www.contributor-covenant.org
+Bu metin, Contributor Covenant v2.1 dokümanından esinlenilerek uyarlanmıştır: https://www.contributor-covenant.org
 
 ---
 
 # Contributor Covenant Code of Conduct (EN)
 
-## Our Pledge
-We pledge to make participation in our community a harassment‑free experience for everyone, regardless of personal characteristics or background, and to act in ways that foster an open, inclusive, and healthy community.
+Our goal is to maintain a safe, helpful, and welcoming community where people can learn and build with confidence.
 
-## Our Standards
-- Demonstrate empathy and kindness
-- Respect differing opinions and experiences
-- Give and accept constructive feedback gracefully
-- Take responsibility, apologize, and learn from mistakes
-- Focus on what is best for the community
+## Our Values
+- Respect and empathy: Seek to understand; assume good intent.
+- Clarity and kindness: Give actionable, polite feedback.
+- Sharing and credit: Share knowledge and recognize contributions.
+- Learning culture: Discuss the “why,” learn from mistakes, and improve together.
 
-Unacceptable behavior includes:
-- Sexualized language or imagery; unwelcome sexual attention
-- Trolling, insults, personal/political attacks
-- Public or private harassment
-- Publishing others’ private information without explicit permission
-- Other conduct inappropriate for a professional setting
+## Acceptable Behavior
+- Support newcomers; explain simply; point to resources
+- Discuss problems, not people
+- Rely on data and concrete examples in disagreements
+- Focus on what benefits the community
 
-## Enforcement Responsibilities
-Community leaders clarify and enforce standards and may take appropriate, fair corrective action.
+## Unacceptable Behavior
+- Harassment, discrimination, hate speech
+- Sexualized language/imagery; unwelcome sexual attention
+- Threats, personal attacks, trolling, sustained disruption
+- Doxxing or sharing private information without consent
+- Spam, persistent off‑topic posts, violation of platform rules
 
 ## Scope
-Applies in all community spaces and when representing the community in public.
+Applies to all project spaces (Issues, PRs, Discussions), events (online/offline), and any public representation of the project.
+
+## Reporting
+Report unacceptable behavior to: tunagul54@gmail.com or WhatsApp: +90 538 040 81 48
+- Reports are confidential; you will receive a timely acknowledgement.
+- In urgent cases, platform policies may also be invoked as appropriate.
 
 ## Enforcement
-Report unacceptable behavior to: tunagul54@gmail.com.
-All complaints will be reviewed and investigated promptly and fairly. Reporters’ privacy and safety will be respected.
+Community maintainers will act fairly, proportionally, and consistently:
+1. Reminder and guidance
+2. Written warning
+3. Temporary restrictions (participation/speaking)
+4. Permanent restrictions/removal
 
-## Enforcement Guidelines (Summary)
-1. Correction
-2. Warning
-3. Temporary Ban
-4. Permanent Ban
+Appeals can be submitted via email. Any maintainer with a conflict of interest will recuse themselves.
 
 ## Attribution
 Adapted from the Contributor Covenant v2.1: https://www.contributor-covenant.org 

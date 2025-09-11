@@ -1,4 +1,7 @@
 #include <probot.h>
+#include <probot/io/joystick_api.hpp>
+#include <probot/sim/null_motor.hpp>
+#include <probot/sim/null_encoder.hpp>
 
 // Bu örnek, tank sürüş şasesi için basit bir otonom senaryoyu gösterir.
 // Sırasıyla: X cm ileri git, Y derece dön, tekrar X cm ileri git gibi bir akış.
@@ -6,59 +9,36 @@
 
 PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
-static probot::controllers::ClosedLoopMotor* g_left  = nullptr; // kullanıcı bağlar
-static probot::controllers::ClosedLoopMotor* g_right = nullptr; // kullanıcı bağlar
-static probot::controllers::BasicTankDrive*  g_chassis = nullptr;
+static const probot::control::PidConfig kPidCfg{ .kp=200.0f, .ki=0.0f, .kd=0.0f, .out_min=-1000.0f, .out_max=1000.0f };
+static probot::control::PID pidL(kPidCfg), pidR(kPidCfg);
+static probot::sensors::NullEncoder leftEnc, rightEnc;
+static probot::motor::NullMotor     leftHW, rightHW;
+static probot::controllers::ClosedLoopMotor left(&leftEnc, &pidL, &leftHW, 1.0f, 1.0f);
+static probot::controllers::ClosedLoopMotor right(&rightEnc, &pidR, &rightHW, 1.0f, 1.0f);
+static probot::controllers::BasicTankDrive  chassis(&left, &right);
 
 static uint32_t g_step = 0;
 static uint32_t g_last_ms = 0;
 
 void robotInit() {
-  Serial.println("[TankAuto] robotInit: Otonom");
-  // Bağlantı:
-  // static probot::controllers::ClosedLoopMotor left(...), right(...);
-  // static probot::controllers::BasicTankDrive chassis(&left, &right);
-  // chassis.setWheelCircumference(31.4f);
-  // chassis.setTrackWidth(25.0f);
-  // g_left=&left; g_right=&right; g_chassis=&chassis;
+  Serial.println("[TankAuto] robotInit");
+  // chassis.setWheelCircumference(...); chassis.setTrackWidth(...);
 }
 
-void teleopInit() {}
-void teleopLoop() { delay(100); }
+void robotEnd() { Serial.println("[TankAuto] robotEnd"); }
 
-void autonomousInit() {
-  Serial.println("[TankAuto] autonomousInit: Senaryo başlayacak");
-  g_step = 0;
-  g_last_ms = millis();
-}
-
-void autonomousLoop() {
-  if (!g_chassis) { delay(1000); return; }
-  uint32_t now = millis();
-  switch (g_step) {
-    case 0:
-      Serial.println("[TankAuto] 1) 50 cm ileri");
-      g_chassis->driveDistance(50.0f);
-      g_step = 1; g_last_ms = now; break;
-    case 1:
-      if (now - g_last_ms > 3000) { // örnek bekleme süresi
-        Serial.println("[TankAuto] 2) 90 derece dön");
-        g_chassis->turnDegrees(90.0f);
-        g_step = 2; g_last_ms = now;
-      }
-      break;
-    case 2:
-      if (now - g_last_ms > 2000) {
-        Serial.println("[TankAuto] 3) 50 cm ileri");
-        g_chassis->driveDistance(50.0f);
-        g_step = 3; g_last_ms = now;
-      }
-      break;
-    default:
-      // Bitti: pasif bekle
-      break;
-  }
+void teleopInit() { Serial.println("[TankAuto] teleopInit"); }
+void teleopLoop() {
+  auto js = probot::io::joystick_api::makeDefault();
+  float left_axis  = js.getLeftY();
+  float right_axis = js.getRightY();
+  chassis.setVelocity(left_axis*100.0f, right_axis*100.0f);
+  chassis.update(millis(), 20);
   delay(20);
 }
 
-void robotEnd() {} 
+void autonomousInit() { Serial.println("[TankAuto] autonomousInit"); }
+void autonomousLoop() {
+  chassis.driveDistance(50.0f);
+  delay(1000);
+} 
