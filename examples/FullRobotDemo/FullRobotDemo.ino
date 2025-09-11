@@ -1,26 +1,37 @@
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
+#include <probot/sim/null_motor.hpp>
+#include <probot/sim/null_encoder.hpp>
+#include <probot/devices/motors/motor_handle.hpp>
 
 // Bu örnek, daha tamamlanmış bir robot iskeleti gösterir:
 // - TankDrive şasi (teleop + otonom)
 // - Intake (içeri alma) ve Shooter (fırlatma)
 // - İki adet Slider ile tırmanma mekanizması (aç/kapa senaryosu)
-// Bu örnekte donanım bağlama kısmı (motor/encoder objeleri) kullanıcıya bırakılmıştır.
-// Amaç: Derslerde üst seviye davranışları ve kontrolleri göstermek.
+// Not: NullMotor/NullEncoder yer tutucu (no-op) sürücülerdir.
+// Gerçek projede bunları gerçek sürücülerle (örn. NFRMotor) değiştirin.
+// Desteklenen motorlar için: https://docs.probotstudio.com/
 
 PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
-// Donanım bağlama (kullanıcı doldurmalı)
-static probot::controllers::ClosedLoopMotor* g_left   = nullptr;
-static probot::controllers::ClosedLoopMotor* g_right  = nullptr;
-static probot::controllers::BasicTankDrive*  g_chassis= nullptr;
+// --- Dosya-üstü kurulum (sıralı, güvenli) ---
+static const probot::control::PidConfig kPidCfg{ .kp=200.0f, .ki=0.0f, .kd=0.0f, .out_min=-1000.0f, .out_max=1000.0f };
+static probot::control::PID pidL(kPidCfg), pidR(kPidCfg);
+static probot::sensors::NullEncoder leftEnc, rightEnc;   // yer tutucu
+static probot::motor::NullMotor   leftHW, rightHW;       // yer tutucu
+static probot::controllers::ClosedLoopMotor left(&leftEnc, &pidL, &leftHW, 1.0f, 1.0f);
+static probot::controllers::ClosedLoopMotor right(&rightEnc, &pidR, &rightHW, 1.0f, 1.0f);
+static probot::controllers::BasicTankDrive chassis(&left, &right);
 
-static probot::motor::IMotor* g_intakeMotor = nullptr;   // ham güç ile çalışır
-static probot::motor::IMotor* g_shooterMotor= nullptr;   // ham güç ile çalışır
-static void* g_owner = (void*)0xBEEF;
+// Tırmanma sliderları (örnek amaçlı aynı motor/encoder ile)
+static probot::controllers::Slider sliderL(&left);
+static probot::controllers::Slider sliderR(&right);
 
-static probot::controllers::Slider* g_sliderL = nullptr; // sol tırmanma
-static probot::controllers::Slider* g_sliderR = nullptr; // sağ tırmanma
+// Intake/Shooter (no-op); gerçek projede gerçek motorla değiştirin
+static probot::motor::NullMotor intakeHW;
+static probot::motor::NullMotor shooterHW;
+static probot::motor::MotorHandle intake(intakeHW);
+static probot::motor::MotorHandle shooter(shooterHW);
 
 // Tuş atamaları (UI tarafındaki buton indeksleri örnektir)
 static const int BTN_INTAKE_IN   = 0; // A
@@ -34,50 +45,37 @@ static uint32_t g_autoMs   = 0;
 
 void robotInit(){
   Serial.println("[FullRobot] robotInit: Başlatılıyor");
-  // Şasi parametre örnekleri (kullanıcı uygun değerleri koymalı)
-  // if (g_chassis){ g_chassis->setWheelCircumference(31.4f); g_chassis->setTrackWidth(25.0f); }
-
-  // Intake/Shooter motor claim
-  if (g_intakeMotor && g_intakeMotor->claim(g_owner)) {
-    g_intakeMotor->setPower(0, g_owner);
-  }
-  if (g_shooterMotor && g_shooterMotor->claim(g_owner)) {
-    g_shooterMotor->setPower(0, g_owner);
-  }
+  // Örn: chassis.setWheelCircumference(31.4f); chassis.setTrackWidth(25.0f);
 }
 
 void robotEnd(){
-  if (g_intakeMotor) { g_intakeMotor->setPower(0, g_owner); g_intakeMotor->release(g_owner); }
-  if (g_shooterMotor){ g_shooterMotor->setPower(0, g_owner); g_shooterMotor->release(g_owner); }
+  intake.setPower(0);
+  shooter.setPower(0);
   Serial.println("[FullRobot] robotEnd: Bitti");
 }
 
-// Yardımcı fonksiyonlar
 static void handleIntakeAndShooter(const probot::io::joystick_api::Joystick& js){
   bool intake_in  = js.getRawButton(BTN_INTAKE_IN);
-  bool shoot      = js.getRawButton(BTN_SHOOT);
-
-  if (g_intakeMotor){ g_intakeMotor->setPower(intake_in ? 800 : 0, g_owner); }
-  if (g_shooterMotor){ g_shooterMotor->setPower(shoot ? 1000 : 0, g_owner); }
+  bool shoot_btn  = js.getRawButton(BTN_SHOOT);
+  intake.setPower(intake_in ? 800 : 0);
+  shooter.setPower(shoot_btn ? 1000 : 0);
 }
 
 static void handleClimb(const probot::io::joystick_api::Joystick& js){
   bool open  = js.getRawButton(BTN_CLIMB_OPEN);
   bool close = js.getRawButton(BTN_CLIMB_CLOSE);
 
-  if (!g_sliderL || !g_sliderR) return;
-
   if (open){
-    g_sliderL->setTargetLength(40.0f); g_sliderR->setTargetLength(40.0f);
-    uint32_t t0 = millis(); while (millis()-t0 < 2000){ g_sliderL->update(millis(), 20); g_sliderR->update(millis(), 20); delay(20);} 
-    g_sliderL->setTargetLength(0.0f);  g_sliderR->setTargetLength(0.0f);
+    sliderL.setTargetLength(40.0f); sliderR.setTargetLength(40.0f);
+    uint32_t t0 = millis(); while (millis()-t0 < 2000){ sliderL.update(millis(), 20); sliderR.update(millis(), 20); delay(20);} 
+    sliderL.setTargetLength(0.0f);  sliderR.setTargetLength(0.0f);
   }
   if (close){
-    g_sliderL->setTargetLength(0.0f); g_sliderR->setTargetLength(0.0f);
+    sliderL.setTargetLength(0.0f); sliderR.setTargetLength(0.0f);
   }
 
-  g_sliderL->update(millis(), 20);
-  g_sliderR->update(millis(), 20);
+  sliderL.update(millis(), 20);
+  sliderR.update(millis(), 20);
 }
 
 void teleopInit(){
@@ -90,19 +88,13 @@ void teleopInit(){
 
 void teleopLoop(){
   auto js = probot::io::joystick_api::makeDefault();
-
-  // Tank sürüş: sol Y ve sağ Y eksenleri
-  if (g_chassis){
-    float left_axis  = js.getLeftY();
-    float right_axis = js.getRightY();
-    float max_vel = 100.0f;
-    g_chassis->setVelocity(left_axis*max_vel, right_axis*max_vel);
-    g_chassis->update(millis(), 20);
-  }
-
+  float left_axis  = js.getLeftY();
+  float right_axis = js.getRightY();
+  float max_vel = 100.0f;
+  chassis.setVelocity(left_axis*max_vel, right_axis*max_vel);
+  chassis.update(millis(), 20);
   handleIntakeAndShooter(js);
   handleClimb(js);
-
   delay(20);
 }
 
@@ -112,31 +104,30 @@ void autonomousInit(){
 }
 
 void autonomousLoop(){
-  if (!g_chassis){ delay(20); return; }
   uint32_t now = millis();
   switch (g_autoStep){
     case 0:
       Serial.println("[FullRobot/Auto] 1) 50 cm ileri");
-      g_chassis->driveDistance(50.0f);
+      chassis.driveDistance(50.0f);
       g_autoStep=1; g_autoMs=now; break;
     case 1:
       if (now - g_autoMs > 3000){
         Serial.println("[FullRobot/Auto] 2) Shooter çalıştır");
-        if (g_shooterMotor) g_shooterMotor->setPower(1000, g_owner);
+        shooter.setPower(1000);
         g_autoStep=2; g_autoMs=now;
       }
       break;
     case 2:
       if (now - g_autoMs > 2000){
         Serial.println("[FullRobot/Auto] 3) Shooter durdur");
-        if (g_shooterMotor) g_shooterMotor->setPower(0, g_owner);
+        shooter.setPower(0);
         g_autoStep=3; g_autoMs=now;
       }
       break;
     case 3:
       if (now - g_autoMs > 500){
         Serial.println("[FullRobot/Auto] 4) 30 cm ileri");
-        g_chassis->driveDistance(30.0f);
+        chassis.driveDistance(30.0f);
         g_autoStep=4; g_autoMs=now;
       }
       break;

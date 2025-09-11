@@ -1,32 +1,26 @@
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
+#include <probot/sim/null_motor.hpp>
+#include <probot/devices/motors/motor_handle.hpp>
+// Not: Donanımı bağlayana kadar NullMotor kullanabilirsiniz (yer tutucu).
+// Gerçek projede bu yer tutucuyu gerçek sürücülerle (örn. NFRMotor) değiştirin.
+// Desteklenen sürücüler için: https://docs.probotstudio.com/
 
 // Bu örnek, joystick'ten gelen bir eksen değerini (-1..1)
 // ham motor gücüne (PWM ölçeği -1000..1000) direkt olarak eşler.
 // Amaç: Motor bağlantısını test etmek ve yön/invert kontrolünü doğrulamak.
-// Donanımınıza uygun IMotor implementasyonunu projeye bağlamanız gerekir.
 
 PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
-// Not: Örnek amacıyla sahte bir IMotor objesi kullandığınızı varsayın.
-// Gerçek projede kendi motor sürücünüzü IMotor arayüzüne uyan bir sınıfla bağlamalısınız.
-static probot::motor::IMotor* g_motor = nullptr; // kullanıcı doldurmalı
-static void* g_owner = (void*)0x1234;
+static probot::motor::NullMotor motorHW;           // yer tutucu; gerçek sürücü ile değiştirin
+static probot::motor::MotorHandle motor(motorHW);  // sahipliği içeride yönetir
 
 void robotInit() {
   Serial.println("[MotorTest] robotInit: Motor testi başlıyor");
-  if (g_motor) {
-    if (!g_motor->claim(g_owner)) {
-      Serial.println("[MotorTest] Motor claim başarısız!");
-    }
-  }
 }
 
 void robotEnd() {
-  if (g_motor) {
-    g_motor->setPower(0, g_owner);
-    g_motor->release(g_owner);
-  }
+  motor.setPower(0);
   Serial.println("[MotorTest] robotEnd: Bitti");
 }
 
@@ -42,9 +36,7 @@ void teleopLoop() {
   auto js = probot::io::joystick_api::makeDefault();
   float axis = js.getLeftY(); // Örn: sol çubuk Y
   int16_t power = (int16_t)(axis * 1000.0f);
-  if (g_motor) {
-    g_motor->setPower(power, g_owner);
-  }
+  motor.setPower(power);
   Serial.printf("[MotorTest] axis=%.2f power=%d\n", axis, (int)power);
   delay(50);
 }
