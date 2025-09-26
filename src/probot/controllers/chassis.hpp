@@ -1,5 +1,5 @@
 #pragma once
-#include <probot/controllers/closed_loop_motor.hpp>
+#include <probot/controllers/motor_controller.hpp>
 #include <math.h>
 
 namespace probot::controllers {
@@ -15,7 +15,7 @@ namespace probot::controllers {
 
   class BasicTankDrive : public IChassis, public ::control::IUpdatable {
   public:
-    BasicTankDrive(ClosedLoopMotor* left, ClosedLoopMotor* right)
+    BasicTankDrive(IMotorController* left, IMotorController* right)
     : left_(left), right_(right), wheel_circumference_(1.0f), track_width_(1.0f),
       vel_mode_(true), target_left_pos_(0.0f), target_right_pos_(0.0f) {}
 
@@ -55,8 +55,8 @@ namespace probot::controllers {
     }
 
   private:
-    ClosedLoopMotor* left_;
-    ClosedLoopMotor* right_;
+    IMotorController* left_;
+    IMotorController* right_;
     float wheel_circumference_;
     float track_width_;
     bool  vel_mode_;

@@ -5,7 +5,7 @@
 
 namespace probot::motor {
 
-class NullMotor : public IMotor {
+class NullMotor : public IMotorDriver {
 public:
   NullMotor() : _owner(nullptr), _power(0.0f), _inverted(false) {}
 

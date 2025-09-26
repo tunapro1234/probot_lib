@@ -2,9 +2,9 @@
 #include <probot/devices/motors/motor.hpp>
 
 namespace probot::motor {
-  class MotorGroup : public IMotor {
+  class MotorGroup : public IMotorDriver {
   public:
-    MotorGroup(IMotor* a, IMotor* b)
+    MotorGroup(IMotorDriver* a, IMotorDriver* b)
     : a_(a), b_(b), owner_(nullptr), inverted_(false) {}
 
     bool claim(void* owner) override {
@@ -44,8 +44,8 @@ namespace probot::motor {
     bool getInverted() const override { return inverted_; }
 
   private:
-    IMotor* a_;
-    IMotor* b_;
+    IMotorDriver* a_;
+    IMotorDriver* b_;
     void*   owner_;
     bool    inverted_;
   };

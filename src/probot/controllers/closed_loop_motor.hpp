@@ -3,20 +3,18 @@
 #include <Arduino.h>
 #include <probot/core/scheduler.hpp>
 #include <probot/controllers/pid.hpp>
+#include <probot/controllers/motor_controller.hpp>
 #include <probot/sensors/encoder.hpp>
-#include <probot/devices/motors/motor.hpp>
 
 namespace probot::controllers {
-  enum class ControlType { kVelocity = 0, kPosition = 1 };
-
-  class ClosedLoopMotor : public ::control::IUpdatable, public motor::IMotor {
+  class ClosedLoopMotor : public IMotorController {
   public:
     ClosedLoopMotor(sensors::IEncoder* encoder,
                     control::PID* pid,
-                    motor::IMotor* motor,
+                    motor::IMotorDriver* driver,
                     float vel_ticks_per_s_to_units = 1.0f,
                     float pos_ticks_to_units = 1.0f)
-    : encoder_(encoder), pid_(pid), motor_(motor),
+    : encoder_(encoder), pid_(pid), driver_(driver),
       vel_ticks_to_units_(vel_ticks_per_s_to_units),
       pos_ticks_to_units_(pos_ticks_to_units),
       ref_value_(0.0f), last_ref_ms_(0), timeout_ms_(500),
@@ -30,17 +28,17 @@ namespace probot::controllers {
       for (int i=0;i<4;i++){
         slot_cfg_[i] = {0.0f, 0.0f, 0.0f, -1.0f, 1.0f};
       }
-      if (motor_) motor_->claim(owner_token_);
+      if (driver_) driver_->claim(owner_token_);
     }
 
     ~ClosedLoopMotor(){
-      if (motor_) {
-        motor_->setPower(0.0f, owner_token_);
-        motor_->release(owner_token_);
+      if (driver_) {
+        driver_->setPower(0.0f, owner_token_);
+        driver_->release(owner_token_);
       }
     }
 
-    void setSetpoint(float value, ControlType mode, int slot = -1){
+    void setSetpoint(float value, ControlType mode, int slot = -1) override {
       ref_value_ = value;
       last_ref_ms_ = millis();
       active_mode_ = mode;
@@ -59,45 +57,50 @@ namespace probot::controllers {
       pid_->reset();
     }
 
-    void setTimeoutMs(uint32_t ms){ timeout_ms_ = ms; }
+    void setTimeoutMs(uint32_t ms) override { timeout_ms_ = ms; }
 
     bool setPowerDirect(float power){
-      if (!motor_) return false;
-      return motor_->setPower(power, owner_token_);
+      if (!driver_) return false;
+      return driver_->setPower(power, owner_token_);
     }
 
     // IMotor interface (external ownership control). External owner must claim/release.
     bool claim(void* owner) override {
       if (external_owner_ && external_owner_ != owner) return false;
-      if (!motor_) return false;
-      if (!motor_->claim(owner)) return false;
+      if (!driver_) return false;
+      if (!driver_->claim(owner)) return false;
       external_owner_ = owner;
       return true;
     }
     void release(void* owner) override {
-      if (!motor_ || external_owner_ != owner) return;
-      motor_->release(owner);
+      if (!driver_ || external_owner_ != owner) return;
+      driver_->release(owner);
       external_owner_ = nullptr;
     }
     bool setPower(float power, void* owner) override {
-      if (!motor_ || external_owner_ != owner) return false;
+      if (!driver_ || external_owner_ != owner) return false;
       float p = inverted_ ? -power : power;
-      return motor_->setPower(p, owner);
+      return driver_->setPower(p, owner);
     }
     bool isClaimed() const override { return external_owner_ != nullptr; }
     void* currentOwner() const override { return external_owner_; }
 
     void setInverted(bool inverted) override {
       inverted_ = inverted;
-      if (motor_) motor_->setInverted(inverted);
+      if (driver_) driver_->setInverted(inverted);
     }
     bool getInverted() const override { return inverted_; }
 
     void update(uint32_t now_ms, uint32_t dt_ms) override {
-      if (!encoder_ || !pid_ || !motor_) return;
+      if (!encoder_ || !pid_ || !driver_) return;
 
       if (timeout_ms_ > 0 && (now_ms - last_ref_ms_) > timeout_ms_){
-        motor_->setPower(0.0f, owner_token_);
+        driver_->setPower(0.0f, owner_token_);
+        return;
+      }
+
+      if (active_mode_ == ControlType::kPercent){
+        driver_->setPower(ref_value_, owner_token_);
         return;
       }
 
@@ -120,7 +123,7 @@ namespace probot::controllers {
       float dt_s = dt_ms * 0.001f;
       float cmd = pid_->step(error, dt_s);
 
-      motor_->setPower(cmd, owner_token_);
+      driver_->setPower(cmd, owner_token_);
 
 #ifndef PROBOT_CLM_NOLOG
       Serial.printf("[CLM ] mode=%s ref=%.3f meas=%.3f err=%.3f out=%.3f slot=%d\n",
@@ -134,7 +137,7 @@ namespace probot::controllers {
 
     sensors::IEncoder* encoder_;
     control::PID*     pid_;
-    motor::IMotor*    motor_;
+    motor::IMotorDriver* driver_;
 
     float    vel_ticks_to_units_;
     float    pos_ticks_to_units_;

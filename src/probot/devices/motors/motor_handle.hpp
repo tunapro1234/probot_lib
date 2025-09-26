@@ -7,7 +7,7 @@ namespace probot::motor {
 
 class MotorHandle {
 public:
-  explicit MotorHandle(IMotor& motor)
+  explicit MotorHandle(IMotorDriver& motor)
   : _motor(&motor), _owner(this)
   {
     _motor->claim(_owner);
@@ -19,11 +19,11 @@ public:
 
   void release(){ _motor->release(_owner); }
 
-  IMotor& underlying() { return *_motor; }
-  const IMotor& underlying() const { return *_motor; }
+  IMotorDriver& underlying() { return *_motor; }
+  const IMotorDriver& underlying() const { return *_motor; }
 
 private:
-  IMotor* _motor;
+  IMotorDriver* _motor;
   void*   _owner; // unique owner token
 };
 

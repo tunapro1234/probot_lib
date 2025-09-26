@@ -1,6 +1,5 @@
 #pragma once
-#include <probot/controllers/closed_loop_motor.hpp>
-#include <probot/controllers/closed_loop_motor_group.hpp>
+#include <probot/controllers/motor_controller.hpp>
 
 namespace probot::controllers {
   struct ISlider {
@@ -13,10 +12,8 @@ namespace probot::controllers {
 
   class Slider : public ISlider, public ::control::IUpdatable {
   public:
-    explicit Slider(ClosedLoopMotor* clm)
-    : clm_(clm), clmg_(nullptr), ticks_per_unit_(1.0f), target_len_(0.0f) {}
-    explicit Slider(ClosedLoopMotorGroup* clmg)
-    : clm_(nullptr), clmg_(clmg), ticks_per_unit_(1.0f), target_len_(0.0f) {}
+    explicit Slider(IMotorController* controller)
+    : controller_(controller), ticks_per_unit_(1.0f), target_len_(0.0f) {}
 
     void setTargetLength(float length_units) override {
       target_len_ = length_units;
@@ -28,13 +25,11 @@ namespace probot::controllers {
     void update(uint32_t now_ms, uint32_t dt_ms) override {
       (void)now_ms; (void)dt_ms;
       float ticks_setpoint = target_len_ * ticks_per_unit_;
-      if (clm_)  clm_->setSetpoint(ticks_setpoint, ControlType::kPosition, -1);
-      if (clmg_) clmg_->setSetpoint(ticks_setpoint, ControlType::kPosition, -1);
+      if (controller_) controller_->setSetpoint(ticks_setpoint, ControlType::kPosition, -1);
     }
 
   private:
-    ClosedLoopMotor*      clm_;
-    ClosedLoopMotorGroup* clmg_;
+    IMotorController*     controller_;
     float                 ticks_per_unit_;
     float                 target_len_;
   };

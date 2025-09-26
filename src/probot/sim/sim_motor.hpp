@@ -2,7 +2,7 @@
 #include <probot/devices/motors/motor.hpp>
 
 namespace probot::sim {
-  class SimMotor : public probot::motor::IMotor {
+  class SimMotor : public probot::motor::IMotorDriver {
   public:
     bool claim(void* owner) override {
       if (owner_ == nullptr || owner_ == owner){ owner_ = owner; return true; }

@@ -1,18 +1,18 @@
 #pragma once
-#include <probot/controllers/closed_loop_motor.hpp>
+#include <probot/controllers/motor_controller.hpp>
 
 namespace probot::controllers {
-  class ClosedLoopMotorGroup : public ::control::IUpdatable, public motor::IMotor {
+  class ClosedLoopMotorGroup : public IMotorController {
   public:
-    ClosedLoopMotorGroup(ClosedLoopMotor* a, ClosedLoopMotor* b)
+    ClosedLoopMotorGroup(IMotorController* a, IMotorController* b)
     : a_(a), b_(b), owner_(nullptr), inverted_(false) {}
 
     // Group control API
-    void setSetpoint(float value, ControlType mode, int slot = -1){
+    void setSetpoint(float value, ControlType mode, int slot = -1) override {
       if (a_) a_->setSetpoint(value, mode, slot);
       if (b_) b_->setSetpoint(value, mode, slot);
     }
-    void setTimeoutMs(uint32_t ms){ if (a_) a_->setTimeoutMs(ms); if (b_) b_->setTimeoutMs(ms); }
+    void setTimeoutMs(uint32_t ms) override { if (a_) a_->setTimeoutMs(ms); if (b_) b_->setTimeoutMs(ms); }
 
     void update(uint32_t now_ms, uint32_t dt_ms) override {
       if (a_) a_->update(now_ms, dt_ms);
@@ -52,8 +52,8 @@ namespace probot::controllers {
     bool getInverted() const override { return inverted_; }
 
   private:
-    ClosedLoopMotor* a_;
-    ClosedLoopMotor* b_;
+    IMotorController* a_;
+    IMotorController* b_;
     void* owner_;
     bool  inverted_;
   };
