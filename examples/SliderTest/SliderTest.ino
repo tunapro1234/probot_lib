@@ -11,7 +11,7 @@
 
 PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
-static const probot::control::PidConfig kPidCfg{ .kp=200.0f, .ki=0.0f, .kd=0.0f, .out_min=-1000.0f, .out_max=1000.0f };
+static const probot::control::PidConfig kPidCfg{ .kp=0.2f, .ki=0.0f, .kd=0.0f, .out_min=-1.0f, .out_max=1.0f };
 static probot::control::PID pid(kPidCfg);
 static probot::sensors::NullEncoder encHW;  // yer tutucu
 static probot::motor::NullMotor     motHW;  // yer tutucu

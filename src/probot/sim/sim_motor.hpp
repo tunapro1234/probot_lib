@@ -9,9 +9,9 @@ namespace probot::sim {
       return false;
     }
     void release(void* owner) override { if (owner_ == owner) owner_ = nullptr; }
-    bool setPower(int16_t power, void* owner) override {
+    bool setPower(float power, void* owner) override {
       if (owner_ != owner) return false;
-      if (power < -1000) power = -1000; else if (power > 1000) power = 1000;
+      if (power < -1.0f) power = -1.0f; else if (power > 1.0f) power = 1.0f;
       last_cmd_ = power;
       return true;
     }
@@ -21,11 +21,11 @@ namespace probot::sim {
     void setInverted(bool inverted) override { inverted_ = inverted; }
     bool getInverted() const override { return inverted_; }
 
-    int16_t appliedPower() const { return inverted_ ? (int16_t)(-last_cmd_) : last_cmd_; }
+    float appliedPower() const { return inverted_ ? -last_cmd_ : last_cmd_; }
 
   private:
     void*   owner_   = nullptr;
     bool    inverted_= false;
-    int16_t last_cmd_= 0;
+    float   last_cmd_= 0.0f;
   };
 } // namespace probot::sim 

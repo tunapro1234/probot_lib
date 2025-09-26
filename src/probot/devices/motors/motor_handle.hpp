@@ -13,7 +13,7 @@ public:
     _motor->claim(_owner);
   }
 
-  void setPower(int16_t milli){ _motor->setPower(milli, _owner); }
+  void setPower(float value){ _motor->setPower(value, _owner); }
   void setInverted(bool inv){ _motor->setInverted(inv); }
   bool getInverted() const { return _motor->getInverted(); }
 

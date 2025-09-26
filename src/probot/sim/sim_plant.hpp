@@ -14,7 +14,7 @@ namespace probot::sim {
       if (dt_s <= 0.0f) dt_s = 0.001f;
 
       const float max_tps = 800.0f;
-      float cmd = (float)motor_->appliedPower() / 1000.0f;
+      float cmd = motor_->appliedPower();
       float target_tps = cmd * max_tps;
 
       const float tau = 0.2f;

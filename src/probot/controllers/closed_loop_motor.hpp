@@ -28,14 +28,14 @@ namespace probot::controllers {
       inverted_(false)
     {
       for (int i=0;i<4;i++){
-        slot_cfg_[i] = {0,0,0,-1000,1000};
+        slot_cfg_[i] = {0.0f, 0.0f, 0.0f, -1.0f, 1.0f};
       }
       if (motor_) motor_->claim(owner_token_);
     }
 
     ~ClosedLoopMotor(){
       if (motor_) {
-        motor_->setPower(0, owner_token_);
+        motor_->setPower(0.0f, owner_token_);
         motor_->release(owner_token_);
       }
     }
@@ -61,7 +61,7 @@ namespace probot::controllers {
 
     void setTimeoutMs(uint32_t ms){ timeout_ms_ = ms; }
 
-    bool setPowerDirect(int16_t power){
+    bool setPowerDirect(float power){
       if (!motor_) return false;
       return motor_->setPower(power, owner_token_);
     }
@@ -79,9 +79,9 @@ namespace probot::controllers {
       motor_->release(owner);
       external_owner_ = nullptr;
     }
-    bool setPower(int16_t power, void* owner) override {
+    bool setPower(float power, void* owner) override {
       if (!motor_ || external_owner_ != owner) return false;
-      int16_t p = inverted_ ? (int16_t)-power : power;
+      float p = inverted_ ? -power : power;
       return motor_->setPower(p, owner);
     }
     bool isClaimed() const override { return external_owner_ != nullptr; }
@@ -97,7 +97,7 @@ namespace probot::controllers {
       if (!encoder_ || !pid_ || !motor_) return;
 
       if (timeout_ms_ > 0 && (now_ms - last_ref_ms_) > timeout_ms_){
-        motor_->setPower(0, owner_token_);
+        motor_->setPower(0.0f, owner_token_);
         return;
       }
 
@@ -120,13 +120,12 @@ namespace probot::controllers {
       float dt_s = dt_ms * 0.001f;
       float cmd = pid_->step(error, dt_s);
 
-      int16_t pwm = static_cast<int16_t>(cmd);
-      motor_->setPower(pwm, owner_token_);
+      motor_->setPower(cmd, owner_token_);
 
 #ifndef PROBOT_CLM_NOLOG
-      Serial.printf("[CLM ] mode=%s ref=%.2f meas=%.2f err=%.2f pwm=%d slot=%d\n",
+      Serial.printf("[CLM ] mode=%s ref=%.3f meas=%.3f err=%.3f out=%.3f slot=%d\n",
                     (active_mode_==ControlType::kVelocity?"VEL":"POS"),
-                    ref, meas, error, (int)pwm, slot);
+                    ref, meas, error, cmd, slot);
 #endif
     }
 

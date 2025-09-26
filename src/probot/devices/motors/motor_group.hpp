@@ -24,11 +24,10 @@ namespace probot::motor {
       owner_ = nullptr;
     }
 
-    bool setPower(int16_t power, void* owner) override {
+    bool setPower(float power, void* owner) override {
       if (!a_ || !b_) return false;
       if (owner_ != owner) return false;
-      // Respect group inversion by delegating to underlying setInverted or sign flip
-      int16_t p = inverted_ ? (int16_t)-power : power;
+      float p = inverted_ ? -power : power;
       bool ok1 = a_->setPower(p, owner);
       bool ok2 = b_->setPower(p, owner);
       return ok1 && ok2;

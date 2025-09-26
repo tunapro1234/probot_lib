@@ -7,7 +7,7 @@
 // Desteklenen sürücüler için: https://docs.probotstudio.com/
 
 // Bu örnek, joystick'ten gelen bir eksen değerini (-1..1)
-// ham motor gücüne (PWM ölçeği -1000..1000) direkt olarak eşler.
+// ham motor gücüne (normalize -1..1) direkt olarak eşler.
 // Amaç: Motor bağlantısını test etmek ve yön/invert kontrolünü doğrulamak.
 
 PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
@@ -20,7 +20,7 @@ void robotInit() {
 }
 
 void robotEnd() {
-  motor.setPower(0);
+  motor.setPower(0.0f);
   Serial.println("[MotorTest] robotEnd: Bitti");
 }
 
@@ -35,9 +35,8 @@ void teleopInit() {
 void teleopLoop() {
   auto js = probot::io::joystick_api::makeDefault();
   float axis = js.getLeftY(); // Örn: sol çubuk Y
-  int16_t power = (int16_t)(axis * 1000.0f);
-  motor.setPower(power);
-  Serial.printf("[MotorTest] axis=%.2f power=%d\n", axis, (int)power);
+  motor.setPower(axis);
+  Serial.printf("[MotorTest] axis=%.2f power=%.2f\n", axis, axis);
   delay(50);
 }
 

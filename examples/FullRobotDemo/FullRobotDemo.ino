@@ -15,7 +15,7 @@
 PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
 // --- Dosya-üstü kurulum (sıralı, güvenli) ---
-static const probot::control::PidConfig kPidCfg{ .kp=200.0f, .ki=0.0f, .kd=0.0f, .out_min=-1000.0f, .out_max=1000.0f };
+static const probot::control::PidConfig kPidCfg{ .kp=0.2f, .ki=0.0f, .kd=0.0f, .out_min=-1.0f, .out_max=1.0f };
 static probot::control::PID pidL(kPidCfg), pidR(kPidCfg);
 static probot::sensors::NullEncoder leftEnc, rightEnc;   // yer tutucu
 static probot::motor::NullMotor   leftHW, rightHW;       // yer tutucu
@@ -49,16 +49,16 @@ void robotInit(){
 }
 
 void robotEnd(){
-  intake.setPower(0);
-  shooter.setPower(0);
+  intake.setPower(0.0f);
+  shooter.setPower(0.0f);
   Serial.println("[FullRobot] robotEnd: Bitti");
 }
 
 static void handleIntakeAndShooter(const probot::io::joystick_api::Joystick& js){
   bool intake_in  = js.getRawButton(BTN_INTAKE_IN);
   bool shoot_btn  = js.getRawButton(BTN_SHOOT);
-  intake.setPower(intake_in ? 800 : 0);
-  shooter.setPower(shoot_btn ? 1000 : 0);
+  intake.setPower(intake_in ? 0.8f : 0.0f);
+  shooter.setPower(shoot_btn ? 1.0f : 0.0f);
 }
 
 static void handleClimb(const probot::io::joystick_api::Joystick& js){
@@ -113,14 +113,14 @@ void autonomousLoop(){
     case 1:
       if (now - g_autoMs > 3000){
         Serial.println("[FullRobot/Auto] 2) Shooter çalıştır");
-        shooter.setPower(1000);
+        shooter.setPower(1.0f);
         g_autoStep=2; g_autoMs=now;
       }
       break;
     case 2:
       if (now - g_autoMs > 2000){
         Serial.println("[FullRobot/Auto] 3) Shooter durdur");
-        shooter.setPower(0);
+        shooter.setPower(0.0f);
         g_autoStep=3; g_autoMs=now;
       }
       break;

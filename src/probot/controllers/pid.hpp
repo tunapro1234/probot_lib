@@ -6,8 +6,8 @@ namespace probot::control {
     float kp;
     float ki;
     float kd;
-    float out_min;   // e.g. -1000
-    float out_max;   // e.g. +1000
+    float out_min;   // e.g. -1.0f
+    float out_max;   // e.g. +1.0f
   };
 
   class PID {

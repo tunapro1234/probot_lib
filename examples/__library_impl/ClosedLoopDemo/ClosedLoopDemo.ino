@@ -5,7 +5,7 @@
 
 static probot::sim::SimMotor   g_motor;
 static probot::sim::SimEncoder g_encoder;
-static probot::control::PidConfig g_cfg_vel{ 0.8f, 0.4f, 0.0f, -1000.0f, 1000.0f };
+static probot::control::PidConfig g_cfg_vel{ 0.0008f, 0.0004f, 0.0f, -1.0f, 1.0f };
 static probot::control::PID        g_pid(g_cfg_vel);
 static probot::controllers::ClosedLoopMotor* g_axis = nullptr;
 static probot::sim::SimPlant* g_plant = nullptr;

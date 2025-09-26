@@ -34,9 +34,9 @@ namespace probot::controllers {
       if (a_) a_->release(owner);
       owner_ = nullptr;
     }
-    bool setPower(int16_t power, void* owner) override {
+    bool setPower(float power, void* owner) override {
       if (owner_ != owner) return false;
-      int16_t p = inverted_ ? (int16_t)-power : power;
+      float p = inverted_ ? -power : power;
       bool ok1 = a_ ? a_->setPower(p, owner) : false;
       bool ok2 = b_ ? b_->setPower(p, owner) : false;
       return ok1 && ok2;
