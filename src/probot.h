@@ -16,6 +16,7 @@
 // Devices
 #include <probot/devices/leds/builtin.hpp>
 #include <probot/devices/motors/motor.hpp>
+#include <probot/devices/motors/boardoza_ba6208.hpp>
 #include <probot/controllers/motor_controller.hpp>
 #include <probot/devices/motors/motor_group.hpp>
 
