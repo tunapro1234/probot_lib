@@ -76,7 +76,7 @@ libs:
 	arduino-cli lib install "Adafruit NeoPixel" 
 
 tests/control_tests: tests/control_tests.cpp
-	g++ -std=c++17 -Wall -Wextra -pedantic -I src -o $@ $<
+	g++ -std=c++17 -Wall -Wextra -pedantic -I src -DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1 -o $@ $<
 
 test: build tests/control_tests
 	./tests/control_tests

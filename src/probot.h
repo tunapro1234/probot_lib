@@ -22,6 +22,8 @@
 
 // Sensors
 #include <probot/sensors/encoder.hpp>
+#include <probot/sensors/imu/imu.hpp>
+#include <probot/sensors/imu/mpu6050.hpp>
 
 // Controllers
 #include <probot/control/blink_pid.hpp>
