@@ -7,6 +7,9 @@
 #include <probot/control/feedforward/elevator_ff.hpp>
 #include <probot/control/limiters/slew_rate_limiter.hpp>
 #include <probot/control/bang_bang_controller.hpp>
+#include <probot/control/trajectory/ramsete_controller.hpp>
+#include <probot/control/trajectory/holonomic_drive_controller.hpp>
+#include <probot/control/geometry.hpp>
 #include <probot/control/motion_profile/trapezoid_profile.hpp>
 #include <probot/control/motion_profile/s_curve_profile.hpp>
 
@@ -15,6 +18,10 @@ using probot::control::feedforward::ArmFF;
 using probot::control::feedforward::ElevatorFF;
 using probot::control::limiters::SlewRateLimiter;
 using probot::control::BangBangController;
+using probot::control::trajectory::RamseteController;
+using probot::control::trajectory::HolonomicDriveController;
+using probot::control::Pose2d;
+using probot::control::ChassisSpeeds;
 using probot::control::motion_profile::TrapezoidProfile;
 using probot::control::motion_profile::SCurveProfile;
 
@@ -118,6 +125,48 @@ static void testBangBangController(){
   assert(ctrl.tolerance() == 0.2f);
 }
 
+static void testRamseteController(){
+  RamseteController controller;
+  Pose2d current(0.0f, 0.0f, 0.0f);
+  Pose2d desired(0.0f, 0.0f, 0.0f);
+  ChassisSpeeds refSpeeds(1.0f, 0.0f, 0.0f);
+  auto output = controller.calculate(current, desired, refSpeeds);
+  assert(std::fabs(output.vx - 1.0f) < 1e-5f);
+  assert(std::fabs(output.omega) < 1e-5f);
+
+  desired = Pose2d(1.0f, 0.0f, 0.0f);
+  refSpeeds = ChassisSpeeds(1.0f, 0.0f, 0.0f);
+  output = controller.calculate(current, desired, refSpeeds);
+  assert(output.vx > 0.0f);
+  controller.setTolerance(0.05f, 0.05f, 0.05f);
+  bool atRef = controller.atReference();
+  assert(!atRef);
+}
+
+static void testHolonomicDriveController(){
+  probot::control::PidConfig cfg{1.0f, 0.0f, 0.0f, -5.0f, 5.0f};
+  probot::control::PID xPid(cfg), yPid(cfg), thetaPid(cfg);
+  HolonomicDriveController controller(&xPid, &yPid, &thetaPid);
+  controller.setTolerance(0.05f, 0.05f, 0.05f);
+
+  Pose2d current(0.0f, 0.0f, 0.0f);
+  Pose2d desired(0.0f, 0.0f, 0.0f);
+  ChassisSpeeds ref(0.5f, 0.0f, 0.1f);
+  auto out = controller.calculate(current, desired, ref, 0.02f);
+  assert(std::fabs(out.vx - ref.vx) < 1e-5f);
+  assert(std::fabs(out.omega - ref.omega) < 1e-5f);
+
+  desired = Pose2d(1.0f, -0.5f, 0.3f);
+  out = controller.calculate(current, desired, ChassisSpeeds(), 0.02f);
+  assert(out.vx > 0.0f);
+  assert(out.vy < 0.0f);
+  assert(out.omega > 0.0f);
+  assert(!controller.atReference());
+
+  controller.calculate(desired, desired, ChassisSpeeds(), 0.02f);
+  assert(controller.atReference());
+}
+
 int main(){
   testSimpleMotorFF();
   testArmFF();
@@ -126,6 +175,8 @@ int main(){
   testSCurveProfile();
   testSlewRateLimiter();
   testBangBangController();
+  testRamseteController();
+  testHolonomicDriveController();
   std::cout << "All control tests passed\n";
   return 0;
 }
