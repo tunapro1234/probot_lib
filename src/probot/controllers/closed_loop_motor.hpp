@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <Arduino.h>
+#include <math.h>
 #include <probot/core/scheduler.hpp>
 #include <probot/controllers/pid.hpp>
 #include <probot/controllers/motor_controller.hpp>
@@ -39,22 +40,40 @@ namespace probot::controllers {
     }
 
     void setSetpoint(float value, ControlType mode, int slot = -1) override {
+      bool mode_changed = (mode != active_mode_);
       ref_value_ = value;
       last_ref_ms_ = millis();
+      if (mode_changed) {
+        pid_->reset();
+        selected_slot_override_ = -1;
+      }
       active_mode_ = mode;
       if (slot >= 0) selected_slot_override_ = clampSlot(slot); else selected_slot_override_ = -1;
     }
 
-    void setPidSlotConfig(int slot, const control::PidConfig& cfg){
+    void setPidSlotConfig(int slot, const control::PidConfig& cfg) override {
       slot = clampSlot(slot);
       slot_cfg_[slot] = cfg;
+      pid_->reset();
     }
 
-    void selectDefaultSlot(ControlType mode, int slot){
+    void selectDefaultSlot(ControlType mode, int slot) override {
       slot = clampSlot(slot);
       if (mode == ControlType::kVelocity) default_slot_velocity_ = slot;
       else                                 default_slot_position_ = slot;
       pid_->reset();
+    }
+
+    int defaultSlot(ControlType mode) const override {
+      return (mode == ControlType::kVelocity) ? default_slot_velocity_ : default_slot_position_;
+    }
+
+    float lastSetpoint() const override { return ref_value_; }
+    float lastMeasurement() const override { return last_measurement_; }
+    float lastOutput() const override { return last_output_; }
+    ControlType activeMode() const override { return active_mode_; }
+    bool isAtTarget(float tolerance) const override {
+      return fabsf(ref_value_ - last_measurement_) <= tolerance;
     }
 
     void setTimeoutMs(uint32_t ms) override { timeout_ms_ = ms; }
@@ -96,11 +115,14 @@ namespace probot::controllers {
 
       if (timeout_ms_ > 0 && (now_ms - last_ref_ms_) > timeout_ms_){
         driver_->setPower(0.0f, owner_token_);
+        last_output_ = 0.0f;
         return;
       }
 
       if (active_mode_ == ControlType::kPercent){
         driver_->setPower(ref_value_, owner_token_);
+        last_measurement_ = ref_value_;
+        last_output_ = ref_value_;
         return;
       }
 
@@ -124,6 +146,8 @@ namespace probot::controllers {
       float cmd = pid_->step(error, dt_s);
 
       driver_->setPower(cmd, owner_token_);
+      last_measurement_ = meas;
+      last_output_ = cmd;
 
 #ifndef PROBOT_CLM_NOLOG
       Serial.printf("[CLM ] mode=%s ref=%.3f meas=%.3f err=%.3f out=%.3f slot=%d\n",
@@ -154,5 +178,7 @@ namespace probot::controllers {
     void* owner_token_;
     void* external_owner_;
     bool  inverted_;
+    float last_measurement_ = 0.0f;
+    float last_output_      = 0.0f;
   };
 } // namespace probot::controllers 

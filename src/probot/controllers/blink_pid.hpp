@@ -5,7 +5,7 @@
 #include <probot/devices/leds/builtin.hpp>
 
 namespace probot::controllers {
-  class BlinkPid : public control::IUpdatable {
+  class BlinkPid : public ::control::IUpdatable {
   public:
     BlinkPid()
     : current_reference_(0), pending_reference_(0), has_pending_reference_(false), led_is_on_(false) {}

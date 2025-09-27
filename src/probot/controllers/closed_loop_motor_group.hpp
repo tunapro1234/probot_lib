@@ -1,5 +1,6 @@
 #pragma once
 #include <probot/controllers/motor_controller.hpp>
+#include <math.h>
 
 namespace probot::controllers {
   class ClosedLoopMotorGroup : public IMotorController {
@@ -13,6 +14,32 @@ namespace probot::controllers {
       if (b_) b_->setSetpoint(value, mode, slot);
     }
     void setTimeoutMs(uint32_t ms) override { if (a_) a_->setTimeoutMs(ms); if (b_) b_->setTimeoutMs(ms); }
+    void setPidSlotConfig(int slot, const probot::control::PidConfig& cfg) override { if (a_) a_->setPidSlotConfig(slot, cfg); if (b_) b_->setPidSlotConfig(slot, cfg); }
+    void selectDefaultSlot(ControlType mode, int slot) override {
+      if (a_) a_->selectDefaultSlot(mode, slot);
+      if (b_) b_->selectDefaultSlot(mode, slot);
+    }
+    int defaultSlot(ControlType mode) const override {
+      return a_ ? a_->defaultSlot(mode) : 0;
+    }
+    float lastSetpoint() const override {
+      if (a_ && b_) return 0.5f * (a_->lastSetpoint() + b_->lastSetpoint());
+      return a_ ? a_->lastSetpoint() : (b_ ? b_->lastSetpoint() : 0.0f);
+    }
+    float lastMeasurement() const override {
+      if (a_ && b_) return 0.5f * (a_->lastMeasurement() + b_->lastMeasurement());
+      return a_ ? a_->lastMeasurement() : (b_ ? b_->lastMeasurement() : 0.0f);
+    }
+    float lastOutput() const override {
+      if (a_ && b_) return 0.5f * (a_->lastOutput() + b_->lastOutput());
+      return a_ ? a_->lastOutput() : (b_ ? b_->lastOutput() : 0.0f);
+    }
+    ControlType activeMode() const override { return a_ ? a_->activeMode() : ControlType::kPercent; }
+    bool isAtTarget(float tolerance) const override {
+      bool okA = a_ ? a_->isAtTarget(tolerance) : true;
+      bool okB = b_ ? b_->isAtTarget(tolerance) : true;
+      return okA && okB;
+    }
 
     void update(uint32_t now_ms, uint32_t dt_ms) override {
       if (a_) a_->update(now_ms, dt_ms);
