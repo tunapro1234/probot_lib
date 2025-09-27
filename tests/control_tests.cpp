@@ -14,6 +14,8 @@
 #include <probot/control/state_space/kalman_filter.hpp>
 #include <probot/control/state_space/lqr.hpp>
 #include <probot/control/estimation/pose_estimator.hpp>
+#include <probot/control/kinematics/differential_drive_kinematics.hpp>
+#include <probot/control/odometry/differential_drive_odometry.hpp>
 #include <probot/control/motion_profile/trapezoid_profile.hpp>
 #include <probot/control/motion_profile/s_curve_profile.hpp>
 
@@ -37,6 +39,8 @@ using probot::control::state_space::multiply;
 using probot::control::state_space::transpose;
 using probot::control::state_space::scale;
 using probot::control::estimation::PoseEstimator;
+using probot::control::kinematics::DifferentialDriveKinematics;
+using probot::control::odometry::DifferentialDriveOdometry;
 using probot::control::motion_profile::TrapezoidProfile;
 using probot::control::motion_profile::SCurveProfile;
 
@@ -252,6 +256,20 @@ static void testPoseEstimator(){
   assert(estimator.pose().x > 1.0f);
 }
 
+static void testKinematicsAndOdometry(){
+  DifferentialDriveKinematics kin(0.6f);
+  auto speeds = kin.toWheelSpeeds(ChassisSpeeds(1.0f, 0.0f, 0.5f));
+  auto chassis = kin.toChassisSpeeds(speeds.first, speeds.second);
+  assert(std::fabs(chassis.vx - 1.0f) < 1e-5f);
+  assert(std::fabs(chassis.omega - 0.5f) < 1e-5f);
+
+  DifferentialDriveOdometry odo;
+  odo.reset(Pose2d(), 0.0f, 0.0f);
+  auto pose = odo.update(0.5f, 0.6f, 0.1f);
+  assert(pose.x > 0.0f);
+  assert(pose.heading == 0.1f);
+}
+
 int main(){
   testSimpleMotorFF();
   testArmFF();
@@ -266,6 +284,7 @@ int main(){
   testKalmanFilter();
   testLQR();
   testPoseEstimator();
+  testKinematicsAndOdometry();
   std::cout << "All control tests passed\n";
   return 0;
 }

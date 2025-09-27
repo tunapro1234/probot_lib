@@ -38,6 +38,10 @@
 #include <probot/control/motion_profile/s_curve_profile.hpp>
 #include <probot/control/trajectory/ramsete_controller.hpp>
 #include <probot/control/trajectory/holonomic_drive_controller.hpp>
+#include <probot/control/kinematics/differential_drive_kinematics.hpp>
+#include <probot/control/kinematics/mecanum_drive_kinematics.hpp>
+#include <probot/control/odometry/differential_drive_odometry.hpp>
+#include <probot/control/odometry/mecanum_drive_odometry.hpp>
 #include <probot/control/state_space/matrix.hpp>
 #include <probot/control/state_space/luenberger_observer.hpp>
 #include <probot/control/state_space/kalman_filter.hpp>
@@ -79,6 +83,8 @@ namespace probot::control {
   namespace profile = probot::control::motion_profile;
   namespace limiter = probot::control::limiters;
   namespace traj = probot::control::trajectory;
+  namespace kinematics = probot::control::kinematics;
+  namespace odometry = probot::control::odometry;
   namespace ss = probot::control::state_space;
   namespace est = probot::control::estimation;
 }
