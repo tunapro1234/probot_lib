@@ -38,6 +38,11 @@
 #include <probot/control/motion_profile/s_curve_profile.hpp>
 #include <probot/control/trajectory/ramsete_controller.hpp>
 #include <probot/control/trajectory/holonomic_drive_controller.hpp>
+#include <probot/control/state_space/matrix.hpp>
+#include <probot/control/state_space/luenberger_observer.hpp>
+#include <probot/control/state_space/kalman_filter.hpp>
+#include <probot/control/state_space/lqr.hpp>
+#include <probot/control/estimation/pose_estimator.hpp>
 
 // Mechanisms
 #include <probot/mechanism/slider.hpp>
@@ -74,4 +79,6 @@ namespace probot::control {
   namespace profile = probot::control::motion_profile;
   namespace limiter = probot::control::limiters;
   namespace traj = probot::control::trajectory;
+  namespace ss = probot::control::state_space;
+  namespace est = probot::control::estimation;
 }

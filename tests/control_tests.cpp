@@ -10,6 +10,10 @@
 #include <probot/control/trajectory/ramsete_controller.hpp>
 #include <probot/control/trajectory/holonomic_drive_controller.hpp>
 #include <probot/control/geometry.hpp>
+#include <probot/control/state_space/luenberger_observer.hpp>
+#include <probot/control/state_space/kalman_filter.hpp>
+#include <probot/control/state_space/lqr.hpp>
+#include <probot/control/estimation/pose_estimator.hpp>
 #include <probot/control/motion_profile/trapezoid_profile.hpp>
 #include <probot/control/motion_profile/s_curve_profile.hpp>
 
@@ -22,6 +26,17 @@ using probot::control::trajectory::RamseteController;
 using probot::control::trajectory::HolonomicDriveController;
 using probot::control::Pose2d;
 using probot::control::ChassisSpeeds;
+using probot::control::state_space::Matrix;
+using probot::control::state_space::LuenbergerObserver;
+using probot::control::state_space::KalmanFilter;
+using probot::control::state_space::computeLQR;
+using probot::control::state_space::identity;
+using probot::control::state_space::add;
+using probot::control::state_space::subtract;
+using probot::control::state_space::multiply;
+using probot::control::state_space::transpose;
+using probot::control::state_space::scale;
+using probot::control::estimation::PoseEstimator;
 using probot::control::motion_profile::TrapezoidProfile;
 using probot::control::motion_profile::SCurveProfile;
 
@@ -167,6 +182,76 @@ static void testHolonomicDriveController(){
   assert(controller.atReference());
 }
 
+static void testLuenbergerObserver(){
+  Matrix A(1,1); A(0,0) = 0.8f;
+  Matrix B(1,1); B(0,0) = 1.0f;
+  Matrix C(1,1); C(0,0) = 1.0f;
+  Matrix L(1,1); L(0,0) = 1.0f;
+  Matrix x0(1,1); x0(0,0) = 0.0f;
+  LuenbergerObserver observer(A,B,C,L,x0);
+  Matrix u(1,1); u(0,0) = 1.0f;
+  float trueState = 0.0f;
+  for (int i=0;i<20;i++){
+    trueState = 0.8f * trueState + 1.0f;
+    Matrix y(1,1); y(0,0) = trueState;
+    observer.update(u, y);
+  }
+  float estimate = observer.state()(0,0);
+  assert(std::fabs(estimate - trueState) < 1e-1f);
+}
+
+static void testKalmanFilter(){
+  Matrix A(1,1); A(0,0)=1.0f;
+  Matrix B(1,1); B(0,0)=1.0f;
+  Matrix C(1,1); C(0,0)=1.0f;
+  Matrix Q(1,1); Q(0,0)=0.01f;
+  Matrix R(1,1); R(0,0)=0.1f;
+  Matrix x0(1,1); x0(0,0)=0.0f;
+  Matrix P0(1,1); P0(0,0)=1.0f;
+  KalmanFilter kf(A,B,C,Q,R,x0,P0);
+  Matrix u(1,1); u(0,0)=1.0f;
+  float trueState=0.0f;
+  const float noises[5] = {0.05f, -0.02f, 0.03f, -0.04f, 0.01f};
+  for (int i=0;i<5;i++){
+    trueState += 1.0f;
+    Matrix y(1,1); y(0,0)=trueState + noises[i];
+    kf.predict(u);
+    kf.correct(y);
+  }
+  float estimate = kf.state()(0,0);
+  assert(std::fabs(estimate - trueState) < 0.2f);
+}
+
+static void testLQR(){
+  const float dt = 0.1f;
+  Matrix A(2,2);
+  A(0,0)=1.0f; A(0,1)=dt;
+  A(1,0)=0.0f; A(1,1)=1.0f;
+  Matrix B(2,1);
+  B(0,0)=0.5f*dt*dt;
+  B(1,0)=dt;
+  Matrix Q = identity(2);
+  Matrix R(1,1); R(0,0)=1.0f;
+  Matrix K = computeLQR(A,B,Q,R,200,1e-5f);
+  assert(K.rows==1 && K.cols==2);
+  float k0 = K(0,0);
+  float k1 = K(0,1);
+  assert(k0 > 0.0f && k1 > 0.0f);
+  assert(k1 > k0); // velocity gain typically larger for integrator
+}
+
+static void testPoseEstimator(){
+  PoseEstimator estimator(0.3f);
+  estimator.reset(Pose2d(), 0.0f);
+  for (int i=1;i<=10;i++){
+    estimator.predict(i*0.1f, ChassisSpeeds(1.0f, 0.0f, 0.0f));
+  }
+  assert(std::fabs(estimator.pose().x - 1.0f) < 0.05f);
+  estimator.addVisionMeasurement(Pose2d(2.0f, 0.0f, 0.0f), 1.2f, 1.0f);
+  estimator.predict(1.2f, ChassisSpeeds(0.0f,0.0f,0.0f));
+  assert(estimator.pose().x > 1.0f);
+}
+
 int main(){
   testSimpleMotorFF();
   testArmFF();
@@ -177,6 +262,10 @@ int main(){
   testBangBangController();
   testRamseteController();
   testHolonomicDriveController();
+  testLuenbergerObserver();
+  testKalmanFilter();
+  testLQR();
+  testPoseEstimator();
   std::cout << "All control tests passed\n";
   return 0;
 }
