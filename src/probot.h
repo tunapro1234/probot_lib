@@ -31,6 +31,7 @@
 #include <probot/control/feedforward/simple_motor_ff.hpp>
 #include <probot/control/feedforward/arm_ff.hpp>
 #include <probot/control/feedforward/elevator_ff.hpp>
+#include <probot/control/bang_bang_controller.hpp>
 #include <probot/control/limiters/slew_rate_limiter.hpp>
 #include <probot/control/motion_profile/trapezoid_profile.hpp>
 #include <probot/control/motion_profile/s_curve_profile.hpp>
