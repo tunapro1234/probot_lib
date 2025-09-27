@@ -4,7 +4,7 @@
 #include <probot/core/scheduler.hpp>
 #include <probot/devices/leds/builtin.hpp>
 
-namespace probot::controllers {
+namespace probot::control {
   class BlinkPid : public ::control::IUpdatable {
   public:
     BlinkPid()
@@ -33,4 +33,4 @@ namespace probot::controllers {
     bool     has_pending_reference_;
     bool     led_is_on_;
   };
-} // namespace probot::controllers 
+} // namespace probot::control 

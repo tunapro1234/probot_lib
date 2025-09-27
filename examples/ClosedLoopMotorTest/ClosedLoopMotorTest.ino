@@ -15,7 +15,7 @@ static probot::sensors::NullEncoder encoderHW;   // yer tutucu
 static probot::motor::NullMotor     motorHW;     // yer tutucu
 static const probot::control::PidConfig kPidCfg{ .kp=0.2f, .ki=0.0f, .kd=0.0f, .out_min=-1.0f, .out_max=1.0f };
 static probot::control::PID         pid(kPidCfg);
-static probot::controllers::ClosedLoopMotor clm(&encoderHW, &pid, &motorHW, 1.0f, 1.0f);
+static probot::control::ClosedLoopMotor clm(&encoderHW, &pid, &motorHW, 1.0f, 1.0f);
 
 void robotInit() {
   Serial.println("[CLMTest] robotInit: ClosedLoopMotor testi");
@@ -37,7 +37,7 @@ void teleopLoop() {
   auto js = probot::io::joystick_api::makeDefault();
   float axis = js.getLeftY(); // sol çubuk Y
   float vel_ref = axis * 100.0f; // örnek: 100 birim/s maksimum hız
-  clm.setSetpoint(vel_ref, probot::controllers::ControlType::kVelocity);
+  clm.setSetpoint(vel_ref, probot::control::ControlType::kVelocity);
   clm.update(millis(), 20);
   Serial.printf("[CLMTest] vel_ref=%.2f\n", vel_ref);
   delay(20);

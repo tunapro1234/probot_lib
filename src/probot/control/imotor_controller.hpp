@@ -1,10 +1,10 @@
 #pragma once
 #include <stdint.h>
-#include <probot/controllers/pid.hpp>
+#include <probot/control/pid.hpp>
 #include <probot/devices/motors/imotor_driver.hpp>
 #include <probot/core/scheduler.hpp>
 
-namespace probot::controllers {
+namespace probot::control {
   enum class ControlType : uint8_t {
     kVelocity = 0,
     kPosition = 1,

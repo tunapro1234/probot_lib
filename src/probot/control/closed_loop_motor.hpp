@@ -3,15 +3,15 @@
 #include <Arduino.h>
 #include <math.h>
 #include <probot/core/scheduler.hpp>
-#include <probot/controllers/pid.hpp>
-#include <probot/controllers/imotor_controller.hpp>
+#include <probot/control/pid.hpp>
+#include <probot/control/imotor_controller.hpp>
 #include <probot/sensors/encoder.hpp>
 
-namespace probot::controllers {
+namespace probot::control {
   class ClosedLoopMotor : public IMotorController {
   public:
     ClosedLoopMotor(sensors::IEncoder* encoder,
-                    control::PID* pid,
+                    probot::control::PID* pid,
                     motor::IMotorDriver* driver,
                     float vel_ticks_per_s_to_units = 1.0f,
                     float pos_ticks_to_units = 1.0f)
@@ -51,7 +51,7 @@ namespace probot::controllers {
       if (slot >= 0) selected_slot_override_ = clampSlot(slot); else selected_slot_override_ = -1;
     }
 
-    void setPidSlotConfig(int slot, const control::PidConfig& cfg) override {
+    void setPidSlotConfig(int slot, const probot::control::PidConfig& cfg) override {
       slot = clampSlot(slot);
       slot_cfg_[slot] = cfg;
       pid_->reset();
@@ -160,7 +160,7 @@ namespace probot::controllers {
     static int clampSlot(int s){ return s < 0 ? 0 : (s > 3 ? 3 : s); }
 
     sensors::IEncoder* encoder_;
-    control::PID*     pid_;
+    probot::control::PID*     pid_;
     motor::IMotorDriver* driver_;
 
     float    vel_ticks_to_units_;
@@ -173,7 +173,7 @@ namespace probot::controllers {
     int         default_slot_velocity_;
     int         default_slot_position_;
     int         selected_slot_override_ = -1;
-    control::PidConfig slot_cfg_[4];
+    probot::control::PidConfig slot_cfg_[4];
 
     void* owner_token_;
     void* external_owner_;
@@ -181,4 +181,4 @@ namespace probot::controllers {
     float last_measurement_ = 0.0f;
     float last_output_      = 0.0f;
   };
-} // namespace probot::controllers 
+} // namespace probot::control 

@@ -13,9 +13,9 @@ static const probot::control::PidConfig kPidCfg{ .kp=0.2f, .ki=0.0f, .kd=0.0f, .
 static probot::control::PID pidL(kPidCfg), pidR(kPidCfg);
 static probot::sensors::NullEncoder leftEnc, rightEnc;
 static probot::motor::NullMotor     leftHW, rightHW;
-static probot::controllers::ClosedLoopMotor left(&leftEnc, &pidL, &leftHW, 1.0f, 1.0f);
-static probot::controllers::ClosedLoopMotor right(&rightEnc, &pidR, &rightHW, 1.0f, 1.0f);
-static probot::controllers::BasicTankDrive  chassis(&left, &right);
+static probot::control::ClosedLoopMotor left(&leftEnc, &pidL, &leftHW, 1.0f, 1.0f);
+static probot::control::ClosedLoopMotor right(&rightEnc, &pidR, &rightHW, 1.0f, 1.0f);
+static probot::drive::BasicTankDrive  chassis(&left, &right);
 
 static uint32_t g_step = 0;
 static uint32_t g_last_ms = 0;

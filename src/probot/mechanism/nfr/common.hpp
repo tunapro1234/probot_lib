@@ -1,7 +1,7 @@
 #pragma once
-#include <probot/controllers/pid.hpp>
+#include <probot/control/pid.hpp>
 
-namespace probot::nfr::detail {
+namespace probot::mechanism::nfr::detail {
   constexpr int kVelocitySlot = 0;
   constexpr int kPositionSlot = 1;
 

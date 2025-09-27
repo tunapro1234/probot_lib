@@ -1,10 +1,10 @@
 #pragma once
 #include <Arduino.h>
-#include <probot/controllers/imotor_controller.hpp>
-#include <probot/controllers/pid.hpp>
+#include <probot/control/imotor_controller.hpp>
+#include <probot/control/pid.hpp>
 #include <math.h>
 
-namespace probot::controllers {
+namespace probot::drive {
   struct IChassis {
     virtual void setVelocity(float left_units_per_s, float right_units_per_s) = 0;
     virtual void driveDistance(float distance_units) = 0;   // forward (+) or backward (-)
@@ -17,17 +17,18 @@ namespace probot::controllers {
 
   class BasicTankDrive : public IChassis, public ::control::IUpdatable {
   public:
-    BasicTankDrive(IMotorController* left, IMotorController* right)
+    BasicTankDrive(probot::control::IMotorController* left,
+                   probot::control::IMotorController* right)
     : left_(left), right_(right), wheel_circumference_(1.0f), track_width_(1.0f),
       vel_mode_(true), target_left_pos_(0.0f), target_right_pos_(0.0f),
       velocity_slot_(0), position_slot_(1) {
       if (left_) {
-        left_->selectDefaultSlot(ControlType::kVelocity, velocity_slot_);
-        left_->selectDefaultSlot(ControlType::kPosition, position_slot_);
+        left_->selectDefaultSlot(probot::control::ControlType::kVelocity, velocity_slot_);
+        left_->selectDefaultSlot(probot::control::ControlType::kPosition, position_slot_);
       }
       if (right_) {
-        right_->selectDefaultSlot(ControlType::kVelocity, velocity_slot_);
-        right_->selectDefaultSlot(ControlType::kPosition, position_slot_);
+        right_->selectDefaultSlot(probot::control::ControlType::kVelocity, velocity_slot_);
+        right_->selectDefaultSlot(probot::control::ControlType::kPosition, position_slot_);
       }
     }
 
@@ -44,15 +45,15 @@ namespace probot::controllers {
     void setVelocitySlot(int slot){
       slot = clampSlot(slot);
       velocity_slot_ = slot;
-      if (left_) left_->selectDefaultSlot(ControlType::kVelocity, slot);
-      if (right_) right_->selectDefaultSlot(ControlType::kVelocity, slot);
+      if (left_) left_->selectDefaultSlot(probot::control::ControlType::kVelocity, slot);
+      if (right_) right_->selectDefaultSlot(probot::control::ControlType::kVelocity, slot);
     }
 
     void setPositionSlot(int slot){
       slot = clampSlot(slot);
       position_slot_ = slot;
-      if (left_) left_->selectDefaultSlot(ControlType::kPosition, slot);
-      if (right_) right_->selectDefaultSlot(ControlType::kPosition, slot);
+      if (left_) left_->selectDefaultSlot(probot::control::ControlType::kPosition, slot);
+      if (right_) right_->selectDefaultSlot(probot::control::ControlType::kPosition, slot);
     }
 
     void setWheelCircumference(float units) override { wheel_circumference_ = units; }
@@ -60,16 +61,16 @@ namespace probot::controllers {
 
     void setVelocity(float left_units_per_s, float right_units_per_s) override {
       vel_mode_ = true;
-      if (left_)  left_->setSetpoint(left_units_per_s, ControlType::kVelocity, velocity_slot_);
-      if (right_) right_->setSetpoint(right_units_per_s, ControlType::kVelocity, velocity_slot_);
+      if (left_)  left_->setSetpoint(left_units_per_s, probot::control::ControlType::kVelocity, velocity_slot_);
+      if (right_) right_->setSetpoint(right_units_per_s, probot::control::ControlType::kVelocity, velocity_slot_);
     }
 
     void setPositionTargets(float left_units, float right_units){
       vel_mode_ = false;
       target_left_pos_  = left_units;
       target_right_pos_ = right_units;
-      if (left_)  left_->setSetpoint(target_left_pos_, ControlType::kPosition, position_slot_);
-      if (right_) right_->setSetpoint(target_right_pos_, ControlType::kPosition, position_slot_);
+      if (left_)  left_->setSetpoint(target_left_pos_, probot::control::ControlType::kPosition, position_slot_);
+      if (right_) right_->setSetpoint(target_right_pos_, probot::control::ControlType::kPosition, position_slot_);
     }
 
     void setPositionTargetsRelative(float left_delta_units, float right_delta_units){
@@ -97,7 +98,7 @@ namespace probot::controllers {
 
     bool positionGoalReached(float tolerance_units) const {
       if (!left_ && !right_) return true;
-      auto checkWheel = [&](IMotorController* ctrl, float target_pos) {
+      auto checkWheel = [&](probot::control::IMotorController* ctrl, float target_pos) {
         if (!ctrl) return true;
         float err_rot = target_pos - ctrl->lastMeasurement();
         float err_dist = fabsf(err_rot * wheel_circumference_);
@@ -122,8 +123,8 @@ namespace probot::controllers {
   private:
     static int clampSlot(int slot){ return slot < 0 ? 0 : (slot > 3 ? 3 : slot); }
 
-    IMotorController* left_;
-    IMotorController* right_;
+    probot::control::IMotorController* left_;
+    probot::control::IMotorController* right_;
     float wheel_circumference_;
     float track_width_;
     bool  vel_mode_;
@@ -132,4 +133,4 @@ namespace probot::controllers {
     int   velocity_slot_;
     int   position_slot_;
   };
-} // namespace probot::controllers 
+} // namespace probot::drive 

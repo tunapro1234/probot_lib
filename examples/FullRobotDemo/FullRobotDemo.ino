@@ -19,13 +19,13 @@ static const probot::control::PidConfig kPidCfg{ .kp=0.2f, .ki=0.0f, .kd=0.0f, .
 static probot::control::PID pidL(kPidCfg), pidR(kPidCfg);
 static probot::sensors::NullEncoder leftEnc, rightEnc;   // yer tutucu
 static probot::motor::NullMotor   leftHW, rightHW;       // yer tutucu
-static probot::controllers::ClosedLoopMotor left(&leftEnc, &pidL, &leftHW, 1.0f, 1.0f);
-static probot::controllers::ClosedLoopMotor right(&rightEnc, &pidR, &rightHW, 1.0f, 1.0f);
-static probot::controllers::BasicTankDrive chassis(&left, &right);
+static probot::control::ClosedLoopMotor left(&leftEnc, &pidL, &leftHW, 1.0f, 1.0f);
+static probot::control::ClosedLoopMotor right(&rightEnc, &pidR, &rightHW, 1.0f, 1.0f);
+static probot::drive::BasicTankDrive chassis(&left, &right);
 
 // Tırmanma sliderları (örnek amaçlı aynı motor/encoder ile)
-static probot::controllers::Slider sliderL(&left);
-static probot::controllers::Slider sliderR(&right);
+static probot::mechanism::Slider sliderL(&left);
+static probot::mechanism::Slider sliderR(&right);
 
 // Intake/Shooter (no-op); gerçek projede gerçek motorla değiştirin
 static probot::motor::NullMotor intakeHW;

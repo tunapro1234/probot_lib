@@ -1,12 +1,12 @@
 #pragma once
-#include <probot/controllers/turret.hpp>
-#include <probot/nfr/common.hpp>
+#include <probot/mechanism/turret.hpp>
+#include <probot/mechanism/nfr/common.hpp>
 
-namespace probot::nfr {
-  class NfrTurret : public probot::controllers::Turret {
+namespace probot::mechanism::nfr {
+  class NfrTurret : public probot::mechanism::Turret {
   public:
-    explicit NfrTurret(probot::controllers::IMotorController* controller)
-    : probot::controllers::Turret(controller) {
+    explicit NfrTurret(probot::control::IMotorController* controller)
+    : probot::mechanism::Turret(controller) {
       if (!controller) return;
       controller->configurePidSlots(detail::kVelocitySlot, detail::kDefaultVelocityPid,
                                     detail::kPositionSlot, detail::kDefaultPositionPid);

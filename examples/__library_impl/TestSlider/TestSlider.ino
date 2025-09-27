@@ -7,20 +7,20 @@ static probot::sim::SimMotor   mot;
 static probot::sim::SimEncoder enc;
 static probot::control::PidConfig cfgP{ 0.0012f, 0.0f, 0.00002f, -1.0f, 1.0f };
 static probot::control::PID pid(cfgP);
-static probot::controllers::ClosedLoopMotor* axis=nullptr;
-static probot::controllers::Slider* slider=nullptr;
+static probot::control::ClosedLoopMotor* axis=nullptr;
+static probot::mechanism::Slider* slider=nullptr;
 
 void robotInit(){
   control::setGlobalPeriodMs(20);
-  static probot::controllers::ClosedLoopMotor x(&enc, &pid, &mot, 1.0f, 1.0f);
+  static probot::control::ClosedLoopMotor x(&enc, &pid, &mot, 1.0f, 1.0f);
   axis = &x;
   axis->setPidSlotConfig(1, cfgP);
-  axis->selectDefaultSlot(probot::controllers::ControlType::kPosition, 1);
+  axis->selectDefaultSlot(probot::control::ControlType::kPosition, 1);
   static probot::sim::SimPlant plant(&mot, &enc);
   control::attach(axis);
   control::attach(&plant);
 
-  static probot::controllers::Slider s(axis);
+  static probot::mechanism::Slider s(axis);
   slider = &s;
   slider->setLengthToTicks(100.0f); // 1 unit -> 100 ticks
   control::attach(slider);

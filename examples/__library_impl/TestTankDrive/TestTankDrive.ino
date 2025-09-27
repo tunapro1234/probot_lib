@@ -8,18 +8,18 @@ static probot::sim::SimEncoder encL, encR;
 static probot::control::PidConfig cfgV{ 0.0009f, 0.0003f, 0.00002f, -1.0f, 1.0f };
 static probot::control::PidConfig cfgP{ 0.0008f, 0.0f, 0.00001f, -1.0f, 1.0f };
 static probot::control::PID pidL(cfgV), pidR(cfgV);
-static probot::controllers::ClosedLoopMotor *axisL=nullptr, *axisR=nullptr;
-static probot::controllers::BasicTankDrive* chassis=nullptr;
+static probot::control::ClosedLoopMotor *axisL=nullptr, *axisR=nullptr;
+static probot::drive::BasicTankDrive* chassis=nullptr;
 
 void robotInit() {
   control::setGlobalPeriodMs(20);
-  static probot::controllers::ClosedLoopMotor xL(&encL, &pidL, &motL, 1.0f, 1.0f);
-  static probot::controllers::ClosedLoopMotor xR(&encR, &pidR, &motR, 1.0f, 1.0f);
+  static probot::control::ClosedLoopMotor xL(&encL, &pidL, &motL, 1.0f, 1.0f);
+  static probot::control::ClosedLoopMotor xR(&encR, &pidR, &motR, 1.0f, 1.0f);
   axisL = &xL; axisR = &xR;
   axisL->setPidSlotConfig(0, cfgV); axisL->setPidSlotConfig(1, cfgP);
   axisR->setPidSlotConfig(0, cfgV); axisR->setPidSlotConfig(1, cfgP);
-  axisL->selectDefaultSlot(probot::controllers::ControlType::kVelocity, 0);
-  axisR->selectDefaultSlot(probot::controllers::ControlType::kVelocity, 0);
+  axisL->selectDefaultSlot(probot::control::ControlType::kVelocity, 0);
+  axisR->selectDefaultSlot(probot::control::ControlType::kVelocity, 0);
 
   static probot::sim::SimPlant pL(&motL, &encL);
   static probot::sim::SimPlant pR(&motR, &encR);
@@ -29,7 +29,7 @@ void robotInit() {
   control::attach(&pL);
   control::attach(&pR);
 
-  static probot::controllers::BasicTankDrive ch(axisL, axisR);
+  static probot::drive::BasicTankDrive ch(axisL, axisR);
   chassis = &ch;
   chassis->setWheelCircumference(20.0f); // arbitrary units
   chassis->setTrackWidth(30.0f);

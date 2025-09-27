@@ -1,8 +1,8 @@
 #pragma once
 #include <math.h>
-#include <probot/controllers/imotor_controller.hpp>
+#include <probot/control/imotor_controller.hpp>
 
-namespace probot::controllers {
+namespace probot::mechanism {
   struct ISlider {
     virtual void setTargetLength(float length_units) = 0; // user units (e.g., cm)
     virtual float getTargetLength() const = 0;
@@ -16,7 +16,7 @@ namespace probot::controllers {
 
   class Slider : public ISlider, public ::control::IUpdatable {
   public:
-    explicit Slider(IMotorController* controller)
+    explicit Slider(probot::control::IMotorController* controller)
     : controller_(controller), ticks_per_unit_(1.0f), target_len_(0.0f),
       min_len_(0.0f), max_len_(0.0f), has_limits_(false) {}
 
@@ -58,15 +58,15 @@ namespace probot::controllers {
     void update(uint32_t now_ms, uint32_t dt_ms) override {
       (void)now_ms; (void)dt_ms;
       float ticks_setpoint = target_len_ * ticks_per_unit_;
-      if (controller_) controller_->setSetpoint(ticks_setpoint, ControlType::kPosition, -1);
+      if (controller_) controller_->setSetpoint(ticks_setpoint, probot::control::ControlType::kPosition, -1);
     }
 
   private:
-    IMotorController*     controller_;
+    probot::control::IMotorController* controller_;
     float                 ticks_per_unit_;
     float                 target_len_;
     float                 min_len_;
     float                 max_len_;
     bool                  has_limits_;
   };
-} // namespace probot::controllers 
+} // namespace probot::mechanism 

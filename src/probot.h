@@ -17,30 +17,34 @@
 #include <probot/devices/leds/builtin.hpp>
 #include <probot/devices/motors/imotor_driver.hpp>
 #include <probot/devices/motors/boardoza_ba6208_driver.hpp>
-#include <probot/controllers/imotor_controller.hpp>
+#include <probot/control/imotor_controller.hpp>
 #include <probot/devices/motors/motor_group.hpp>
 
 // Sensors
 #include <probot/sensors/encoder.hpp>
 
 // Controllers
-#include <probot/controllers/blink_pid.hpp>
-#include <probot/controllers/pid.hpp>
-#include <probot/controllers/closed_loop_motor.hpp>
-#include <probot/controllers/closed_loop_motor_group.hpp>
-#include <probot/controllers/slider.hpp>
-#include <probot/controllers/basic_tank_drive.hpp>
-#include <probot/controllers/elevator.hpp>
-#include <probot/controllers/turret.hpp>
-#include <probot/controllers/arm.hpp>
-#include <probot/controllers/telescopic_tube.hpp>
+#include <probot/control/blink_pid.hpp>
+#include <probot/control/pid.hpp>
+#include <probot/control/closed_loop_motor.hpp>
+#include <probot/control/closed_loop_motor_group.hpp>
+
+// Mechanisms
+#include <probot/mechanism/slider.hpp>
+#include <probot/mechanism/elevator.hpp>
+#include <probot/mechanism/turret.hpp>
+#include <probot/mechanism/arm.hpp>
+#include <probot/mechanism/telescopic_tube.hpp>
+
+// Drive
+#include <probot/drive/basic_tank_drive.hpp>
 
 // NFR presets
-#include <probot/nfr/slider.hpp>
-#include <probot/nfr/elevator.hpp>
-#include <probot/nfr/turret.hpp>
-#include <probot/nfr/arm.hpp>
-#include <probot/nfr/telescopic_tube.hpp>
+#include <probot/mechanism/nfr/slider.hpp>
+#include <probot/mechanism/nfr/elevator.hpp>
+#include <probot/mechanism/nfr/turret.hpp>
+#include <probot/mechanism/nfr/arm.hpp>
+#include <probot/mechanism/nfr/telescopic_tube.hpp>
 
 // Simulation
 #include <probot/sim/sim_motor.hpp>
@@ -50,3 +54,7 @@
 // Robot
 #include <probot/robot/state.hpp>
 #include <probot/robot/system.hpp> 
+
+namespace probot {
+  namespace nfr = probot::mechanism::nfr;
+}

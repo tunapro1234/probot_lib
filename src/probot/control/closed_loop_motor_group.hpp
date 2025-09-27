@@ -1,8 +1,8 @@
 #pragma once
-#include <probot/controllers/imotor_controller.hpp>
+#include <probot/control/imotor_controller.hpp>
 #include <math.h>
 
-namespace probot::controllers {
+namespace probot::control {
   class ClosedLoopMotorGroup : public IMotorController {
   public:
     ClosedLoopMotorGroup(IMotorController* a, IMotorController* b)
@@ -84,4 +84,4 @@ namespace probot::controllers {
     void* owner_;
     bool  inverted_;
   };
-} // namespace probot::controllers 
+} // namespace probot::control 

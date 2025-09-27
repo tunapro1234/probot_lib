@@ -1,12 +1,12 @@
 #pragma once
-#include <probot/controllers/telescopic_tube.hpp>
-#include <probot/nfr/common.hpp>
+#include <probot/mechanism/telescopic_tube.hpp>
+#include <probot/mechanism/nfr/common.hpp>
 
-namespace probot::nfr {
-  class NfrTelescopicTube : public probot::controllers::TelescopicTube {
+namespace probot::mechanism::nfr {
+  class NfrTelescopicTube : public probot::mechanism::TelescopicTube {
   public:
-    explicit NfrTelescopicTube(probot::controllers::IMotorController* controller)
-    : probot::controllers::TelescopicTube(controller) {
+    explicit NfrTelescopicTube(probot::control::IMotorController* controller)
+    : probot::mechanism::TelescopicTube(controller) {
       if (!controller) return;
       controller->configurePidSlots(detail::kVelocitySlot, detail::kDefaultVelocityPid,
                                     detail::kPositionSlot, detail::kDefaultPositionPid);

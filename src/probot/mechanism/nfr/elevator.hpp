@@ -1,12 +1,12 @@
 #pragma once
-#include <probot/controllers/elevator.hpp>
-#include <probot/nfr/common.hpp>
+#include <probot/mechanism/elevator.hpp>
+#include <probot/mechanism/nfr/common.hpp>
 
-namespace probot::nfr {
-  class NfrElevator : public probot::controllers::Elevator {
+namespace probot::mechanism::nfr {
+  class NfrElevator : public probot::mechanism::Elevator {
   public:
-    explicit NfrElevator(probot::controllers::IMotorController* controller)
-    : probot::controllers::Elevator(controller) {
+    explicit NfrElevator(probot::control::IMotorController* controller)
+    : probot::mechanism::Elevator(controller) {
       if (!controller) return;
       controller->configurePidSlots(detail::kVelocitySlot, detail::kDefaultVelocityPid,
                                     detail::kPositionSlot, detail::kDefaultPositionPid);

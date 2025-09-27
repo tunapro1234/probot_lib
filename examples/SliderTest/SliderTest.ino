@@ -15,8 +15,8 @@ static const probot::control::PidConfig kPidCfg{ .kp=0.2f, .ki=0.0f, .kd=0.0f, .
 static probot::control::PID pid(kPidCfg);
 static probot::sensors::NullEncoder encHW;  // yer tutucu
 static probot::motor::NullMotor     motHW;  // yer tutucu
-static probot::controllers::ClosedLoopMotor clm(&encHW, &pid, &motHW, 1.0f, 1.0f);
-static probot::controllers::Slider  slider(&clm);
+static probot::control::ClosedLoopMotor clm(&encHW, &pid, &motHW, 1.0f, 1.0f);
+static probot::mechanism::Slider  slider(&clm);
 
 void robotInit() {
   Serial.println("[SliderTest] robotInit: Slider testi");

@@ -1,12 +1,12 @@
 #pragma once
-#include <probot/controllers/slider.hpp>
-#include <probot/nfr/common.hpp>
+#include <probot/mechanism/slider.hpp>
+#include <probot/mechanism/nfr/common.hpp>
 
-namespace probot::nfr {
-  class NfrSlider : public probot::controllers::Slider {
+namespace probot::mechanism::nfr {
+  class NfrSlider : public probot::mechanism::Slider {
   public:
-    explicit NfrSlider(probot::controllers::IMotorController* controller)
-    : probot::controllers::Slider(controller) {
+    explicit NfrSlider(probot::control::IMotorController* controller)
+    : probot::mechanism::Slider(controller) {
       if (!controller) return;
       controller->configurePidSlots(detail::kVelocitySlot, detail::kDefaultVelocityPid,
                                     detail::kPositionSlot, detail::kDefaultPositionPid);

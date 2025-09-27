@@ -1,12 +1,12 @@
 #pragma once
-#include <probot/controllers/arm.hpp>
-#include <probot/nfr/common.hpp>
+#include <probot/mechanism/arm.hpp>
+#include <probot/mechanism/nfr/common.hpp>
 
-namespace probot::nfr {
-  class NfrArm : public probot::controllers::Arm {
+namespace probot::mechanism::nfr {
+  class NfrArm : public probot::mechanism::Arm {
   public:
-    explicit NfrArm(probot::controllers::IMotorController* controller)
-    : probot::controllers::Arm(controller) {
+    explicit NfrArm(probot::control::IMotorController* controller)
+    : probot::mechanism::Arm(controller) {
       if (!controller) return;
       controller->configurePidSlots(detail::kVelocitySlot, detail::kDefaultVelocityPid,
                                     detail::kPositionSlot, detail::kDefaultPositionPid);

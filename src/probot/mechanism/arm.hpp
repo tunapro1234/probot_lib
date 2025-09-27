@@ -1,8 +1,8 @@
 #pragma once
 #include <math.h>
-#include <probot/controllers/imotor_controller.hpp>
+#include <probot/control/imotor_controller.hpp>
 
-namespace probot::controllers {
+namespace probot::mechanism {
 
   struct IArm : public ::control::IUpdatable {
     virtual void setTargetAngleDeg(float degrees) = 0;
@@ -16,7 +16,7 @@ namespace probot::controllers {
 
   class Arm : public IArm {
   public:
-    explicit Arm(IMotorController* controller)
+    explicit Arm(probot::control::IMotorController* controller)
     : controller_(controller), ticks_per_degree_(1.0f), target_angle_(0.0f),
       min_angle_(-90.0f), max_angle_(90.0f), has_limits_(false) {}
 
@@ -55,11 +55,11 @@ namespace probot::controllers {
       (void)now_ms; (void)dt_ms;
       if (!controller_) return;
       float target_ticks = target_angle_ * ticks_per_degree_;
-      controller_->setSetpoint(target_ticks, ControlType::kPosition, -1);
+      controller_->setSetpoint(target_ticks, probot::control::ControlType::kPosition, -1);
     }
 
   private:
-    IMotorController* controller_;
+    probot::control::IMotorController* controller_;
     float             ticks_per_degree_;
     float             target_angle_;
     float             min_angle_;
@@ -67,5 +67,4 @@ namespace probot::controllers {
     bool              has_limits_;
   };
 
-} // namespace probot::controllers
-
+} // namespace probot::mechanism

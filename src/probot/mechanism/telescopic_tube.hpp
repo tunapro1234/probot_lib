@@ -1,8 +1,8 @@
 #pragma once
 #include <math.h>
-#include <probot/controllers/imotor_controller.hpp>
+#include <probot/control/imotor_controller.hpp>
 
-namespace probot::controllers {
+namespace probot::mechanism {
 
   struct ITelescopicTube : public ::control::IUpdatable {
     virtual void setTargetExtension(float units) = 0;
@@ -16,7 +16,7 @@ namespace probot::controllers {
 
   class TelescopicTube : public ITelescopicTube {
   public:
-    explicit TelescopicTube(IMotorController* controller)
+    explicit TelescopicTube(probot::control::IMotorController* controller)
     : controller_(controller), ticks_per_unit_(1.0f), target_extension_(0.0f),
       stage_length_(0.0f), stage_count_(0), has_stage_limits_(false) {}
 
@@ -56,11 +56,11 @@ namespace probot::controllers {
       (void)now_ms; (void)dt_ms;
       if (!controller_) return;
       float target_ticks = target_extension_ * ticks_per_unit_;
-      controller_->setSetpoint(target_ticks, ControlType::kPosition, -1);
+      controller_->setSetpoint(target_ticks, probot::control::ControlType::kPosition, -1);
     }
 
   private:
-    IMotorController* controller_;
+    probot::control::IMotorController* controller_;
     float             ticks_per_unit_;
     float             target_extension_;
     float             stage_length_;
@@ -68,5 +68,4 @@ namespace probot::controllers {
     bool              has_stage_limits_;
   };
 
-} // namespace probot::controllers
-
+} // namespace probot::mechanism

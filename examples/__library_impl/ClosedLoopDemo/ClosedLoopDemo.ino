@@ -7,7 +7,7 @@ static probot::sim::SimMotor   g_motor;
 static probot::sim::SimEncoder g_encoder;
 static probot::control::PidConfig g_cfg_vel{ 0.0008f, 0.0004f, 0.0f, -1.0f, 1.0f };
 static probot::control::PID        g_pid(g_cfg_vel);
-static probot::controllers::ClosedLoopMotor* g_axis = nullptr;
+static probot::control::ClosedLoopMotor* g_axis = nullptr;
 static probot::sim::SimPlant* g_plant = nullptr;
 
 class LedVisualizer : public control::IUpdatable {
@@ -35,11 +35,11 @@ void robotInit() {}
 void robotEnd() {}
 
 void teleopInit() {
-  static probot::controllers::ClosedLoopMotor axis(&g_encoder, &g_pid, &g_motor, 1.0f, 1.0f);
+  static probot::control::ClosedLoopMotor axis(&g_encoder, &g_pid, &g_motor, 1.0f, 1.0f);
   g_axis = &axis;
 
   g_axis->setPidSlotConfig(0, g_cfg_vel);
-  g_axis->selectDefaultSlot(probot::controllers::ControlType::kVelocity, 0);
+  g_axis->selectDefaultSlot(probot::control::ControlType::kVelocity, 0);
 
   g_motor.setInverted(false);
 
