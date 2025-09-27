@@ -30,6 +30,11 @@
 #include <probot/controllers/closed_loop_motor_group.hpp>
 #include <probot/controllers/slider.hpp>
 #include <probot/controllers/basic_tank_drive.hpp>
+#include <probot/controllers/elevator.hpp>
+#include <probot/controllers/turret.hpp>
+#include <probot/controllers/arm.hpp>
+#include <probot/controllers/telescopic_tube.hpp>
+#include <probot/controllers/nfr_systems.hpp>
 
 // Simulation
 #include <probot/sim/sim_motor.hpp>
