@@ -34,7 +34,13 @@
 #include <probot/controllers/turret.hpp>
 #include <probot/controllers/arm.hpp>
 #include <probot/controllers/telescopic_tube.hpp>
-#include <probot/controllers/nfr_systems.hpp>
+
+// NFR presets
+#include <probot/nfr/slider.hpp>
+#include <probot/nfr/elevator.hpp>
+#include <probot/nfr/turret.hpp>
+#include <probot/nfr/arm.hpp>
+#include <probot/nfr/telescopic_tube.hpp>
 
 // Simulation
 #include <probot/sim/sim_motor.hpp>
