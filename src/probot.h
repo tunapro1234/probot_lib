@@ -28,6 +28,11 @@
 #include <probot/control/pid.hpp>
 #include <probot/control/closed_loop_motor.hpp>
 #include <probot/control/closed_loop_motor_group.hpp>
+#include <probot/control/feedforward/simple_motor_ff.hpp>
+#include <probot/control/feedforward/arm_ff.hpp>
+#include <probot/control/feedforward/elevator_ff.hpp>
+#include <probot/control/motion_profile/trapezoid_profile.hpp>
+#include <probot/control/motion_profile/s_curve_profile.hpp>
 
 // Mechanisms
 #include <probot/mechanism/slider.hpp>
@@ -57,4 +62,9 @@
 
 namespace probot {
   namespace nfr = probot::mechanism::nfr;
+}
+
+namespace probot::control {
+  namespace ff = probot::control::feedforward;
+  namespace profile = probot::control::motion_profile;
 }
