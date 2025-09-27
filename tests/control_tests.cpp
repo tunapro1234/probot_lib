@@ -5,12 +5,14 @@
 #include <probot/control/feedforward/simple_motor_ff.hpp>
 #include <probot/control/feedforward/arm_ff.hpp>
 #include <probot/control/feedforward/elevator_ff.hpp>
+#include <probot/control/limiters/slew_rate_limiter.hpp>
 #include <probot/control/motion_profile/trapezoid_profile.hpp>
 #include <probot/control/motion_profile/s_curve_profile.hpp>
 
 using probot::control::feedforward::SimpleMotorFF;
 using probot::control::feedforward::ArmFF;
 using probot::control::feedforward::ElevatorFF;
+using probot::control::limiters::SlewRateLimiter;
 using probot::control::motion_profile::TrapezoidProfile;
 using probot::control::motion_profile::SCurveProfile;
 
@@ -90,12 +92,24 @@ static void testSCurveProfile(){
   assert(maxAccObserved <= cons.maxAcceleration + 1e-2f);
 }
 
+static void testSlewRateLimiter(){
+  SlewRateLimiter limiter(2.0f, 0.0f); // 2 units/sec
+  float value = limiter.calculate(1.0f, 0.1f); // max delta 0.2
+  assert(std::fabs(value - 0.2f) < 1e-5f);
+  value = limiter.calculate(-1.0f, 0.2f); // max delta -0.4
+  assert(std::fabs(value - (-0.2f)) < 1e-5f);
+  limiter.reset(0.5f);
+  value = limiter.calculate(0.7f, 0.0f); // dt zero => snap to input
+  assert(std::fabs(value - 0.7f) < 1e-5f);
+}
+
 int main(){
   testSimpleMotorFF();
   testArmFF();
   testElevatorFF();
   testTrapezoidProfile();
   testSCurveProfile();
+  testSlewRateLimiter();
   std::cout << "All control tests passed\n";
   return 0;
 }

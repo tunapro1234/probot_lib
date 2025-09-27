@@ -31,6 +31,7 @@
 #include <probot/control/feedforward/simple_motor_ff.hpp>
 #include <probot/control/feedforward/arm_ff.hpp>
 #include <probot/control/feedforward/elevator_ff.hpp>
+#include <probot/control/limiters/slew_rate_limiter.hpp>
 #include <probot/control/motion_profile/trapezoid_profile.hpp>
 #include <probot/control/motion_profile/s_curve_profile.hpp>
 
@@ -67,4 +68,5 @@ namespace probot {
 namespace probot::control {
   namespace ff = probot::control::feedforward;
   namespace profile = probot::control::motion_profile;
+  namespace limiter = probot::control::limiters;
 }
