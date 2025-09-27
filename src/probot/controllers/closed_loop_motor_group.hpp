@@ -1,5 +1,5 @@
 #pragma once
-#include <probot/controllers/motor_controller.hpp>
+#include <probot/controllers/imotor_controller.hpp>
 #include <math.h>
 
 namespace probot::controllers {

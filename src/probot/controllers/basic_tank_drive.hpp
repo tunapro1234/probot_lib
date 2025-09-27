@@ -1,6 +1,6 @@
 #pragma once
 #include <Arduino.h>
-#include <probot/controllers/motor_controller.hpp>
+#include <probot/controllers/imotor_controller.hpp>
 #include <probot/controllers/pid.hpp>
 #include <math.h>
 

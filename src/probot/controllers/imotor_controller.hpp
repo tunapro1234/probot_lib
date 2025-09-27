@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <probot/controllers/pid.hpp>
-#include <probot/devices/motors/motor.hpp>
+#include <probot/devices/motors/imotor_driver.hpp>
 #include <probot/core/scheduler.hpp>
 
 namespace probot::controllers {

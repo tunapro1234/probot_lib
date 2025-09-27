@@ -15,9 +15,9 @@
 
 // Devices
 #include <probot/devices/leds/builtin.hpp>
-#include <probot/devices/motors/motor.hpp>
-#include <probot/devices/motors/boardoza_ba6208.hpp>
-#include <probot/controllers/motor_controller.hpp>
+#include <probot/devices/motors/imotor_driver.hpp>
+#include <probot/devices/motors/boardoza_ba6208_driver.hpp>
+#include <probot/controllers/imotor_controller.hpp>
 #include <probot/devices/motors/motor_group.hpp>
 
 // Sensors
@@ -29,7 +29,7 @@
 #include <probot/controllers/closed_loop_motor.hpp>
 #include <probot/controllers/closed_loop_motor_group.hpp>
 #include <probot/controllers/slider.hpp>
-#include <probot/controllers/chassis.hpp>
+#include <probot/controllers/basic_tank_drive.hpp>
 
 // Simulation
 #include <probot/sim/sim_motor.hpp>

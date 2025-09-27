@@ -1,7 +1,7 @@
 #ifndef PROBOT_DEVICES_MOTORS_MOTOR_HANDLE_HPP
 #define PROBOT_DEVICES_MOTORS_MOTOR_HANDLE_HPP
 #pragma once
-#include <probot/devices/motors/motor.hpp>
+#include <probot/devices/motors/imotor_driver.hpp>
 
 namespace probot::motor {
 

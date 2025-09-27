@@ -1,6 +1,6 @@
 #include <cmath>
 #include <Arduino.h>
-#include <probot/devices/motors/boardoza_ba6208.hpp>
+#include <probot/devices/motors/boardoza_ba6208_driver.hpp>
 #ifdef ARDUINO_ARCH_ESP32
 #include <esp32-hal-ledc.h>
 #endif

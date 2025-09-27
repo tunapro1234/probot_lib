@@ -4,7 +4,7 @@
 #include <math.h>
 #include <probot/core/scheduler.hpp>
 #include <probot/controllers/pid.hpp>
-#include <probot/controllers/motor_controller.hpp>
+#include <probot/controllers/imotor_controller.hpp>
 #include <probot/sensors/encoder.hpp>
 
 namespace probot::controllers {

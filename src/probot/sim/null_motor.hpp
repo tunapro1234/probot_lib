@@ -1,7 +1,7 @@
 #ifndef PROBOT_SIM_NULL_MOTOR_HPP
 #define PROBOT_SIM_NULL_MOTOR_HPP
 #pragma once
-#include <probot/devices/motors/motor.hpp>
+#include <probot/devices/motors/imotor_driver.hpp>
 
 namespace probot::motor {
 

@@ -1,5 +1,5 @@
 #pragma once
-#include <probot/devices/motors/motor.hpp>
+#include <probot/devices/motors/imotor_driver.hpp>
 
 namespace probot::sim {
   class SimMotor : public probot::motor::IMotorDriver {

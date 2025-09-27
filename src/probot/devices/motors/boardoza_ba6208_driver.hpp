@@ -1,6 +1,6 @@
 #pragma once
 #include <Arduino.h>
-#include <probot/devices/motors/motor.hpp>
+#include <probot/devices/motors/imotor_driver.hpp>
 
 namespace probot::motor {
 
@@ -46,4 +46,3 @@ private:
 };
 
 } // namespace probot::motor
-
