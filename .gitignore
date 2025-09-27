@@ -1,2 +1,4 @@
 # Local scripts
 liner.py 
+tests/control_tests
+.build/

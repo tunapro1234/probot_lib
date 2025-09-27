@@ -19,7 +19,7 @@ EXTRA_FLAGS_COMMON := -DESP32S3 -DARDUINO_USB_MODE=1 -DARDUINO_USB_CDC_ON_BOOT=1
 # Example-specific extra flags (function)
 example_flags = $(if $(filter LoopPeriodStress,$(1)),-DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1,)
 
-.PHONY: all build build-all _build_single upload clean boards libs serial list help
+.PHONY: all build build-all _build_single upload clean boards libs serial list help test tests/control_tests
 
 all: help
 
@@ -67,9 +67,16 @@ serial:
 clean:
 	rm -rf $(BUILD_DIR_BASE)
 	-$(ARDUINO_CLI) cache clean >/dev/null 2>&1 || true
+	rm -f tests/control_tests
 
 boards:
 	arduino-cli board list
 
 libs:
 	arduino-cli lib install "Adafruit NeoPixel" 
+
+tests/control_tests: tests/control_tests.cpp
+	g++ -std=c++17 -Wall -Wextra -pedantic -I src -o $@ $<
+
+test: build tests/control_tests
+	./tests/control_tests
