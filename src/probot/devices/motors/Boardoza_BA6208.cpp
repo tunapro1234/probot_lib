@@ -1,5 +1,9 @@
 #include <probot/devices/motors/Boardoza_BA6208.hpp>
 
+#if defined(ARDUINO_ARCH_ESP32)
+#include <esp32-hal-ledc.h>
+#endif
+
 const int pinA = 22;
 const int pinB = 21;
 uint16_t timer = 0;
@@ -24,9 +28,19 @@ Boardoza_BA6208::Boardoza_BA6208(uint8_t pwmPin, uint8_t pwmChannel, uint16_t pw
  * and attaches the PWM pin to the PWM channel.
  */
 void Boardoza_BA6208::begin() {
+#if defined(ARDUINO_ARCH_ESP32)
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 3)
+    ledcAttachChannel(pwmPin, pwmFrequency, pwmResolution, pwmChannel);
+#else
     ledcSetup(pwmChannel, pwmFrequency, pwmResolution);
-  
     ledcAttachPin(pwmPin, pwmChannel);
+#endif
+#else
+    (void)pwmPin;
+    (void)pwmChannel;
+    (void)pwmFrequency;
+    (void)pwmResolution;
+#endif
 }
 
 /**
@@ -109,5 +123,13 @@ void Boardoza_BA6208::setHardwarePWM(uint16_t dutyCycle) {
     dutyCycle = 191 = %75
     dutyCycle = 255 = %100
     */ 
+#if defined(ARDUINO_ARCH_ESP32)
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 3)
+    ledcWriteChannel(pwmChannel, dutyCycle);
+#else
     ledcWrite(pwmChannel, dutyCycle);
+#endif
+#else
+    (void)dutyCycle;
+#endif
 }
