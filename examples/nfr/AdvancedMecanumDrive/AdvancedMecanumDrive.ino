@@ -2,7 +2,7 @@
 #include <probot/chassis/nfr_advanced_mecanum_drive.hpp>
 #include <probot/sensors/imu/mpu6050.hpp>
 #include <probot/devices/motors/motor_handle.hpp>
-#include <probot/sim/sim_motor.hpp>
+#include <probot/test/test_motor.hpp>
 
 static probot::motor::NullMotor flHW, frHW, rlHW, rrHW;
 static probot::motor::MotorHandle flHandle(flHW), frHandle(frHW), rlHandle(rlHW), rrHandle(rrHW);

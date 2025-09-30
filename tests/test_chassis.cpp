@@ -8,8 +8,8 @@
 #include <probot/chassis/nfr_advanced_mecanum_drive.hpp>
 #include <probot/control/closed_loop_motor.hpp>
 #include <probot/control/pid.hpp>
-#include <probot/sim/sim_motor.hpp>
-#include <probot/sim/sim_encoder.hpp>
+#include <probot/test/test_motor.hpp>
+#include <probot/test/test_encoder.hpp>
 
 namespace {
   struct DummyMotor : probot::motor::IMotorDriver {
@@ -141,8 +141,8 @@ static probot::control::PidConfig makeWheelPid(float kp){
 
 TEST_CASE(nfr_tank_drive_closed_loop_should_command_power){
   DummyEncoder encL, encR;
-  probot::sim::SimMotor motorL;
-  probot::sim::SimMotor motorR;
+  probot::test::TestMotor motorL;
+  probot::test::TestMotor motorR;
   auto cfg = makeWheelPid(0.2f);
   probot::control::PID pidL(cfg);
   probot::control::PID pidR(cfg);
@@ -166,7 +166,7 @@ TEST_CASE(nfr_tank_drive_closed_loop_should_command_power){
 
 TEST_CASE(nfr_mecanum_drive_closed_loop_should_command_power){
   DummyEncoder encFL, encFR, encRL, encRR;
-  probot::sim::SimMotor motorFL, motorFR, motorRL, motorRR;
+  probot::test::TestMotor motorFL, motorFR, motorRL, motorRR;
   auto cfgWheel = makeWheelPid(0.4f);
   probot::control::PID pidFL(cfgWheel), pidFR(cfgWheel), pidRL(cfgWheel), pidRR(cfgWheel);
   probot::control::ClosedLoopMotor clFL(&encFL, &pidFL, &motorFL, 1.0f, 1.0f);

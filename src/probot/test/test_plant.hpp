@@ -1,12 +1,12 @@
 #pragma once
 #include <probot/core/scheduler.hpp>
-#include <probot/sim/sim_motor.hpp>
-#include <probot/sim/sim_encoder.hpp>
+#include <probot/test/test_motor.hpp>
+#include <probot/test/test_encoder.hpp>
 
-namespace probot::sim {
-  class SimPlant : public ::control::IUpdatable {
+namespace probot::test {
+  class TestPlant : public ::control::IUpdatable {
   public:
-    SimPlant(SimMotor* m, SimEncoder* e) : motor_(m), enc_(e) {}
+    TestPlant(TestMotor* m, TestEncoder* e) : motor_(m), enc_(e) {}
 
     void update(uint32_t now_ms, uint32_t dt_ms) override {
       (void)now_ms;
@@ -32,10 +32,10 @@ namespace probot::sim {
     }
 
   private:
-    SimMotor*   motor_;
-    SimEncoder* enc_;
+    TestMotor*   motor_;
+    TestEncoder* enc_;
     float   speed_tps_ = 0.0f;
     float   frac_ticks_= 0.0f;
     int32_t ticks_     = 0;
   };
-} // namespace probot::sim 
+} // namespace probot::test 

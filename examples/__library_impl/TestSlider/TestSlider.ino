@@ -3,8 +3,8 @@ PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
 // TestSlider: demonstrate Slider controlling position of a single axis
 
-static probot::sim::SimMotor   mot;
-static probot::sim::SimEncoder enc;
+static probot::test::TestMotor   mot;
+static probot::test::TestEncoder enc;
 static probot::control::PidConfig cfgP{ 0.0012f, 0.0f, 0.00002f, 0.0f, -1.0f, 1.0f };
 static probot::control::PID pid(cfgP);
 static probot::control::ClosedLoopMotor* axis=nullptr;
@@ -16,7 +16,7 @@ void robotInit(){
   axis = &x;
   axis->setPidSlotConfig(1, cfgP);
   axis->selectDefaultSlot(probot::control::ControlType::kPosition, 1);
-  static probot::sim::SimPlant plant(&mot, &enc);
+  static probot::test::TestPlant plant(&mot, &enc);
   control::attach(axis);
   control::attach(&plant);
 

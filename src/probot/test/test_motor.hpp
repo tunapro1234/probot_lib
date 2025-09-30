@@ -1,8 +1,8 @@
 #pragma once
 #include <probot/devices/motors/imotor_driver.hpp>
 
-namespace probot::sim {
-  class SimMotor : public probot::motor::IMotorDriver {
+namespace probot::test {
+  class TestMotor : public probot::motor::IMotorDriver {
   public:
     bool claim(void* owner) override {
       if (owner_ == nullptr || owner_ == owner){ owner_ = owner; return true; }
@@ -28,9 +28,9 @@ namespace probot::sim {
     bool    inverted_= false;
     float   last_cmd_= 0.0f;
   };
-} // namespace probot::sim
+} // namespace probot::test
 
 // Backward compatibility alias
 namespace probot::motor {
-  using NullMotor = probot::sim::SimMotor;
-} 
+  using NullMotor = probot::test::TestMotor;
+}

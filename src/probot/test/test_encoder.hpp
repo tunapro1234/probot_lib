@@ -1,8 +1,8 @@
 #pragma once
 #include <probot/sensors/encoder.hpp>
 
-namespace probot::sim {
-  class SimEncoder : public probot::sensors::IEncoder {
+namespace probot::test {
+  class TestEncoder : public probot::sensors::IEncoder {
   public:
     int32_t readTicks() override { return ticks_; }
     int32_t readTicksPerSecond() override { return tps_; }
@@ -13,4 +13,4 @@ namespace probot::sim {
     int32_t ticks_ = 0;
     int32_t tps_   = 0;
   };
-} // namespace probot::sim 
+} // namespace probot::test 

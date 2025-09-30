@@ -3,8 +3,8 @@ PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
 // TestTankDrive: demonstrate BasicTankDrive chassis and Slider with sims
 
-static probot::sim::SimMotor   motL, motR;
-static probot::sim::SimEncoder encL, encR;
+static probot::test::TestMotor   motL, motR;
+static probot::test::TestEncoder encL, encR;
 static probot::control::PidConfig cfgV{ 0.0009f, 0.0003f, 0.00002f, 0.0f, -1.0f, 1.0f };
 static probot::control::PidConfig cfgP{ 0.0008f, 0.0f, 0.00001f, 0.0f, -1.0f, 1.0f };
 static probot::control::PID pidL(cfgV), pidR(cfgV);
@@ -21,8 +21,8 @@ void robotInit() {
   axisL->selectDefaultSlot(probot::control::ControlType::kVelocity, 0);
   axisR->selectDefaultSlot(probot::control::ControlType::kVelocity, 0);
 
-  static probot::sim::SimPlant pL(&motL, &encL);
-  static probot::sim::SimPlant pR(&motR, &encR);
+  static probot::test::TestPlant pL(&motL, &encL);
+  static probot::test::TestPlant pR(&motR, &encR);
 
   control::attach(axisL);
   control::attach(axisR);

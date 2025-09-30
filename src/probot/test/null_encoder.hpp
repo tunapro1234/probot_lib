@@ -1,7 +1,7 @@
 #pragma once
 #include <probot/sensors/encoder.hpp>
 
-namespace probot::sim {
+namespace probot::test {
   class NullEncoder : public probot::sensors::IEncoder {
   public:
     int32_t readTicks() override { return 0; }

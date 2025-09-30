@@ -75,11 +75,11 @@
 #include <probot/mechanism/nfr/arm.hpp>
 #include <probot/mechanism/nfr/telescopic_tube.hpp>
 
-// Simulation
-#include <probot/sim/sim_motor.hpp>
-#include <probot/sim/sim_encoder.hpp>
-#include <probot/sim/null_encoder.hpp>
-#include <probot/sim/sim_plant.hpp>
+// Test doubles
+#include <probot/test/test_motor.hpp>
+#include <probot/test/test_encoder.hpp>
+#include <probot/test/null_encoder.hpp>
+#include <probot/test/test_plant.hpp>
 
 // Robot
 #include <probot/robot/state.hpp>
@@ -101,6 +101,6 @@ namespace probot::control {
 }
 
 namespace probot::sensors {
-  using SimEncoder = probot::sim::SimEncoder;
-  using NullEncoder = probot::sim::NullEncoder;
+  using TestEncoder = probot::test::TestEncoder;
+  using NullEncoder = probot::test::NullEncoder;
 }

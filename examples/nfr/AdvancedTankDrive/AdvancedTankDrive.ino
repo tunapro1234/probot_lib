@@ -4,7 +4,7 @@
 #include <probot/chassis/nfr_advanced_tank_drive.hpp>
 #include <probot/sensors/imu/mpu6050.hpp>
 #include <probot/devices/motors/motor_handle.hpp>
-#include <probot/sim/sim_motor.hpp>
+#include <probot/test/test_motor.hpp>
 
 // Example demonstrating the NFRAdvancedTankDrive structure with simulated hardware.
 
