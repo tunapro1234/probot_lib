@@ -13,6 +13,9 @@ DEFAULT_EXAMPLE := $(firstword $(EXAMPLES_LIST))
 EXAMPLE        ?= $(DEFAULT_EXAMPLE)
 BUILD_DIR_BASE := $(CURDIR)/.build
 
+TEST_STUB_DIR := $(CURDIR)/tests/stubs
+TEST_SOURCES := $(filter %.cpp,$(wildcard $(CURDIR)/tests/*.cpp))
+
 # Common flags
 EXTRA_FLAGS_COMMON := -DESP32S3 -DARDUINO_USB_MODE=1 -DARDUINO_USB_CDC_ON_BOOT=1
 
@@ -75,8 +78,8 @@ boards:
 libs:
 	arduino-cli lib install "Adafruit NeoPixel" 
 
-tests/control_tests: tests/control_tests.cpp
-	g++ -std=c++17 -Wall -Wextra -pedantic -I src -DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1 -o $@ $<
+tests/control_tests: $(TEST_SOURCES)
+	g++ -std=c++17 -Wall -Wextra -pedantic -I src -I $(TEST_STUB_DIR) -DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1 -o $@ $(TEST_SOURCES)
 
 test: build tests/control_tests
 	./tests/control_tests
