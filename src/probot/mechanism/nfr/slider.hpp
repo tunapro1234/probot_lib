@@ -23,8 +23,8 @@ namespace probot::mechanism::nfr {
       if (!controller) return;
       controller->configurePidSlots(detail::kVelocitySlot, detail::kDefaultVelocityPid,
                                     detail::kPositionSlot, detail::kDefaultPositionPid);
-      controller->setMotionProfile(probot::control::MotionProfileType::kTrapezoid,
-                                   {0.6f * kTicksPerUnit, 2.0f * kTicksPerUnit, 0.0f});
+      controller->setMotionProfile(probot::control::MotionProfileType::kTrapezoid);
+      controller->setMotionProfileConfig({0.6f * kTicksPerUnit, 2.0f * kTicksPerUnit, 0.0f});
     }
 
   };
