@@ -118,13 +118,18 @@ namespace control {
       now = millis();
       uint32_t nearest_due = now + 1000;
       bool deadlineMiss = false;
+      uint32_t maxOverrun = 0;
       auto snap = probot::robot::state().read();
       bool allowUpdates = (snap.phase != probot::robot::Phase::NOT_INIT);
       for (size_t i=0;i<MAX_SLOTS;i++){
         if (!slots[i].in_use) continue;
         if ((int32_t)(now - slots[i].next_due_ms) >= 0){
           uint32_t dt = now - slots[i].last_call_ms;
-          if (dt > g_global_period_ms + 2) deadlineMiss = true;
+          if (dt > g_global_period_ms + 2){
+            deadlineMiss = true;
+            uint32_t overrun = dt - g_global_period_ms;
+            if (overrun > maxOverrun) maxOverrun = overrun;
+          }
           if (allowUpdates){ slots[i].obj->update(now, dt); }
           slots[i].last_call_ms = now;
           uint32_t due = slots[i].next_due_ms;
@@ -137,7 +142,13 @@ namespace control {
           nearest_due = slots[i].next_due_ms;
         }
       }
-      if (deadlineMiss){ probot::robot::state().setDeadlineMiss(now, true); }
+      if (deadlineMiss){
+        probot::robot::state().setDeadlineMiss(now, true);
+#ifndef PROBOT_SCHED_NOLOG
+        Serial.printf("[SCHED] ⚠️  CONTROL LOOP OVERRUN! Period: %lums, Overrun: +%lums\n", 
+                      (unsigned long)g_global_period_ms, (unsigned long)maxOverrun);
+#endif
+      }
 
 #if ESP_IDF_VERSION_MAJOR >= 5
       esp_task_wdt_reset();
