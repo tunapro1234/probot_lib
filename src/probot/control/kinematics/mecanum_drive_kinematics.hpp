@@ -9,6 +9,13 @@ namespace probot::control::kinematics {
     float rearRight;
   };
 
+  struct WheelPositions4 {
+    float frontLeft;
+    float frontRight;
+    float rearLeft;
+    float rearRight;
+  };
+
   class MecanumDriveKinematics {
   public:
     MecanumDriveKinematics(float wheelBase, float trackWidth)

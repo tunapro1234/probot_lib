@@ -59,6 +59,10 @@
 
 // Drive
 #include <probot/drive/basic_tank_drive.hpp>
+#include <probot/chassis/basic_tank.hpp>
+#include <probot/chassis/basic_mecanum.hpp>
+#include <probot/chassis/nfr_advanced_tank_drive.hpp>
+#include <probot/chassis/nfr_advanced_mecanum_drive.hpp>
 
 // NFR presets
 #include <probot/mechanism/nfr/slider.hpp>

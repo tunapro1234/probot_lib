@@ -41,6 +41,21 @@ namespace probot::control {
       return okA && okB;
     }
 
+    void setMotionProfile(probot::control::MotionProfileType type) override {
+      if (a_) a_->setMotionProfile(type);
+      if (b_) b_->setMotionProfile(type);
+    }
+    probot::control::MotionProfileType motionProfile() const override {
+      return a_ ? a_->motionProfile() : (b_ ? b_->motionProfile() : probot::control::MotionProfileType::kNone);
+    }
+    void setMotionProfileConfig(const probot::control::MotionProfileConfig& cfg) override {
+      if (a_) a_->setMotionProfileConfig(cfg);
+      if (b_) b_->setMotionProfileConfig(cfg);
+    }
+    probot::control::MotionProfileConfig motionProfileConfig() const override {
+      return a_ ? a_->motionProfileConfig() : (b_ ? b_->motionProfileConfig() : probot::control::MotionProfileConfig{});
+    }
+
     void update(uint32_t now_ms, uint32_t dt_ms) override {
       if (a_) a_->update(now_ms, dt_ms);
       if (b_) b_->update(now_ms, dt_ms);

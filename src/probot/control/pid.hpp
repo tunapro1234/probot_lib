@@ -6,6 +6,7 @@ namespace probot::control {
     float kp;
     float ki;
     float kd;
+    float kf;
     float out_min;   // e.g. -1.0f
     float out_max;   // e.g. +1.0f
   };
