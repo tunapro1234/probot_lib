@@ -69,6 +69,7 @@
 
 // NFR presets
 #include <probot/mechanism/nfr/slider.hpp>
+#include <probot/mechanism/nfr/shooter.hpp>
 #include <probot/mechanism/nfr/elevator.hpp>
 #include <probot/mechanism/nfr/turret.hpp>
 #include <probot/mechanism/nfr/arm.hpp>
@@ -77,6 +78,7 @@
 // Simulation
 #include <probot/sim/sim_motor.hpp>
 #include <probot/sim/sim_encoder.hpp>
+#include <probot/sim/null_encoder.hpp>
 #include <probot/sim/sim_plant.hpp>
 
 // Robot
@@ -96,4 +98,9 @@ namespace probot::control {
   namespace odometry = probot::control::odometry;
   namespace ss = probot::control::state_space;
   namespace est = probot::control::estimation;
+}
+
+namespace probot::sensors {
+  using SimEncoder = probot::sim::SimEncoder;
+  using NullEncoder = probot::sim::NullEncoder;
 }
