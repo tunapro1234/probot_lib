@@ -47,7 +47,7 @@ namespace probot::control {
     void setSetpoint(float value, ControlType mode, int slot = -1) override {
       bool mode_changed = (mode != active_mode_);
       target_value_ = value;
-      last_ref_ms_ = millis();
+      last_ref_ms_.store(millis());
       if (mode_changed) {
         pid_->reset();
         selected_slot_override_ = -1;
@@ -130,6 +130,7 @@ namespace probot::control {
 
     bool setPowerDirect(float power){
       if (!driver_) return false;
+      if (external_owner_) return false;  // Respect external ownership
       return driver_->setPower(power, owner_token_);
     }
 
@@ -162,7 +163,7 @@ namespace probot::control {
     void update(uint32_t now_ms, uint32_t dt_ms) override {
       if (!encoder_ || !pid_ || !driver_) return;
 
-      if (timeout_ms_ > 0 && (now_ms - last_ref_ms_) > timeout_ms_){
+      if (timeout_ms_ > 0 && (now_ms - last_ref_ms_.load()) > timeout_ms_){
         driver_->setPower(0.0f, owner_token_);
         last_output_ = 0.0f;
         return;
@@ -170,10 +171,11 @@ namespace probot::control {
 
       if (active_mode_ == ControlType::kPercent){
         float target_val = target_value_.load();
+        float output = inverted_ ? -target_val : target_val;
         ref_value_.store(target_val);
-        driver_->setPower(target_val, owner_token_);
+        driver_->setPower(output, owner_token_);
         last_measurement_ = target_val;
-        last_output_ = target_val;
+        last_output_ = output;
         return;
       }
 
@@ -363,7 +365,7 @@ namespace probot::control {
     float    pos_ticks_to_units_;
     std::atomic<float> ref_value_;
     std::atomic<float> target_value_;
-    uint32_t last_ref_ms_;
+    std::atomic<uint32_t> last_ref_ms_;
     uint32_t timeout_ms_;
 
     ControlType active_mode_;
