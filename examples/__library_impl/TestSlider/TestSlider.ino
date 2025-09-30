@@ -5,7 +5,7 @@ PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
 static probot::sim::SimMotor   mot;
 static probot::sim::SimEncoder enc;
-static probot::control::PidConfig cfgP{ 0.0012f, 0.0f, 0.00002f, -1.0f, 1.0f };
+static probot::control::PidConfig cfgP{ 0.0012f, 0.0f, 0.00002f, 0.0f, -1.0f, 1.0f };
 static probot::control::PID pid(cfgP);
 static probot::control::ClosedLoopMotor* axis=nullptr;
 static probot::mechanism::Slider* slider=nullptr;

@@ -5,8 +5,8 @@ PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
 static probot::sim::SimMotor   motL, motR;
 static probot::sim::SimEncoder encL, encR;
-static probot::control::PidConfig cfgV{ 0.0009f, 0.0003f, 0.00002f, -1.0f, 1.0f };
-static probot::control::PidConfig cfgP{ 0.0008f, 0.0f, 0.00001f, -1.0f, 1.0f };
+static probot::control::PidConfig cfgV{ 0.0009f, 0.0003f, 0.00002f, 0.0f, -1.0f, 1.0f };
+static probot::control::PidConfig cfgP{ 0.0008f, 0.0f, 0.00001f, 0.0f, -1.0f, 1.0f };
 static probot::control::PID pidL(cfgV), pidR(cfgV);
 static probot::control::ClosedLoopMotor *axisL=nullptr, *axisR=nullptr;
 static probot::drive::BasicTankDrive* chassis=nullptr;
