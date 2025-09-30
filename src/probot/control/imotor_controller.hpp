@@ -11,6 +11,18 @@ namespace probot::control {
     kPercent = 2
   };
 
+  enum class MotionProfileType : uint8_t {
+    kNone = 0,
+    kTrapezoid
+    // kSCurve  // Disabled: High memory usage (up to 720KB). See FUTURE_WORK.md
+  };
+
+  struct MotionProfileConfig {
+    float maxVelocity{0.0f};
+    float maxAcceleration{0.0f};
+    float maxJerk{0.0f};
+  };
+
   struct IMotorController : public probot::motor::IMotorDriver, public ::control::IUpdatable {
     virtual void setSetpoint(float value, ControlType mode, int slot = -1) = 0;
     virtual void setTimeoutMs(uint32_t ms) = 0;
@@ -22,6 +34,10 @@ namespace probot::control {
     virtual float lastOutput() const = 0;
     virtual ControlType activeMode() const = 0;
     virtual bool isAtTarget(float tolerance) const = 0;
+    virtual void setMotionProfile(MotionProfileType type) = 0;
+    virtual MotionProfileType motionProfile() const = 0;
+    virtual void setMotionProfileConfig(const MotionProfileConfig& cfg) = 0;
+    virtual MotionProfileConfig motionProfileConfig() const = 0;
 
     virtual ~IMotorController() {}
 
