@@ -36,6 +36,7 @@ const char MAIN_page[] PROGMEM = R"=====(
     <div id="mainDrive" class="page-section active">
       <h1>Main Drive</h1>
       <p><strong>Joystick Status:</strong> <span id="joystickStatusTxt">Not Connected</span> <span id="joystickIndicator" class="indicator"></span></p>
+      <p id="gamepadHint" style="color: #666; font-size: 0.9em; display: none;">💡 Press any button on your gamepad to activate</p>
       <p><label><input type="checkbox" id="enableAutonomous" checked /> Enable Autonomous</label></p>
       <p><label>Autonomous Period Length: <input type="number" id="autoPeriod" value="30" style="width:60px;" /> (s)</label></p>
       <p><button id="robotButton" onclick="handleRobotButton()">Init</button></p>
@@ -64,8 +65,9 @@ const char MAIN_page[] PROGMEM = R"=====(
     function changeSelectedGamepad(){ const val=document.getElementById('joystickSelect').value; selectedGamepadIndex=parseInt(val); if(isNaN(selectedGamepadIndex)) selectedGamepadIndex=-1; }
     async function sendGamepadData(gp){ const data={ axes: gp.axes, buttons: gp.buttons.map(b=>b.pressed) }; try{ await fetch('/updateController',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});}catch(e){ console.error(e);} }
     function displayJoystickData(gp){ const statusEl=document.getElementById('joystickStatus'); const axisEl=document.getElementById('axisData'); const buttonEl=document.getElementById('buttonData'); statusEl.textContent=`Gamepad: ${gp.id} (Axes: ${gp.axes.length}, Buttons: ${gp.buttons.length})`; let axisHTML=""; gp.axes.forEach((v,i)=>{ axisHTML+=`<div class="axisItem">Axis ${i}: ${v.toFixed(2)}</div>`; }); axisEl.innerHTML=axisHTML; let btnHTML=""; gp.buttons.forEach((b,i)=>{ btnHTML+=`<div class="buttonItem">Button ${i}: ${b.pressed?'Pressed':'Not Pressed'}</div>`; }); buttonEl.innerHTML=btnHTML; }
-    function gamepadLoop(){ updateGamepads(); rebuildGamepadSelect(); const gp=gamepads[selectedGamepadIndex]; const indicator=document.getElementById('joystickIndicator'); const txt=document.getElementById('joystickStatusTxt'); if(gp){ indicator.style.background="green"; txt.textContent="Connected"; displayJoystickData(gp); sendGamepadData(gp);} else { indicator.style.background="red"; txt.textContent="Not Connected"; document.getElementById('joystickStatus').textContent="No gamepad selected."; document.getElementById('axisData').innerHTML="No data yet..."; document.getElementById('buttonData').innerHTML="No data yet..."; } requestAnimationFrame(gamepadLoop); }
-    window.addEventListener('gamepadconnected', e=>{ console.log('Gamepad connected:', e.gamepad); });
+    let gamepadDetected = false;
+    function gamepadLoop(){ updateGamepads(); rebuildGamepadSelect(); const gp=gamepads[selectedGamepadIndex]; const indicator=document.getElementById('joystickIndicator'); const txt=document.getElementById('joystickStatusTxt'); const hint=document.getElementById('gamepadHint'); if(gp){ indicator.style.background="green"; txt.textContent="Connected"; hint.style.display="none"; gamepadDetected=true; displayJoystickData(gp); sendGamepadData(gp);} else { indicator.style.background="red"; txt.textContent="Not Connected"; if(!gamepadDetected) hint.style.display="block"; document.getElementById('joystickStatus').textContent="No gamepad selected."; document.getElementById('axisData').innerHTML="No data yet..."; document.getElementById('buttonData').innerHTML="No data yet..."; } requestAnimationFrame(gamepadLoop); }
+    window.addEventListener('gamepadconnected', e=>{ console.log('Gamepad connected:', e.gamepad); updateGamepads(); rebuildGamepadSelect(); });
     window.addEventListener('gamepaddisconnected', e=>{ console.log('Gamepad disconnected:', e.gamepad); delete gamepads[e.gamepad.index]; });
     window.addEventListener('load', ()=>{ requestAnimationFrame(gamepadLoop); });
   </script>
