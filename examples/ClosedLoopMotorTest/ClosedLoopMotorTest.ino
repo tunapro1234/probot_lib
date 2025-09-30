@@ -2,7 +2,7 @@
 #include <probot/io/joystick_api.hpp>
 #include <probot/sim/null_motor.hpp>
 #include <probot/sim/null_encoder.hpp>
-// Not: Donanımı bağlayana kadar NullMotor/NullEncoder kullanabilirsiniz (yer tutucu).
+// Not: Donanımı bağlayana kadar NullMotor/SimEncoder kullanabilirsiniz (yer tutucu).
 // Gerçek projede bu yer tutucuları gerçek sürücülerle (örn. NFRMotor) değiştirin.
 // Desteklenen sürücüler için: https://docs.probotstudio.com/
 
@@ -11,7 +11,7 @@
 
 PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
-static probot::sensors::NullEncoder encoderHW;   // yer tutucu
+static probot::sensors::SimEncoder encoderHW;   // yer tutucu
 static probot::motor::NullMotor     motorHW;     // yer tutucu
 static const probot::control::PidConfig kPidCfg{ .kp=0.2f, .ki=0.0f, .kd=0.0f, .kf=0.0f, .out_min=-1.0f, .out_max=1.0f };
 static probot::control::PID         pid(kPidCfg);

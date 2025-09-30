@@ -8,6 +8,7 @@
 #include <probot/core/scheduler.hpp>
 #include <probot/control/pid.hpp>
 #include <probot/control/imotor_controller.hpp>
+#include <probot/control/motion_profile/imotion_profile.hpp>
 #include <probot/control/motion_profile/trapezoid_profile.hpp>
 // #include <probot/control/motion_profile/s_curve_profile.hpp>  // Disabled for now
 #include <probot/sensors/encoder.hpp>
@@ -61,18 +62,18 @@ namespace probot::control {
       if (mode == ControlType::kPercent) {
         profile_active_ = false;
         profile_pending_ = false;
-        trapezoid_profile_.reset();
+        motion_profile_.reset();
         // scurve_profile_.reset();
         ref_value_ = value;
       } else if (profileAllowed) {
         profile_pending_ = true;
         profile_active_ = false;
-        trapezoid_profile_.reset();
+        motion_profile_.reset();
         // scurve_profile_.reset();
       } else {
         profile_pending_ = false;
         profile_active_ = false;
-        trapezoid_profile_.reset();
+        motion_profile_.reset();
         // scurve_profile_.reset();
         ref_value_ = value;
       }
@@ -110,7 +111,7 @@ namespace probot::control {
       profile_active_ = false;
       profile_pending_ = false;
       profile_elapsed_ = 0.0f;
-      trapezoid_profile_.reset();
+      motion_profile_.reset();
       // scurve_profile_.reset();
     }
     probot::control::MotionProfileType motionProfile() const override {
@@ -121,7 +122,7 @@ namespace probot::control {
       profile_active_ = false;
       profile_pending_ = false;
       profile_elapsed_ = 0.0f;
-      trapezoid_profile_.reset();
+      motion_profile_.reset();
       // scurve_profile_.reset();
     }
     probot::control::MotionProfileConfig motionProfileConfig() const override {
@@ -257,7 +258,7 @@ namespace probot::control {
         float maxVel = motion_profile_cfg_.maxVelocity;
         float maxAcc = motion_profile_cfg_.maxAcceleration;
         if (maxVel <= 0.0f || maxAcc <= 0.0f){
-          trapezoid_profile_.reset();
+          motion_profile_.reset();
           // scurve_profile_.reset();
           return;
         }
@@ -265,14 +266,14 @@ namespace probot::control {
           probot::control::motion_profile::TrapezoidProfile::Constraints constraints(maxVel, maxAcc);
           probot::control::motion_profile::TrapezoidProfile::State goal(target_value_.load(), 0.0f);
           probot::control::motion_profile::TrapezoidProfile::State initial(currentMeasurement, 0.0f);
-          trapezoid_profile_ = std::make_unique<probot::control::motion_profile::TrapezoidProfile>(constraints, goal, initial);
+          motion_profile_ = std::make_unique<probot::control::motion_profile::TrapezoidProfile>(constraints, goal, initial);
           // scurve_profile_.reset();
         }
         // S-Curve support disabled (high memory usage)
         // else {
         //   float maxJ = motion_profile_cfg_.maxJerk;
         //   if (maxJ <= 0.0f){
-        //     trapezoid_profile_.reset();
+        //     motion_profile_.reset();
         //     scurve_profile_.reset();
         //     return;
         //   }
@@ -280,7 +281,7 @@ namespace probot::control {
         //   probot::control::motion_profile::SCurveProfile::State goal(target_value_.load(), 0.0f, 0.0f);
         //   probot::control::motion_profile::SCurveProfile::State initial(currentMeasurement, 0.0f, 0.0f);
         //   scurve_profile_ = std::make_unique<probot::control::motion_profile::SCurveProfile>(constraints, goal, initial);
-        //   trapezoid_profile_.reset();
+        //   motion_profile_.reset();
         // }
         profile_active_ = true;
       } else if (profile_mode_ == ControlType::kVelocity){
@@ -289,7 +290,7 @@ namespace probot::control {
         } else {
           profile_active_ = true;
         }
-        trapezoid_profile_.reset();
+        motion_profile_.reset();
         // scurve_profile_.reset();
       }
     }
@@ -300,13 +301,13 @@ namespace probot::control {
       profile_elapsed_ += dt_s;
 
       if (profile_mode_ == ControlType::kPosition){
-        if (motion_profile_type_ == probot::control::MotionProfileType::kTrapezoid && trapezoid_profile_){
-          auto state = trapezoid_profile_->calculate(profile_elapsed_);
+        if (motion_profile_){
+          auto state = motion_profile_->calculate(profile_elapsed_);
           ref = state.position;
-          if (profile_elapsed_ >= trapezoid_profile_->totalTime()){
+          if (profile_elapsed_ >= motion_profile_->totalTime()){
             ref = target_value_.load();
             profile_active_ = false;
-            trapezoid_profile_.reset();
+            motion_profile_.reset();
           }
         }
         // S-Curve support disabled
@@ -322,7 +323,7 @@ namespace probot::control {
         else {
           ref = target_value_.load();
           profile_active_ = false;
-          trapezoid_profile_.reset();
+          motion_profile_.reset();
           // scurve_profile_.reset();
         }
       } else if (profile_mode_ == ControlType::kVelocity){
@@ -380,8 +381,7 @@ namespace probot::control {
     bool profile_active_ = false;
     float profile_elapsed_ = 0.0f;
     ControlType profile_mode_ = ControlType::kPercent;
-    std::unique_ptr<probot::control::motion_profile::TrapezoidProfile> trapezoid_profile_;
-    // std::unique_ptr<probot::control::motion_profile::SCurveProfile> scurve_profile_;  // Disabled
+    std::unique_ptr<probot::control::motion_profile::IMotionProfile> motion_profile_;
 
     void* owner_token_;
     void* external_owner_;

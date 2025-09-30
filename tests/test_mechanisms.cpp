@@ -72,10 +72,32 @@ TEST_CASE(turret_angle_limits){
   probot::mechanism::Turret turret(&mock);
   turret.setDegreesToTicks(5.0f);
   turret.setAngleLimits(-90.0f, 90.0f);
+  turret.setPidConfig({0.0f,0.0f,0.0f,0.0f,-1.0f,1.0f}, 0);
   turret.setTargetAngleDeg(120.0f);
   EXPECT_NEAR(turret.getTargetAngleDeg(), 90.0f, 1e-5f);
   turret.update(0, 0);
   EXPECT_NEAR(mock.setpoint, 90.0f * 5.0f, 1e-5f);
+}
+
+TEST_CASE(turret_motion_profile_and_slew){
+  ControllerMock mock;
+  probot::mechanism::Turret turret(&mock);
+  turret.setDegreesToTicks(10.0f);
+  turret.setMotionProfile(probot::control::MotionProfileType::kTrapezoid,
+                          {30.0f, 120.0f, 0.0f});
+  turret.setSlewRateLimit(60.0f); // deg/s
+  turret.setTargetAngleDeg(90.0f);
+
+  turret.update(0, 20); // 20 ms -> 0.02 s
+  EXPECT_TRUE(mock.profileType == probot::control::MotionProfileType::kTrapezoid);
+  EXPECT_NEAR(mock.profileCfg.maxVelocity, 300.0f, 1e-3f);
+  EXPECT_NEAR(mock.profileCfg.maxAcceleration, 1200.0f, 1e-3f);
+
+  float expectedDegrees = 60.0f * 0.02f; // slew limited
+  EXPECT_NEAR(mock.setpoint, expectedDegrees * 10.0f, 1e-3f);
+
+  turret.update(40, 20);
+  EXPECT_TRUE(mock.setpoint >= expectedDegrees * 10.0f);
 }
 
 TEST_CASE(arm_angle_limits){

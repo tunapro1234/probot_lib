@@ -2,8 +2,8 @@
 
 #include <cmath>
 
-#include <probot/chassis/basic_tank.hpp>
-#include <probot/chassis/basic_mecanum.hpp>
+#include <probot/chassis/simple_tank.hpp>
+#include <probot/chassis/simple_mecanum.hpp>
 #include <probot/chassis/nfr_advanced_tank_drive.hpp>
 #include <probot/chassis/nfr_advanced_mecanum_drive.hpp>
 #include <probot/control/closed_loop_motor.hpp>
@@ -84,7 +84,7 @@ namespace {
 
 TEST_CASE(basic_tank_drive_clamp_and_invert){
   DummyMotor left, right;
-  probot::chassis::BasicTankDrive tank(&left, &right);
+  probot::chassis::SimpleTankDrive tank(&left, &right);
   tank.drive(2.0f, -2.0f);
   EXPECT_NEAR(left.lastPower, 1.0f, 1e-5f);
   EXPECT_NEAR(right.lastPower, -1.0f, 1e-5f);
@@ -101,7 +101,7 @@ TEST_CASE(basic_tank_drive_clamp_and_invert){
 
 TEST_CASE(basic_mecanum_drive_normalizes_outputs){
   DummyMotor fl, fr, rl, rr;
-  probot::chassis::BasicMecanumDrive mech(&fl, &fr, &rl, &rr);
+  probot::chassis::SimpleMecanumDrive mech(&fl, &fr, &rl, &rr);
   mech.setInverted(false, true, false, true);
 
   float vx = 0.8f, vy = 0.4f, omega = 0.3f;

@@ -3,15 +3,19 @@
 #include <probot/devices/motors/imotor_driver.hpp>
 
 namespace probot::chassis {
-  class BasicTankDrive {
+  /**
+   * @brief Simple tank drive with direct motor power control
+   * Uses IMotorDriver for open-loop control (no PID)
+   */
+  class SimpleTankDrive {
   public:
-    BasicTankDrive(probot::motor::IMotorDriver* left, probot::motor::IMotorDriver* right)
+    SimpleTankDrive(probot::motor::IMotorDriver* left, probot::motor::IMotorDriver* right)
     : left_(left), right_(right), ownerLeft_(this), ownerRight_(reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(this)+1)) {
       if (left_)  left_->claim(ownerLeft_);
       if (right_) right_->claim(ownerRight_);
     }
 
-    ~BasicTankDrive(){
+    ~SimpleTankDrive(){
       if (left_)  left_->release(ownerLeft_);
       if (right_) right_->release(ownerRight_);
     }

@@ -36,6 +36,7 @@
 #include <probot/control/feedforward/elevator_ff.hpp>
 #include <probot/control/bang_bang_controller.hpp>
 #include <probot/control/limiters/slew_rate_limiter.hpp>
+#include <probot/control/motion_profile/imotion_profile.hpp>
 #include <probot/control/motion_profile/trapezoid_profile.hpp>
 #include <probot/control/motion_profile/s_curve_profile.hpp>
 #include <probot/control/trajectory/ramsete_controller.hpp>
@@ -57,10 +58,12 @@
 #include <probot/mechanism/arm.hpp>
 #include <probot/mechanism/telescopic_tube.hpp>
 
-// Drive
-#include <probot/drive/basic_tank_drive.hpp>
-#include <probot/chassis/basic_tank.hpp>
-#include <probot/chassis/basic_mecanum.hpp>
+// Chassis (Drive)
+#include <probot/chassis/basic_tank_drive.hpp>
+#include <probot/chassis/simple_tank.hpp>
+#include <probot/chassis/simple_mecanum.hpp>
+#include <probot/chassis/nfr_basic_tank_drive.hpp>
+#include <probot/chassis/nfr_basic_mecanum_drive.hpp>
 #include <probot/chassis/nfr_advanced_tank_drive.hpp>
 #include <probot/chassis/nfr_advanced_mecanum_drive.hpp>
 

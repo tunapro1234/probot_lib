@@ -3,9 +3,13 @@
 #include <probot/devices/motors/imotor_driver.hpp>
 
 namespace probot::chassis {
-  class BasicMecanumDrive {
+  /**
+   * @brief Simple mecanum drive with direct motor power control
+   * Uses IMotorDriver for open-loop control (no PID)
+   */
+  class SimpleMecanumDrive {
   public:
-    BasicMecanumDrive(probot::motor::IMotorDriver* frontLeft,
+    SimpleMecanumDrive(probot::motor::IMotorDriver* frontLeft,
                       probot::motor::IMotorDriver* frontRight,
                       probot::motor::IMotorDriver* rearLeft,
                       probot::motor::IMotorDriver* rearRight)
@@ -16,7 +20,7 @@ namespace probot::chassis {
       if (rr_) rr_->claim(&tokenRR_);
     }
 
-    ~BasicMecanumDrive(){
+    ~SimpleMecanumDrive(){
       if (fl_) fl_->release(&tokenFL_);
       if (fr_) fr_->release(&tokenFR_);
       if (rl_) rl_->release(&tokenRL_);

@@ -1,9 +1,10 @@
 #pragma once
 #include <algorithm>
 #include <cmath>
+#include <probot/control/motion_profile/imotion_profile.hpp>
 
 namespace probot::control::motion_profile {
-  class TrapezoidProfile {
+  class TrapezoidProfile : public IMotionProfile {
   public:
     struct Constraints {
       float maxVelocity;
@@ -12,12 +13,8 @@ namespace probot::control::motion_profile {
       : maxVelocity(maxVel), maxAcceleration(maxAcc) {}
     };
 
-    struct State {
-      float position;
-      float velocity;
-      constexpr State(float pos = 0.0f, float vel = 0.0f)
-      : position(pos), velocity(vel) {}
-    };
+    // Use base class State
+    using State = IMotionProfile::State;
 
     TrapezoidProfile(const Constraints& constraints,
                      const State& goal,
@@ -32,7 +29,7 @@ namespace probot::control::motion_profile {
       computeProfile();
     }
 
-    State calculate(float time) const {
+    State calculate(float time) const override {
       if (totalTime_ <= 0.0f){ return goal_; }
       if (time >= totalTime_) return goal_;
       if (time <= 0.0f) return initial_;
@@ -61,8 +58,8 @@ namespace probot::control::motion_profile {
       return result;
     }
 
-    float totalTime() const { return totalTime_; }
-    bool isFinished(float time) const { return time >= totalTime_; }
+    float totalTime() const override { return totalTime_; }
+    bool isFinished(float time) const override { return time >= totalTime_; }
     const Constraints& constraints() const { return constraints_; }
     const State& initial() const { return initial_; }
     const State& goal() const { return goal_; }
