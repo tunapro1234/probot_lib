@@ -28,4 +28,9 @@ namespace probot::sim {
     bool    inverted_= false;
     float   last_cmd_= 0.0f;
   };
-} // namespace probot::sim 
+} // namespace probot::sim
+
+// Backward compatibility alias
+namespace probot::motor {
+  using NullMotor = probot::sim::SimMotor;
+} 

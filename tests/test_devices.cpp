@@ -2,7 +2,7 @@
 
 #include <probot/devices/motors/motor_group.hpp>
 #include <probot/devices/motors/motor_handle.hpp>
-#include <probot/sim/null_motor.hpp>
+#include <probot/sim/sim_motor.hpp>
 
 namespace {
   struct MotorStub : probot::motor::IMotorDriver {

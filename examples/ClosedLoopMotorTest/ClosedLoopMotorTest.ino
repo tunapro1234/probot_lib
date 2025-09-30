@@ -1,6 +1,6 @@
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
-#include <probot/sim/null_motor.hpp>
+#include <probot/sim/sim_motor.hpp>
 #include <probot/sim/null_encoder.hpp>
 // Not: Donanımı bağlayana kadar NullMotor/SimEncoder kullanabilirsiniz (yer tutucu).
 // Gerçek projede bu yer tutucuları gerçek sürücülerle (örn. NFRMotor) değiştirin.

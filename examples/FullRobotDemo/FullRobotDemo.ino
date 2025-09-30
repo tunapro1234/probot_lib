@@ -1,6 +1,6 @@
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
-#include <probot/sim/null_motor.hpp>
+#include <probot/sim/sim_motor.hpp>
 #include <probot/sim/null_encoder.hpp>
 #include <probot/devices/motors/motor_handle.hpp>
 
