@@ -7,6 +7,10 @@
 #include <probot/mechanism/slider.hpp>
 #include <probot/mechanism/telescopic_tube.hpp>
 #include <probot/mechanism/turret.hpp>
+#include <probot/mechanism/nfr/slider.hpp>
+#include <probot/mechanism/nfr/telescopic_tube.hpp>
+#include <probot/mechanism/nfr/turret.hpp>
+#include <probot/mechanism/nfr/shooter.hpp>
 #include <probot/control/imotor_controller.hpp>
 
 namespace {
@@ -98,6 +102,23 @@ TEST_CASE(turret_motion_profile_and_slew){
 
   turret.update(40, 20);
   EXPECT_TRUE(mock.setpoint >= expectedDegrees * 10.0f);
+}
+
+TEST_CASE(nfr_shooter_sets_velocity){
+  ControllerMock primary;
+  ControllerMock secondary;
+  probot::mechanism::nfr::NfrShooter shooter(&primary, &secondary);
+  shooter.setTicksPerRevolution(4096.0f);
+  shooter.setRpm(3000.0f, 2500.0f);
+
+  EXPECT_TRUE(primary.mode == probot::control::ControlType::kVelocity);
+  EXPECT_TRUE(secondary.mode == probot::control::ControlType::kVelocity);
+  EXPECT_NEAR(primary.setpoint, 4096.0f * 3000.0f / 60.0f, 1e-5f);
+  EXPECT_NEAR(secondary.setpoint, 4096.0f * 2500.0f / 60.0f, 1e-5f);
+
+  shooter.stop();
+  EXPECT_NEAR(primary.setpoint, 0.0f, 1e-5f);
+  EXPECT_NEAR(secondary.setpoint, 0.0f, 1e-5f);
 }
 
 TEST_CASE(arm_angle_limits){
