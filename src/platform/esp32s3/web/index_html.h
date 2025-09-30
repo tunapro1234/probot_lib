@@ -36,7 +36,7 @@ const char MAIN_page[] PROGMEM = R"=====(
     <div id="mainDrive" class="page-section active">
       <h1>Main Drive</h1>
       <p><strong>Joystick Status:</strong> <span id="joystickStatusTxt">Not Connected</span> <span id="joystickIndicator" class="indicator"></span></p>
-      <p><label><input type="checkbox" id="enableAutonomous" /> Enable Autonomous</label></p>
+      <p><label><input type="checkbox" id="enableAutonomous" checked /> Enable Autonomous</label></p>
       <p><label>Autonomous Period Length: <input type="number" id="autoPeriod" value="30" style="width:60px;" /> (s)</label></p>
       <p><button id="robotButton" onclick="handleRobotButton()">Init</button></p>
     </div>
