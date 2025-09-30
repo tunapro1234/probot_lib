@@ -10,7 +10,9 @@ public:
   NullMotor() : _owner(nullptr), _power(0.0f), _inverted(false) {}
 
   bool claim(void* owner) override {
-    if (_owner && _owner != owner) return false; _owner = owner; return true;
+    if (_owner && _owner != owner) return false;
+    _owner = owner;
+    return true;
   }
 
   void release(void* owner) override {
@@ -18,7 +20,9 @@ public:
   }
 
   bool setPower(float value, void* owner) override {
-    if (_owner && _owner != owner) return false; _power = _inverted ? -value : value; return true;
+    if (_owner && _owner != owner) return false;
+    _power = _inverted ? -value : value;
+    return true;
   }
 
   bool isClaimed() const override { return _owner != nullptr; }
