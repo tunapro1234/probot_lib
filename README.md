@@ -2,6 +2,8 @@
 
 MEB robot yarışmaları için geliştirilmiş Arduino kütüphanesi. PID kontrolü, motion profiling, WiFi sürücü istasyonu ve ESP32-S3 desteği ile geliyor.
 
+**GitHub Deposu:** https://github.com/nfrproducts/probot-lib
+
 **Tüm dokümantasyon için:** https://docs.probotstudio.com/yazilim/
 
 ---

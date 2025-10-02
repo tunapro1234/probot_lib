@@ -1,5 +1,7 @@
 # Katkı Rehberi (TR)
 
+> Resmi GitHub depo adresi: https://github.com/nfrproducts/probot-lib
+
 Katkınız için teşekkürler! Aşağıdaki rehber; nasıl çalıştığımızı, hangi dala PR açmanız gerektiğini ve iyi bir hata raporu/PR için neler beklediğimizi özetler.
 
 ## Çalışma Akışı ve Dallar
@@ -61,6 +63,8 @@ Hataları GitHub Issues’dan bildirin; doğrudan destek için WhatsApp: **+90 5
 ---
 
 # Contributing Guide (EN)
+
+> Official GitHub repository: https://github.com/nfrproducts/probot-lib
 
 Thanks for contributing! This guide summarizes the workflow, branches, and what we expect in issues/PRs.
 
