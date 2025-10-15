@@ -1,7 +1,7 @@
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
-#include <probot/sim/null_motor.hpp>
-#include <probot/sim/null_encoder.hpp>
+#include <probot/test/test_motor.hpp>
+#include <probot/test/null_encoder.hpp>
 
 // Bu örnek, tank sürüş şasesi için basit bir otonom senaryoyu gösterir.
 // Sırasıyla: X cm ileri git, Y derece dön, tekrar X cm ileri git gibi bir akış.
@@ -9,13 +9,13 @@
 
 PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
-static const probot::control::PidConfig kPidCfg{ .kp=200.0f, .ki=0.0f, .kd=0.0f, .out_min=-1000.0f, .out_max=1000.0f };
+static const probot::control::PidConfig kPidCfg{ .kp=0.2f, .ki=0.0f, .kd=0.0f, .kf=0.0f, .out_min=-1.0f, .out_max=1.0f };
 static probot::control::PID pidL(kPidCfg), pidR(kPidCfg);
-static probot::sensors::NullEncoder leftEnc, rightEnc;
+static probot::sensors::TestEncoder leftEnc, rightEnc;
 static probot::motor::NullMotor     leftHW, rightHW;
-static probot::controllers::ClosedLoopMotor left(&leftEnc, &pidL, &leftHW, 1.0f, 1.0f);
-static probot::controllers::ClosedLoopMotor right(&rightEnc, &pidR, &rightHW, 1.0f, 1.0f);
-static probot::controllers::BasicTankDrive  chassis(&left, &right);
+static probot::control::ClosedLoopMotor left(&leftEnc, &pidL, &leftHW, 1.0f, 1.0f);
+static probot::control::ClosedLoopMotor right(&rightEnc, &pidR, &rightHW, 1.0f, 1.0f);
+static probot::drive::BasicTankDrive  chassis(&left, &right);
 
 static uint32_t g_step = 0;
 static uint32_t g_last_ms = 0;

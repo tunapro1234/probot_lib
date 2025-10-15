@@ -34,6 +34,15 @@ namespace probot::platform::esp32 {
       WiFi.mode(WIFI_AP);
       WiFi.softAP(ssid.c_str(), pw);
 
+      Serial.println("[DS   ] ========================================");
+      Serial.print("[DS   ] WiFi SSID: ");
+      Serial.println(ssid);
+      Serial.print("[DS   ] Password:  ");
+      Serial.println(pw);
+      Serial.print("[DS   ] IP Address: ");
+      Serial.println(WiFi.softAPIP());
+      Serial.println("[DS   ] ========================================");
+
       _server.on("/", HTTP_GET, [this](){ if (!enforceOwner()) return; handleRoot(); });
       _server.on("/updateController", HTTP_POST, [this](){ if (!enforceOwner()) return; handleUpdateController(); });
       _server.on("/robotControl", HTTP_GET, [this](){ if (!enforceOwner()) return; handleRobotControl(); });

@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - stable
+      - main
+      - master
+  pull_request:
+    branches:
+      - stable
+      - main
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Arduino CLI
+        if: ${{ env.ACT != 'true' }}
+        run: |
+          set -euo pipefail
+          CLI_VERSION=1.3.1
+          ARCHIVE=arduino-cli_${CLI_VERSION}_Linux_64bit.tar.gz
+          TMPDIR=$(mktemp -d)
+          curl -fsSL https://downloads.arduino.cc/arduino-cli/${ARCHIVE} -o "${TMPDIR}/${ARCHIVE}"
+          tar -xzf "${TMPDIR}/${ARCHIVE}" -C "${TMPDIR}"
+          CLI_PATH=$(find "${TMPDIR}" -maxdepth 2 -type f -name arduino-cli | head -n 1)
+          if [ -z "${CLI_PATH}" ]; then
+            echo "arduino-cli binary not found in archive"
+            exit 1
+          fi
+          mkdir -p "${HOME}/.local/bin"
+          mv "${CLI_PATH}" "${HOME}/.local/bin/arduino-cli"
+          chmod +x "${HOME}/.local/bin/arduino-cli"
+          export PATH="${HOME}/.local/bin:${PATH}"
+          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+          arduino-cli version
+
+      - name: Configure Arduino CLI
+        if: ${{ env.ACT != 'true' }}
+        timeout-minutes: 30
+        run: |
+          arduino-cli config init --overwrite
+          arduino-cli config set board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+
+      - name: Install Arduino libraries
+        if: ${{ env.ACT != 'true' }}
+        run: |
+          arduino-cli lib install "Adafruit NeoPixel"
+
+      - name: Show examples
+        if: ${{ env.ACT != 'true' }}
+        run: make list
+
+      - name: Run tests
+        run: |
+          if [ "${ACT:-}" = "true" ]; then
+            make tests/control_tests
+            ./tests/control_tests
+          else
+            make test
+          fi

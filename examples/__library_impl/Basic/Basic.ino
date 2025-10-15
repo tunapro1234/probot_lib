@@ -1,6 +1,6 @@
 #include <probot.h>
 
-static probot::controllers::BlinkPid* g_pid = nullptr;
+static probot::control::BlinkPid* g_pid = nullptr;
 
 void robotInit() {
   Serial.printf("[USER ] robotInit (core %d)\n", xPortGetCoreID());
@@ -11,7 +11,7 @@ void robotEnd() {
 }
 
 void teleopInit() {
-  static probot::controllers::BlinkPid pid_instance; // program ömrü boyunca
+  static probot::control::BlinkPid pid_instance; // program ömrü boyunca
   g_pid = &pid_instance;
   control::setGlobalPeriodMs(20);
   control::attach(g_pid);

@@ -19,6 +19,8 @@ Dokümantasyon katkıları için: İçerik `gh-pages` dalında tutulur. Doküman
 ## Geliştirme Ön Koşulları
 - Arduino IDE 2.x veya `arduino-cli`
 - ESP32 core (ESP32‑S3 hedef kart)
+- Adafruit NeoPixel kütüphanesi (yerleşik LED için)
+  - CLI: `make libs` veya `arduino-cli lib install "Adafruit NeoPixel"`
 - (Varsa) ilgili sensör/sürücü kütüphaneleri
 
 > Not: Kütüphane **ESP32‑S3** hedeflenerek geliştirilmiştir. Diğer mikrokontrolcüler teknik olarak uyarlanabilir; ancak resmi destek kapsamı dışındadır. Önerilen kart: Boardoza Pulse S32‑S3 — satın alma: https://boardoza.com/product/boardoza-pulse-s32-s3-breakout-board/
@@ -81,6 +83,8 @@ Documentation contributions: open PRs targeting `gh-pages`.
 ## Prerequisites
 - Arduino IDE 2.x or `arduino-cli`
 - ESP32 core (target: ESP32‑S3)
+- Adafruit NeoPixel library (built-in LED support)
+  - CLI: `make libs` or `arduino-cli lib install "Adafruit NeoPixel"`
 - Additional libs for specific sensors/drivers when needed
 
 > Note: The library targets **ESP32‑S3**. Other MCUs may be possible but are not officially supported. Recommended board: Boardoza Pulse S32‑S3 — purchase: https://boardoza.com/product/boardoza-pulse-s32-s3-breakout-board/

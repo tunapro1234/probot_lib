@@ -34,7 +34,24 @@ namespace probot {
   static void updateLed(){
     auto s = probot::robot::state().read();
     static bool on=false; on=!on;
-    if (s.deadlineMiss){ builtinled::setColor(255,0,0); return; }
+    static uint32_t deadlineMissTime = 0;
+    
+    // Show deadline miss for 2 seconds (4 blinks) then auto-clear
+    if (s.deadlineMiss){
+      if (deadlineMissTime == 0) deadlineMissTime = millis();
+      if (millis() - deadlineMissTime > 2000){
+        probot::robot::state().setDeadlineMiss(millis(), false);
+        deadlineMissTime = 0;
+      } else {
+        // Blink red
+        if (on) builtinled::setColor(255,0,0);
+        else builtinled::setColor(0,0,0);
+        return;
+      }
+    } else {
+      deadlineMissTime = 0;
+    }
+    
     switch (s.phase){
       case probot::robot::Phase::NOT_INIT:
         if (s.clientCount > 0){ if (on) builtinled::setColor(0,0,255); else builtinled::setColor(0,0,0); }
