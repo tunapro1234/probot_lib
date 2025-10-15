@@ -1,8 +1,8 @@
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
-#include <probot/sim/null_motor.hpp>
-#include <probot/sim/null_encoder.hpp>
-// Not: Donanımı bağlayana kadar NullMotor/NullEncoder kullanabilirsiniz (yer tutucu).
+#include <probot/test/test_motor.hpp>
+#include <probot/test/null_encoder.hpp>
+// Not: Donanımı bağlayana kadar NullMotor/TestEncoder kullanabilirsiniz (yer tutucu).
 // Gerçek projede bu yer tutucuları gerçek sürücülerle (örn. NFRMotor) değiştirin.
 // Desteklenen sürücüler için: https://docs.probotstudio.com/
 
@@ -11,13 +11,13 @@
 
 PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
-static const probot::control::PidConfig kPidCfg{ .kp=200.0f, .ki=0.0f, .kd=0.0f, .out_min=-1000.0f, .out_max=1000.0f };
+static const probot::control::PidConfig kPidCfg{ .kp=0.2f, .ki=0.0f, .kd=0.0f, .kf=0.0f, .out_min=-1.0f, .out_max=1.0f };
 static probot::control::PID pidL(kPidCfg), pidR(kPidCfg);
-static probot::sensors::NullEncoder leftEnc, rightEnc;   // yer tutucu
+static probot::sensors::TestEncoder leftEnc, rightEnc;   // yer tutucu
 static probot::motor::NullMotor     leftHW, rightHW;     // yer tutucu
-static probot::controllers::ClosedLoopMotor left(&leftEnc, &pidL, &leftHW, 1.0f, 1.0f);
-static probot::controllers::ClosedLoopMotor right(&rightEnc, &pidR, &rightHW, 1.0f, 1.0f);
-static probot::controllers::BasicTankDrive  chassis(&left, &right);
+static probot::control::ClosedLoopMotor left(&leftEnc, &pidL, &leftHW, 1.0f, 1.0f);
+static probot::control::ClosedLoopMotor right(&rightEnc, &pidR, &rightHW, 1.0f, 1.0f);
+static probot::drive::BasicTankDrive  chassis(&left, &right);
 
 void robotInit() {
   Serial.println("[TankTeleop] robotInit: Tank sürüşü");

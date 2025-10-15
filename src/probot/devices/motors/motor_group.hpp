@@ -1,10 +1,10 @@
 #pragma once
-#include <probot/devices/motors/motor.hpp>
+#include <probot/devices/motors/imotor_driver.hpp>
 
 namespace probot::motor {
-  class MotorGroup : public IMotor {
+  class MotorGroup : public IMotorDriver {
   public:
-    MotorGroup(IMotor* a, IMotor* b)
+    MotorGroup(IMotorDriver* a, IMotorDriver* b)
     : a_(a), b_(b), owner_(nullptr), inverted_(false) {}
 
     bool claim(void* owner) override {
@@ -24,11 +24,10 @@ namespace probot::motor {
       owner_ = nullptr;
     }
 
-    bool setPower(int16_t power, void* owner) override {
+    bool setPower(float power, void* owner) override {
       if (!a_ || !b_) return false;
       if (owner_ != owner) return false;
-      // Respect group inversion by delegating to underlying setInverted or sign flip
-      int16_t p = inverted_ ? (int16_t)-power : power;
+      float p = inverted_ ? -power : power;
       bool ok1 = a_->setPower(p, owner);
       bool ok2 = b_->setPower(p, owner);
       return ok1 && ok2;
@@ -45,8 +44,8 @@ namespace probot::motor {
     bool getInverted() const override { return inverted_; }
 
   private:
-    IMotor* a_;
-    IMotor* b_;
+    IMotorDriver* a_;
+    IMotorDriver* b_;
     void*   owner_;
     bool    inverted_;
   };

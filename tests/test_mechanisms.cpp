@@ -1,0 +1,144 @@
+#include "test_harness.hpp"
+
+#include <cmath>
+
+#include <probot/mechanism/arm.hpp>
+#include <probot/mechanism/elevator.hpp>
+#include <probot/mechanism/slider.hpp>
+#include <probot/mechanism/telescopic_tube.hpp>
+#include <probot/mechanism/turret.hpp>
+#include <probot/mechanism/nfr/slider.hpp>
+#include <probot/mechanism/nfr/telescopic_tube.hpp>
+#include <probot/mechanism/nfr/turret.hpp>
+#include <probot/mechanism/nfr/shooter.hpp>
+#include <probot/control/imotor_controller.hpp>
+
+namespace {
+  struct ControllerMock : probot::control::IMotorController {
+    float setpoint = 0.0f;
+    probot::control::ControlType mode = probot::control::ControlType::kVelocity;
+    int slot = -1;
+    float measurement = 0.0f;
+    probot::control::MotionProfileType profileType = probot::control::MotionProfileType::kNone;
+    probot::control::MotionProfileConfig profileCfg{};
+
+    bool claim(void*) override { return true; }
+    void release(void*) override {}
+    bool setPower(float, void*) override { return true; }
+    bool isClaimed() const override { return false; }
+    void* currentOwner() const override { return nullptr; }
+    void setInverted(bool) override {}
+    bool getInverted() const override { return false; }
+
+    void setSetpoint(float value, probot::control::ControlType m, int s) override { setpoint = value; mode = m; slot = s; }
+    void setTimeoutMs(uint32_t) override {}
+    void setPidSlotConfig(int, const probot::control::PidConfig&) override {}
+    void selectDefaultSlot(probot::control::ControlType, int) override {}
+    int defaultSlot(probot::control::ControlType) const override { return 0; }
+    float lastSetpoint() const override { return setpoint; }
+    float lastMeasurement() const override { return measurement; }
+    float lastOutput() const override { return 0.0f; }
+    probot::control::ControlType activeMode() const override { return mode; }
+    bool isAtTarget(float tol) const override { return std::fabs(setpoint - measurement) <= tol; }
+    void setMotionProfile(probot::control::MotionProfileType type) override { profileType = type; }
+    probot::control::MotionProfileType motionProfile() const override { return profileType; }
+    void setMotionProfileConfig(const probot::control::MotionProfileConfig& cfg) override { profileCfg = cfg; }
+    probot::control::MotionProfileConfig motionProfileConfig() const override { return profileCfg; }
+    void update(uint32_t, uint32_t) override {}
+  };
+}
+
+TEST_CASE(slider_limits_and_conversion){
+  ControllerMock mock;
+  probot::mechanism::Slider slider(&mock);
+  slider.setLengthToTicks(48.0f);
+  slider.setLengthLimits(0.0f, 50.0f);
+  slider.setTargetLength(60.0f);
+  EXPECT_NEAR(slider.getTargetLength(), 50.0f, 1e-5f);
+
+  slider.update(0, 0);
+  EXPECT_NEAR(mock.setpoint, 50.0f * 48.0f, 1e-5f);
+}
+
+TEST_CASE(elevator_limits_and_conversion){
+  ControllerMock mock;
+  probot::mechanism::Elevator elevator(&mock);
+  elevator.setUnitsToTicks(60.0f);
+  elevator.setHeightLimits(0.0f, 120.0f);
+  elevator.setTargetHeight(150.0f);
+  EXPECT_NEAR(elevator.getTargetHeight(), 120.0f, 1e-5f);
+  elevator.update(0, 0);
+  EXPECT_NEAR(mock.setpoint, 120.0f * 60.0f, 1e-5f);
+}
+
+TEST_CASE(turret_angle_limits){
+  ControllerMock mock;
+  probot::mechanism::Turret turret(&mock);
+  turret.setDegreesToTicks(5.0f);
+  turret.setAngleLimits(-90.0f, 90.0f);
+  turret.setPidConfig({0.0f,0.0f,0.0f,0.0f,-1.0f,1.0f}, 0);
+  turret.setTargetAngleDeg(120.0f);
+  EXPECT_NEAR(turret.getTargetAngleDeg(), 90.0f, 1e-5f);
+  turret.update(0, 0);
+  EXPECT_NEAR(mock.setpoint, 90.0f * 5.0f, 1e-5f);
+}
+
+TEST_CASE(turret_motion_profile_and_slew){
+  ControllerMock mock;
+  probot::mechanism::Turret turret(&mock);
+  turret.setDegreesToTicks(10.0f);
+  turret.setMotionProfile(probot::control::MotionProfileType::kTrapezoid,
+                          {30.0f, 120.0f, 0.0f});
+  turret.setSlewRateLimit(60.0f); // deg/s
+  turret.setTargetAngleDeg(90.0f);
+
+  turret.update(0, 20); // 20 ms -> 0.02 s
+  EXPECT_TRUE(mock.profileType == probot::control::MotionProfileType::kTrapezoid);
+  EXPECT_NEAR(mock.profileCfg.maxVelocity, 300.0f, 1e-3f);
+  EXPECT_NEAR(mock.profileCfg.maxAcceleration, 1200.0f, 1e-3f);
+
+  float expectedDegrees = 60.0f * 0.02f; // slew limited
+  EXPECT_NEAR(mock.setpoint, expectedDegrees * 10.0f, 1e-3f);
+
+  turret.update(40, 20);
+  EXPECT_TRUE(mock.setpoint >= expectedDegrees * 10.0f);
+}
+
+TEST_CASE(nfr_shooter_sets_velocity){
+  ControllerMock primary;
+  ControllerMock secondary;
+  probot::mechanism::nfr::NfrShooter shooter(&primary, &secondary);
+  shooter.setTicksPerRevolution(4096.0f);
+  shooter.setRpm(3000.0f, 2500.0f);
+
+  EXPECT_TRUE(primary.mode == probot::control::ControlType::kVelocity);
+  EXPECT_TRUE(secondary.mode == probot::control::ControlType::kVelocity);
+  EXPECT_NEAR(primary.setpoint, 4096.0f * 3000.0f / 60.0f, 1e-5f);
+  EXPECT_NEAR(secondary.setpoint, 4096.0f * 2500.0f / 60.0f, 1e-5f);
+
+  shooter.stop();
+  EXPECT_NEAR(primary.setpoint, 0.0f, 1e-5f);
+  EXPECT_NEAR(secondary.setpoint, 0.0f, 1e-5f);
+}
+
+TEST_CASE(arm_angle_limits){
+  ControllerMock mock;
+  probot::mechanism::Arm arm(&mock);
+  arm.setDegreesToTicks(6.0f);
+  arm.setAngleLimits(-120.0f, 120.0f);
+  arm.setTargetAngleDeg(-150.0f);
+  EXPECT_NEAR(arm.getTargetAngleDeg(), -120.0f, 1e-5f);
+  arm.update(0, 0);
+  EXPECT_NEAR(mock.setpoint, -120.0f * 6.0f, 1e-5f);
+}
+
+TEST_CASE(telescopic_stage_limits){
+  ControllerMock mock;
+  probot::mechanism::TelescopicTube tube(&mock);
+  tube.setUnitsToTicks(80.0f);
+  tube.setStageConfiguration(3, 40.0f);
+  tube.setTargetExtension(200.0f);
+  EXPECT_NEAR(tube.getTargetExtension(), 120.0f, 1e-5f);
+  tube.update(0, 0);
+  EXPECT_NEAR(mock.setpoint, 120.0f * 80.0f, 1e-5f);
+}

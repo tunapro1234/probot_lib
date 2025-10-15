@@ -1,53 +1,94 @@
 # Probot Lib
 
-MEB robot yarışmalarında ekiplerin hızlı, güvenilir ve açıklayıcı bir temelle ilerlemesi için geliştirilmiş bir kütüphane. Odak: sahada işleri basitleştirmek, riskleri azaltmak ve öğrenci ekiplerin kısa sürede sonuç alabilmesini sağlamak.
+MEB robot yarışmaları için geliştirilmiş Arduino kütüphanesi. PID kontrolü, motion profiling, WiFi sürücü istasyonu ve ESP32-S3 desteği ile geliyor.
 
-- Dokümanlar: https://docs.probotstudio.com/
+**Tüm dokümantasyon için:** https://docs.probotstudio.com/yazilim/
 
-> Durum: Aktif geliştirme. Zaman zaman hatalarla karşılaşabilirsiniz; lütfen GitHub Issues üzerinden bildirin. Doğrudan destek için WhatsApp: +90 538 040 81 48
+---
 
-## Proje ne sunuyor?
-Probot Lib, yarışma koşullarında ihtiyacınız olan temel taşları bir araya getirir. Amacımız karmaşık ayrıntılarla vakit kaybettirmeden takımların robotlarına odaklanmasını sağlamak.
+## Hızlı Başlangıç
 
-- ESP32‑S3 üzerinde kararlı çalışma (tavsiye edilen kart aşağıda)
-- Tarayıcı tabanlı sürücü istasyonu (Wi‑Fi) ve joystick entegrasyonu
-- Zamanlanmış kontrol döngüleri ve anlaşılır robot yaşam döngüsü
-- Motor/enkoder/LED gibi cihaz soyutlamaları ve PID tabanlı denetleyiciler
-- Örneklerle hızlı ilerleme ve pratik öğrenme
+**Kurulum:**
+Arduino IDE'nin Library Manager'ından "Probot Lib" arayıp yükleyin.
 
-Detaylı kurulum ve kullanım için dokümana bakın: https://docs.probotstudio.com/
+**İlk robot kodunuz:**
+1. `File → Examples → Probot Lib → BasicTankDrive` açın
+2. ESP32-S3'e yükleyin
+3. `Probot-XXXX` WiFi ağına bağlanın
+4. Tarayıcıdan `http://192.168.4.1` adresini açın
+5. Joystick ile robotunuzu kontrol edin
 
-## Neden Arduino tabanı?
-Bu kütüphaneyi özellikle özgür ve erişilebilir olması için Arduino tabanı üzerine kurduk. Arduino’yu zaten bilen öğrenciler, kütüphaneye dair hiçbir şey bilmeseler bile alışık oldukları akışla hızlıca robot yapmaya başlayabilir. Ayrıca Arduino ekosistemi; sensör, sürücü ve pek çok modülü otomatik ya da çok az eforla desteklememizi sağlıyor.
+---
 
-## Donanım desteği
-- Hedef kart: ESP32‑S3
-- Önerilen kart: Boardoza Pulse S32‑S3 (ESP32‑S3) — Satın alma: https://boardoza.com/product/boardoza-pulse-s32-s3-breakout-board/
-- Diğer mikrokontrolcüler: Teknik olarak uyarlamak mümkün olabilir; ancak resmi destek kapsamımızda değildir.
+## Örnekler
 
-## Hızlı başlama (özet)
-- Arduino IDE 2.x ve ESP32 desteğini kurun
-- Depodaki örneklerden birini yükleyin (BasicTankDrive vb.)
-- ESP’nin Wi‑Fi ağına bağlanıp sürücü istasyonunu açın
-- Joystick’i test edin, ardından kendi robot kodunuza geçin
+Kütüphane seviyelerine göre düzenlenmiş örneklerle geliyor:
 
-Ayrıntılar ve ekran görüntüleri: https://docs.probotstudio.com/
+**Başlangıç seviyesi:**
+- `BasicTankDrive` - Tank sürüş sistemi ve joystick kontrolü
+- `MotorTest` - Motor test ve kalibrasyon
 
-## Katkıda bulunma
-Geri bildiriminiz ve katkınız projeyi güçlendirir. Hata/öneri/soru için GitHub Issues açın; küçük ve odaklı PR’lar hızlıca gözden geçirilir. Büyük değişiklikler için önce kısa bir tartışma başlatmanızı öneririz.
+**Orta seviye:**
+- `ClosedLoopMotorTest` - PID tabanlı hız kontrolü
+- `TankDriveAuto` - Otonom hareket (mesafe ve dönüş)
+
+**İleri seviye:**
+- `FullRobotDemo` - Tam donanımlı robot (sürüş + mekanizmalar)
+- `nfr/AdvancedTankDrive` - Trajectory following ve motion profiling
+
+Her örnek doğrudan çalışır durumda ve yorumlarla açıklanmıştır.
+
+---
+
+## Ne içeriyor?
+
+Kütüphane şunları sağlar:
+- WiFi tabanlı driver station (web arayüzü)
+- PID, feedforward ve motion profiling
+- State-space kontrol araçları (Kalman filtre, LQR)
+- Tank ve mecanum sürüş soyutlamaları
+- Mekanizma yardımcıları (kol, asansör, slider)
+- 20ms periyotlu gerçek zamanlı görev yöneticisi
+
+Detaylı API dokümantasyonu ve kullanım örnekleri için https://docs.probotstudio.com/yazilim/ adresini ziyaret edin.
+
+---
+
+## Donanım
+
+**Önerilen:** [Boardoza Pulse S32-S3](https://boardoza.com/product/boardoza-pulse-s32-s3-breakout-board/)
+
+Kütüphane ESP32-S3 için geliştirilmiştir. Motor sürücü olarak herhangi bir PWM sürücü kullanabilirsiniz (Boardoza BA6208, TB6612, vb.)
+
+---
+
+## Katkıda Bulunma
+
+Katkılarınızı bekliyoruz. Hata bildirimi veya özellik önerisi için GitHub Issues kullanabilirsiniz. Pull request'ler için küçük ve odaklı değişiklikler tercih edilir.
+
+Geliştirme için:
+```bash
+git clone https://github.com/nfrproducts/probot-lib
+cd probot-lib
+make test
+```
+
+Detaylar için `CONTRIBUTING.md` dosyasına bakın.
+
+---
 
 ## Lisans
-Proje MIT lisansı ile yayımlanır. Ticari kullanım için ek olarak Commons Clause koşulu geçerlidir.
 
-- MIT: `LICENSE`
-- Commons Clause (satış kısıtı ve ticari lisans için iletişim): `LICENSE-commercial`
+Proje MIT lisansı ile yayınlanır. Ticari kullanım için Commons Clause koşulu geçerlidir.
 
-Ticari lisans veya kurumsal destek için: tunagul54@gmail.com
+Eğitim ve yarışma amaçlı kullanım ücretsizdir. Ticari lisans için: tunagul54@gmail.com
 
-## Dallar
-- `stable`: Yayınlanan sürüm (tek commit’lik sade geçmiş)
-- `dev`: Aktif geliştirme
-- `gh-pages`: Dokümantasyonun yayınlandığı dal (GitHub Pages)
-- `legacy`: Eski kütüphane yapısı (inceleme amaçlı)
+---
 
-Sorularınız için Issues açabilir veya WhatsApp’tan yazabilirsiniz. Amacımız, ekiplerin yarışma gününe daha hazırlıklı ve kendinden emin çıkmasını sağlamak.
+## Destek
+
+**Dokümantasyon:** https://docs.probotstudio.com/yazilim/  
+**WhatsApp:** +90 538 040 81 48  
+**Hata bildirimi:** [GitHub Issues](https://github.com/nfrproducts/probot-lib/issues)
+
+Amacımız ekiplerin yarışma gününe hazır robotlarla çıkmasını sağlamak.

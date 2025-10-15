@@ -3,33 +3,33 @@ PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
 // TestTankDrive: demonstrate BasicTankDrive chassis and Slider with sims
 
-static probot::sim::SimMotor   motL, motR;
-static probot::sim::SimEncoder encL, encR;
-static probot::control::PidConfig cfgV{ 0.9f, 0.3f, 0.02f, -1000.0f, 1000.0f };
-static probot::control::PidConfig cfgP{ 0.8f, 0.0f, 0.01f, -1000.0f, 1000.0f };
+static probot::test::TestMotor   motL, motR;
+static probot::test::TestEncoder encL, encR;
+static probot::control::PidConfig cfgV{ 0.0009f, 0.0003f, 0.00002f, 0.0f, -1.0f, 1.0f };
+static probot::control::PidConfig cfgP{ 0.0008f, 0.0f, 0.00001f, 0.0f, -1.0f, 1.0f };
 static probot::control::PID pidL(cfgV), pidR(cfgV);
-static probot::controllers::ClosedLoopMotor *axisL=nullptr, *axisR=nullptr;
-static probot::controllers::BasicTankDrive* chassis=nullptr;
+static probot::control::ClosedLoopMotor *axisL=nullptr, *axisR=nullptr;
+static probot::drive::BasicTankDrive* chassis=nullptr;
 
 void robotInit() {
   control::setGlobalPeriodMs(20);
-  static probot::controllers::ClosedLoopMotor xL(&encL, &pidL, &motL, 1.0f, 1.0f);
-  static probot::controllers::ClosedLoopMotor xR(&encR, &pidR, &motR, 1.0f, 1.0f);
+  static probot::control::ClosedLoopMotor xL(&encL, &pidL, &motL, 1.0f, 1.0f);
+  static probot::control::ClosedLoopMotor xR(&encR, &pidR, &motR, 1.0f, 1.0f);
   axisL = &xL; axisR = &xR;
   axisL->setPidSlotConfig(0, cfgV); axisL->setPidSlotConfig(1, cfgP);
   axisR->setPidSlotConfig(0, cfgV); axisR->setPidSlotConfig(1, cfgP);
-  axisL->selectDefaultSlot(probot::controllers::ControlType::kVelocity, 0);
-  axisR->selectDefaultSlot(probot::controllers::ControlType::kVelocity, 0);
+  axisL->selectDefaultSlot(probot::control::ControlType::kVelocity, 0);
+  axisR->selectDefaultSlot(probot::control::ControlType::kVelocity, 0);
 
-  static probot::sim::SimPlant pL(&motL, &encL);
-  static probot::sim::SimPlant pR(&motR, &encR);
+  static probot::test::TestPlant pL(&motL, &encL);
+  static probot::test::TestPlant pR(&motR, &encR);
 
   control::attach(axisL);
   control::attach(axisR);
   control::attach(&pL);
   control::attach(&pR);
 
-  static probot::controllers::BasicTankDrive ch(axisL, axisR);
+  static probot::drive::BasicTankDrive ch(axisL, axisR);
   chassis = &ch;
   chassis->setWheelCircumference(20.0f); // arbitrary units
   chassis->setTrackWidth(30.0f);

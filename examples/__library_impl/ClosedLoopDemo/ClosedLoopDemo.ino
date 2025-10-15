@@ -3,12 +3,12 @@
 // TestClosedLoopDemo
 // Demonstrates ClosedLoopMotor with simulated components
 
-static probot::sim::SimMotor   g_motor;
-static probot::sim::SimEncoder g_encoder;
-static probot::control::PidConfig g_cfg_vel{ 0.8f, 0.4f, 0.0f, -1000.0f, 1000.0f };
+static probot::test::TestMotor   g_motor;
+static probot::test::TestEncoder g_encoder;
+static probot::control::PidConfig g_cfg_vel{ 0.0008f, 0.0004f, 0.0f, 0.0f, -1.0f, 1.0f };
 static probot::control::PID        g_pid(g_cfg_vel);
-static probot::controllers::ClosedLoopMotor* g_axis = nullptr;
-static probot::sim::SimPlant* g_plant = nullptr;
+static probot::control::ClosedLoopMotor* g_axis = nullptr;
+static probot::test::TestPlant* g_plant = nullptr;
 
 class LedVisualizer : public control::IUpdatable {
 public:
@@ -35,15 +35,15 @@ void robotInit() {}
 void robotEnd() {}
 
 void teleopInit() {
-  static probot::controllers::ClosedLoopMotor axis(&g_encoder, &g_pid, &g_motor, 1.0f, 1.0f);
+  static probot::control::ClosedLoopMotor axis(&g_encoder, &g_pid, &g_motor, 1.0f, 1.0f);
   g_axis = &axis;
 
   g_axis->setPidSlotConfig(0, g_cfg_vel);
-  g_axis->selectDefaultSlot(probot::controllers::ControlType::kVelocity, 0);
+  g_axis->selectDefaultSlot(probot::control::ControlType::kVelocity, 0);
 
   g_motor.setInverted(false);
 
-  static probot::sim::SimPlant plant(&g_motor, &g_encoder);
+  static probot::test::TestPlant plant(&g_motor, &g_encoder);
   g_plant = &plant;
 
   static LedVisualizer ledviz(&g_encoder, 400.0f); // full brightness at ~400 tps
