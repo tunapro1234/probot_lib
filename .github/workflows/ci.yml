@@ -56,6 +56,11 @@ jobs:
           arduino-cli core update-index
           arduino-cli core install esp32:esp32
 
+      - name: Install Arduino libraries
+        if: ${{ env.ACT != 'true' }}
+        run: |
+          arduino-cli lib install "Adafruit NeoPixel"
+
       - name: Show examples
         if: ${{ env.ACT != 'true' }}
         run: make list
