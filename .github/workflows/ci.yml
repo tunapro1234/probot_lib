@@ -3,9 +3,14 @@ name: CI
 on:
   push:
     branches:
+      - stable
       - main
       - master
   pull_request:
+    branches:
+      - stable
+      - main
+      - master
 
 jobs:
   test:
