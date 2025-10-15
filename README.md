@@ -70,6 +70,7 @@ Geliştirme için:
 ```bash
 git clone https://github.com/nfrproducts/probot-lib
 cd probot-lib
+make libs        # gerekli Arduino kütüphanelerini (Adafruit NeoPixel) kur
 make test
 ```
 
