@@ -28,6 +28,8 @@ inline void pinMode(int, int) {}
 inline void digitalWrite(int, int) {}
 inline int digitalRead(int){ return 0; }
 inline void analogWrite(int, int) {}
+inline void analogWriteResolution(int, int) {}
+inline void analogWriteFrequency(int, int) {}
 
 struct __SerialStub {
   void begin(unsigned long) {}
@@ -40,4 +42,3 @@ struct __SerialStub {
 static __SerialStub Serial;
 
 inline uint32_t micros(){ return millis() * 1000u; }
-

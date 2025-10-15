@@ -17,6 +17,8 @@
 #include <probot/devices/leds/builtin.hpp>
 #include <probot/devices/motors/imotor_driver.hpp>
 #include <probot/devices/motors/boardoza_ba6208_driver.hpp>
+#include <probot/devices/motors/boardoza_vnh_motor_driver.hpp>
+#include <probot/devices/motors/motor_handle.hpp>
 #include <probot/control/imotor_controller.hpp>
 #include <probot/devices/motors/motor_group.hpp>
 

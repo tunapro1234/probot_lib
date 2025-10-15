@@ -4,6 +4,9 @@
 #include <probot/devices/motors/motor_handle.hpp>
 #include <probot/test/test_motor.hpp>
 
+#include <probot/devices/motors/boardoza_vnh_motor_driver.hpp>
+#include <type_traits>
+
 namespace {
   struct MotorStub : probot::motor::IMotorDriver {
     void* owner = nullptr;
@@ -48,3 +51,6 @@ TEST_CASE(motor_handle_claims_motor){
   }
   EXPECT_TRUE(!motor.isClaimed());
 }
+
+static_assert(std::is_base_of<probot::motor::IMotorDriver, probot::motor::BoardozaVNHMotorDriver>::value,
+              "BoardozaVNHMotorDriver must implement IMotorDriver");
