@@ -127,13 +127,20 @@ namespace probot::control {
 
     bool setPowerDirect(float power){
       if (!driver_) return false;
-      return driver_->setPower(power);
+      bool ok = driver_->setPower(power);
+      if (ok){
+        last_output_ = inverted_ ? -power : power;
+      }
+      return ok;
     }
 
     bool setPower(float power) override {
       if (!driver_) return false;
-      float p = inverted_ ? -power : power;
-      return driver_->setPower(p);
+      bool ok = driver_->setPower(power);
+      if (ok){
+        last_output_ = inverted_ ? -power : power;
+      }
+      return ok;
     }
 
     void setInverted(bool inverted) override {
@@ -153,11 +160,11 @@ namespace probot::control {
 
       if (active_mode_ == ControlType::kPercent){
         float target_val = target_value_.load();
-        float output = inverted_ ? -target_val : target_val;
+        float applied = inverted_ ? -target_val : target_val;
         ref_value_.store(target_val);
-        driver_->setPower(output);
+        driver_->setPower(target_val);
         last_measurement_ = target_val;
-        last_output_ = output;
+        last_output_ = applied;
         return;
       }
 
@@ -206,7 +213,7 @@ namespace probot::control {
 
       driver_->setPower(cmd);
       last_measurement_ = meas;
-      last_output_ = cmd;
+      last_output_ = inverted_ ? -cmd : cmd;
 
 #ifndef PROBOT_CLM_NOLOG
       Serial.printf("[CLM ] mode=%s ref=%.3f meas=%.3f err=%.3f out=%.3f slot=%d\n",

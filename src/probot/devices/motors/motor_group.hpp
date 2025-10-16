@@ -9,9 +9,8 @@ namespace probot::motor {
 
     bool setPower(float power) override {
       if (!a_ || !b_) return false;
-      float p = inverted_ ? -power : power;
-      bool ok1 = a_->setPower(p);
-      bool ok2 = b_->setPower(p);
+      bool ok1 = a_->setPower(power);
+      bool ok2 = b_->setPower(power);
       return ok1 && ok2;
     }
 

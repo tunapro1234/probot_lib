@@ -116,11 +116,13 @@ TEST_CASE(closed_loop_motor_group_broadcast){
   EXPECT_TRUE(group.setPower(0.5f));
   EXPECT_NEAR(a.output, 0.5f, 1e-5f);
   EXPECT_NEAR(b.output, 0.5f, 1e-5f);
+  EXPECT_NEAR(a.lastCommand, 0.5f, 1e-5f);
 
   group.setInverted(true);
   EXPECT_TRUE(group.getInverted());
   EXPECT_TRUE(group.setPower(0.5f));
-  EXPECT_NEAR(a.lastCommand, -0.5f, 1e-5f);
+  EXPECT_NEAR(a.output, -0.5f, 1e-5f);
+  EXPECT_NEAR(a.lastCommand, 0.5f, 1e-5f);
 }
 
 TEST_CASE(closed_loop_motor_percent_and_timeout){

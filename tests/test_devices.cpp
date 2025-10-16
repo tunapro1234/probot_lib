@@ -27,7 +27,8 @@ TEST_CASE(motor_group_power_and_invert){
 
   group.setInverted(true);
   EXPECT_TRUE(group.setPower(0.4f));
-  EXPECT_NEAR(a.lastCommand, -0.4f, 1e-5f);
+  EXPECT_NEAR(a.lastPower, -0.4f, 1e-5f);
+  EXPECT_NEAR(a.lastCommand, 0.4f, 1e-5f);
 }
 
 TEST_CASE(motor_handle_controls_motor){

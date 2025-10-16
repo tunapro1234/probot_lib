@@ -63,9 +63,8 @@ namespace probot::control {
 
     // IMotor for raw power when needed
     bool setPower(float power) override {
-      float p = inverted_ ? -power : power;
-      bool ok1 = a_ ? a_->setPower(p) : false;
-      bool ok2 = b_ ? b_->setPower(p) : false;
+      bool ok1 = a_ ? a_->setPower(power) : false;
+      bool ok2 = b_ ? b_->setPower(power) : false;
       return ok1 && ok2;
     }
 
