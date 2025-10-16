@@ -487,23 +487,30 @@
   </div>
 </main>
   <script>
-    let robotState="init";
+    let controlState="idle";
+    let autoModeEnabled=false;
     let selectedGamepadIndex=-1;
     let gamepads={};
     let gamepadDetected=false;
 
-function setPhase(state){
+function setPhaseDisplay(mode){
   const title=document.getElementById('phaseTitle');
   const subtitle=document.getElementById('phaseSubtitle');
   const map={
     init:{title:"Init", subtitle:"Systems primed"},
-    start:{title:"Teleop", subtitle:"Drivers in control"},
-    stop:{title:"Stopped", subtitle:"Motors safe"}
+    auto:{title:"Autonomous", subtitle:`Running script`},
+    teleop:{title:"Teleop", subtitle:"Drivers in control"},
+    stopped:{title:"Stopped", subtitle:"Motors safe"},
+    standby:{title:"Standby", subtitle:"Awaiting command"}
   };
-  const next = map[state] || {title:"Standby", subtitle:"Awaiting command"};
+  const next = map[mode] || map.standby;
   title.textContent = next.title;
-  subtitle.textContent = next.subtitle;
-  document.body.dataset.state = state;
+  if(mode === 'auto'){
+    subtitle.textContent = `Auto running – ${autoRemaining.toFixed(1)} s`;
+  }else{
+    subtitle.textContent = next.subtitle;
+  }
+  document.body.dataset.state = mode;
 }
 
 let autoTimer=null;
@@ -552,9 +559,13 @@ function updateAutoDisplay(){
   display.textContent=`${autoRemaining.toFixed(1)} s`;
   const pct = duration>0 ? Math.max(0,Math.min(100,(autoRemaining/duration)*100)) : 0;
   fill.style.width=`${pct}%`;
+  if(autoModeEnabled){
+    setPhaseDisplay('auto');
+  }
 }
 
 function startAutoTimer(duration){
+  autoModeEnabled = true;
   autoRemaining = duration;
   updateAutoDisplay();
   clearInterval(autoTimer);
@@ -564,9 +575,8 @@ function startAutoTimer(duration){
     if(autoRemaining <= 0){
       clearInterval(autoTimer);
       autoTimer=null;
-      if(robotState === "start"){
-        document.getElementById('robotButton').click();
-      }
+      autoModeEnabled = false;
+      setPhaseDisplay('teleop');
     }
   }, 100);
 }
@@ -575,18 +585,21 @@ function stopAutoTimer(){
   clearInterval(autoTimer);
   autoTimer=null;
   autoRemaining=0;
+  autoModeEnabled=false;
   updateAutoDisplay();
 }
 
     async function handleRobotButton(){
       let cmd="";
-      switch(robotState){
-        case "init": cmd="init"; break;
-        case "start": cmd="start"; break;
-        case "stop": cmd="stop"; break;
-      }
       const enableAuto=document.getElementById('enableAutonomous').checked;
-      const autoLen=parseFloat(document.getElementById('autoPeriod').value) || 30;
+      const autoLen=Math.max(0, parseFloat(document.getElementById('autoPeriod').value) || 0);
+
+      switch(controlState){
+        case "idle": cmd="init"; break;
+        case "armed": cmd="start"; break;
+        default: cmd="stop"; break;
+      }
+
       const url=`/robotControl?cmd=${cmd}&auto=${enableAuto?1:0}&autoLen=${autoLen}`;
       try{
         const r=await fetch(url);
@@ -595,25 +608,34 @@ function stopAutoTimer(){
         console.error(err);
         return;
       }
+
       const btn=document.getElementById('robotButton');
-      if(robotState==="init"){
-        robotState="start";
+      if(controlState==="idle"){
+        controlState="armed";
         btn.textContent="Start";
         btn.style.background="#4aa96c";
-        if(enableAuto){ startAutoTimer(autoLen); }
-        else { stopAutoTimer(); }
-      }else if(robotState==="start"){
-        robotState="stop";
+        stopAutoTimer();
+        autoRemaining = autoLen;
+        updateAutoDisplay();
+        setPhaseDisplay('init');
+      }else if(controlState==="armed"){
+        controlState="running";
         btn.textContent="Stop";
         btn.style.background="#d9534f";
-        stopAutoTimer();
+        if(enableAuto && autoLen>0){
+          startAutoTimer(autoLen);
+          setPhaseDisplay('auto');
+        }else{
+          stopAutoTimer();
+          setPhaseDisplay('teleop');
+        }
       }else{
-        robotState="init";
+        controlState="idle";
         btn.textContent="Init";
         btn.style.background=varGet("--navy");
         stopAutoTimer();
+        setPhaseDisplay('stopped');
       }
-      setPhase(robotState);
     }
     document.getElementById('robotButton').addEventListener('click',handleRobotButton);
 
@@ -708,7 +730,7 @@ function stopAutoTimer(){
       updateJoyVisuals(null);
       autoRemaining=parseFloat(document.getElementById('autoPeriod').value)||0;
       updateAutoDisplay();
-      setPhase(robotState);
+      setPhaseDisplay('standby');
       requestAnimationFrame(gamepadLoop);
     });
 
