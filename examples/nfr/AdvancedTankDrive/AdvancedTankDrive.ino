@@ -19,11 +19,7 @@ static probot::control::PID pidRight({0.4f,0.0f,0.0f,-1.0f,1.0f});
 // Null controllers stand in for real motor controllers – swap with real ones on hardware.
 class NullMotorController : public probot::control::IMotorController {
 public:
-  bool claim(void* owner) override { return handle_.underlying().claim(owner); }
-  void release(void* owner) override { handle_.underlying().release(owner); }
-  bool setPower(float power, void* owner) override { return handle_.underlying().setPower(power, owner); }
-  bool isClaimed() const override { return handle_.underlying().isClaimed(); }
-  void* currentOwner() const override { return handle_.underlying().currentOwner(); }
+  bool setPower(float power) override { return handle_.underlying().setPower(power); }
   void setInverted(bool inv) override { handle_.setInverted(inv); }
   bool getInverted() const override { return handle_.getInverted(); }
 

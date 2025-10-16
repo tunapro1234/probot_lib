@@ -9,47 +9,36 @@
 
 namespace {
   struct MotorStub : probot::motor::IMotorDriver {
-    void* owner = nullptr;
     float lastPower = 0.0f;
     float lastCommand = 0.0f;
     bool inverted = false;
-    bool claim(void* o) override { if (owner && owner != o) return false; owner = o; return true; }
-    void release(void* o) override { if (owner == o){ owner = nullptr; lastPower = 0.0f; } }
-    bool setPower(float power, void* o) override { if (owner != o) return false; lastCommand = power; lastPower = inverted ? -power : power; return true; }
-    bool isClaimed() const override { return owner != nullptr; }
-    void* currentOwner() const override { return owner; }
+    bool setPower(float power) override { lastCommand = power; lastPower = inverted ? -power : power; return true; }
     void setInverted(bool inv) override { inverted = inv; }
     bool getInverted() const override { return inverted; }
   };
 }
 
-TEST_CASE(motor_group_claim_and_invert){
+TEST_CASE(motor_group_power_and_invert){
   MotorStub a, b;
   probot::motor::MotorGroup group(&a, &b);
-  int token = 42;
-  EXPECT_TRUE(group.claim(&token));
-  EXPECT_TRUE(group.setPower(0.3f, &token));
+  EXPECT_TRUE(group.setPower(0.3f));
   EXPECT_NEAR(a.lastPower, 0.3f, 1e-5f);
   EXPECT_NEAR(b.lastPower, 0.3f, 1e-5f);
 
   group.setInverted(true);
-  EXPECT_TRUE(group.setPower(0.4f, &token));
+  EXPECT_TRUE(group.setPower(0.4f));
   EXPECT_NEAR(a.lastCommand, -0.4f, 1e-5f);
-  group.release(&token);
-  EXPECT_TRUE(!a.isClaimed());
 }
 
-TEST_CASE(motor_handle_claims_motor){
+TEST_CASE(motor_handle_controls_motor){
   probot::motor::NullMotor motor;
-  {
-    probot::motor::MotorHandle handle(motor);
-    handle.setPower(0.5f);
-    EXPECT_TRUE(motor.isClaimed());
-    handle.setInverted(true);
-    EXPECT_TRUE(handle.getInverted());
-    handle.release();
-  }
-  EXPECT_TRUE(!motor.isClaimed());
+  probot::motor::MotorHandle handle(motor);
+  handle.setPower(0.5f);
+  EXPECT_NEAR(motor.appliedPower(), 0.5f, 1e-5f);
+  handle.setInverted(true);
+  EXPECT_TRUE(handle.getInverted());
+  handle.setPower(0.2f);
+  EXPECT_NEAR(motor.appliedPower(), -0.2f, 1e-5f);
 }
 
 static_assert(std::is_base_of<probot::motor::IMotorDriver, probot::motor::BoardozaVNHMotorDriver>::value,

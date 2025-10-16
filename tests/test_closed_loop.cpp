@@ -19,25 +19,13 @@ namespace {
   };
 
   struct MotorStub : probot::motor::IMotorDriver {
-    void* owner = nullptr;
     float lastPower = 0.0f;
     bool inverted = false;
 
-    bool claim(void* o) override {
-      if (owner && owner != o) return false;
-      owner = o;
-      return true;
-    }
-    void release(void* o) override {
-      if (owner == o){ owner = nullptr; lastPower = 0.0f; }
-    }
-    bool setPower(float power, void* o) override {
-      if (owner != o) return false;
+    bool setPower(float power) override {
       lastPower = inverted ? -power : power;
       return true;
     }
-    bool isClaimed() const override { return owner != nullptr; }
-    void* currentOwner() const override { return owner; }
     void setInverted(bool inv) override { inverted = inv; }
     bool getInverted() const override { return inverted; }
   };
@@ -50,24 +38,14 @@ namespace {
     float output = 0.0f;
     float lastCommand = 0.0f;
     bool inverted = false;
-    void* owner = nullptr;
     probot::control::MotionProfileType profileType = probot::control::MotionProfileType::kNone;
     probot::control::MotionProfileConfig profileCfg{};
 
-    bool claim(void* o) override {
-      if (owner && owner != o) return false;
-      owner = o;
-      return true;
-    }
-    void release(void* o) override { if (owner == o) owner = nullptr; }
-    bool setPower(float power, void* o) override {
-      if (owner != o) return false;
+    bool setPower(float power) override {
       lastCommand = power;
       output = inverted ? -power : power;
       return true;
     }
-    bool isClaimed() const override { return owner != nullptr; }
-    void* currentOwner() const override { return owner; }
     void setInverted(bool inv) override { inverted = inv; }
     bool getInverted() const override { return inverted; }
 
@@ -135,19 +113,14 @@ TEST_CASE(closed_loop_motor_group_broadcast){
   EXPECT_TRUE(a.mode == probot::control::ControlType::kPosition);
   EXPECT_TRUE(b.mode == probot::control::ControlType::kPosition);
 
-  float token = 0.0f;
-  EXPECT_TRUE(group.claim(&token));
-  EXPECT_TRUE(group.setPower(0.5f, &token));
+  EXPECT_TRUE(group.setPower(0.5f));
   EXPECT_NEAR(a.output, 0.5f, 1e-5f);
   EXPECT_NEAR(b.output, 0.5f, 1e-5f);
 
   group.setInverted(true);
   EXPECT_TRUE(group.getInverted());
-  EXPECT_TRUE(group.setPower(0.5f, &token));
+  EXPECT_TRUE(group.setPower(0.5f));
   EXPECT_NEAR(a.lastCommand, -0.5f, 1e-5f);
-
-  group.release(&token);
-  EXPECT_TRUE(!a.isClaimed());
 }
 
 TEST_CASE(closed_loop_motor_percent_and_timeout){
@@ -172,24 +145,6 @@ TEST_CASE(closed_loop_motor_percent_and_timeout){
   _test_millis_now = 100;
   controller.update(150, 10);
   EXPECT_NEAR(driver.lastPower, 0.0f, 1e-5f);
-}
-
-TEST_CASE(closed_loop_motor_external_claim_should_allow_control){
-  EncoderStub encoder;
-  MotorStub driver;
-  auto cfg = makePid(0.2f);
-  probot::control::PID pid(cfg);
-  probot::control::ClosedLoopMotor controller(&encoder, &pid, &driver, 1.0f, 0.001f);
-  controller.setTimeoutMs(0);
-  controller.setPidSlotConfig(0, cfg);
-  EXPECT_TRUE(driver.owner != nullptr);
-
-  float externalToken = 1.0f;
-  EXPECT_TRUE(controller.claim(&externalToken));
-  EXPECT_TRUE(controller.setPower(0.3f, &externalToken));
-  EXPECT_NEAR(driver.lastPower, 0.3f, 1e-5f);
-  controller.release(&externalToken);
-  EXPECT_TRUE(!controller.isClaimed());
 }
 
 TEST_CASE(closed_loop_motor_trapezoid_profile_ramps){

@@ -10,11 +10,7 @@ static probot::motor::MotorHandle flHandle(flHW), frHandle(frHW), rlHandle(rlHW)
 class NullMotorController : public probot::control::IMotorController {
 public:
   explicit NullMotorController(probot::motor::MotorHandle& handle) : handle_(handle) {}
-  bool claim(void* owner) override { return handle_.underlying().claim(owner); }
-  void release(void* owner) override { handle_.underlying().release(owner); }
-  bool setPower(float power, void* owner) override { return handle_.underlying().setPower(power, owner); }
-  bool isClaimed() const override { return handle_.underlying().isClaimed(); }
-  void* currentOwner() const override { return handle_.underlying().currentOwner(); }
+  bool setPower(float power) override { return handle_.underlying().setPower(power); }
   void setInverted(bool inv) override { handle_.setInverted(inv); }
   bool getInverted() const override { return handle_.getInverted(); }
   void setSetpoint(float, probot::controllers::ControlType, int) override {}

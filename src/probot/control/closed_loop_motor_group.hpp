@@ -6,7 +6,7 @@ namespace probot::control {
   class ClosedLoopMotorGroup : public IMotorController {
   public:
     ClosedLoopMotorGroup(IMotorController* a, IMotorController* b)
-    : a_(a), b_(b), owner_(nullptr), inverted_(false) {}
+    : a_(a), b_(b), inverted_(false) {}
 
     // Group control API
     void setSetpoint(float value, ControlType mode, int slot = -1) override {
@@ -62,29 +62,12 @@ namespace probot::control {
     }
 
     // IMotor for raw power when needed
-    bool claim(void* owner) override {
-      if (owner_ && owner_ != owner) return false;
-      if (!a_ || !b_) return false;
-      if (!a_->claim(owner)) return false;
-      if (!b_->claim(owner)) { a_->release(owner); return false; }
-      owner_ = owner;
-      return true;
-    }
-    void release(void* owner) override {
-      if (owner_ != owner) return;
-      if (b_) b_->release(owner);
-      if (a_) a_->release(owner);
-      owner_ = nullptr;
-    }
-    bool setPower(float power, void* owner) override {
-      if (owner_ != owner) return false;
+    bool setPower(float power) override {
       float p = inverted_ ? -power : power;
-      bool ok1 = a_ ? a_->setPower(p, owner) : false;
-      bool ok2 = b_ ? b_->setPower(p, owner) : false;
+      bool ok1 = a_ ? a_->setPower(p) : false;
+      bool ok2 = b_ ? b_->setPower(p) : false;
       return ok1 && ok2;
     }
-    bool isClaimed() const override { return owner_ != nullptr; }
-    void* currentOwner() const override { return owner_; }
 
     void setInverted(bool inverted) override {
       inverted_ = inverted;
@@ -96,7 +79,6 @@ namespace probot::control {
   private:
     IMotorController* a_;
     IMotorController* b_;
-    void* owner_;
     bool  inverted_;
   };
 } // namespace probot::control 

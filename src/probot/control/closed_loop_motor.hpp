@@ -28,20 +28,16 @@ namespace probot::control {
       active_mode_(ControlType::kVelocity),
       default_slot_velocity_(0),
       default_slot_position_(1),
-      owner_token_(this),
-      external_owner_(nullptr),
       inverted_(false)
     {
       for (int i=0;i<4;i++){
         slot_cfg_[i] = {0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f};
       }
-      if (driver_) driver_->claim(owner_token_);
     }
 
     ~ClosedLoopMotor(){
       if (driver_) {
-        driver_->setPower(0.0f, owner_token_);
-        driver_->release(owner_token_);
+        driver_->setPower(0.0f);
       }
     }
 
@@ -131,29 +127,14 @@ namespace probot::control {
 
     bool setPowerDirect(float power){
       if (!driver_) return false;
-      if (external_owner_) return false;  // Respect external ownership
-      return driver_->setPower(power, owner_token_);
+      return driver_->setPower(power);
     }
 
-    // IMotor interface (external ownership control). External owner must claim/release.
-    bool claim(void* owner) override {
-      if (external_owner_ && external_owner_ != owner) return false;
+    bool setPower(float power) override {
       if (!driver_) return false;
-      external_owner_ = owner;
-      return true;
-    }
-    void release(void* owner) override {
-      if (!driver_ || external_owner_ != owner) return;
-      driver_->setPower(0.0f, owner_token_);
-      external_owner_ = nullptr;
-    }
-    bool setPower(float power, void* owner) override {
-      if (!driver_ || external_owner_ != owner) return false;
       float p = inverted_ ? -power : power;
-      return driver_->setPower(p, owner_token_);
+      return driver_->setPower(p);
     }
-    bool isClaimed() const override { return external_owner_ != nullptr; }
-    void* currentOwner() const override { return external_owner_; }
 
     void setInverted(bool inverted) override {
       inverted_ = inverted;
@@ -165,7 +146,7 @@ namespace probot::control {
       if (!encoder_ || !pid_ || !driver_) return;
 
       if (timeout_ms_ > 0 && (now_ms - last_ref_ms_.load()) > timeout_ms_){
-        driver_->setPower(0.0f, owner_token_);
+        driver_->setPower(0.0f);
         last_output_ = 0.0f;
         return;
       }
@@ -174,7 +155,7 @@ namespace probot::control {
         float target_val = target_value_.load();
         float output = inverted_ ? -target_val : target_val;
         ref_value_.store(target_val);
-        driver_->setPower(output, owner_token_);
+        driver_->setPower(output);
         last_measurement_ = target_val;
         last_output_ = output;
         return;
@@ -223,7 +204,7 @@ namespace probot::control {
       float cmd = pid_out + ff;
       cmd = std::clamp(cmd, slot_cfg_[slot].out_min, slot_cfg_[slot].out_max);
 
-      driver_->setPower(cmd, owner_token_);
+      driver_->setPower(cmd);
       last_measurement_ = meas;
       last_output_ = cmd;
 
@@ -383,8 +364,6 @@ namespace probot::control {
     ControlType profile_mode_ = ControlType::kPercent;
     std::unique_ptr<probot::control::motion_profile::IMotionProfile> motion_profile_;
 
-    void* owner_token_;
-    void* external_owner_;
     bool  inverted_;
     float last_measurement_ = 0.0f;
     float last_output_      = 0.0f;
