@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ProBot Command Deck</title>
+  <style>
+    :root{
+      --navy:#00204d;
+      --ice:#e5e4e2;
+      --accent:#ff8c37;
+      --accent-soft:rgba(255,140,55,0.16);
+      --panel:#032b63;
+      --outline:rgba(229,228,226,0.25);
+      font-family:"Segoe UI",Roboto,system-ui,-apple-system,sans-serif;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      background:linear-gradient(135deg,#00132d 0%,#032b63 70%,#073c85 100%);
+      color:var(--ice);
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+    }
+    header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:18px 32px;
+      background:rgba(0,8,25,0.72);
+      backdrop-filter:blur(9px);
+      border-bottom:1px solid var(--outline);
+      position:sticky;
+      top:0;
+      z-index:10;
+    }
+    header h1{
+      font-size:1.6rem;
+      letter-spacing:0.08em;
+      text-transform:uppercase;
+    }
+    header .badge{
+      background:var(--accent-soft);
+      color:var(--accent);
+      padding:6px 12px;
+      border-radius:999px;
+      font-size:0.8rem;
+      letter-spacing:0.12em;
+    }
+    main{
+      flex:1;
+      padding:32px;
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+      gap:24px;
+    }
+    .card{
+      background:linear-gradient(160deg,rgba(3,43,99,0.95),rgba(0,15,40,0.9));
+      border:1px solid var(--outline);
+      border-radius:18px;
+      padding:24px;
+      box-shadow:0 18px 26px rgba(0,0,0,0.28);
+    }
+    .card h2{
+      font-size:1rem;
+      letter-spacing:0.1em;
+      text-transform:uppercase;
+      margin-bottom:18px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+    .status-dot{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      display:inline-block;
+      margin-right:6px;
+      box-shadow:0 0 12px rgba(0,0,0,0.4);
+    }
+    .status-chip{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:0.9rem;
+      background:rgba(255,255,255,0.04);
+      padding:6px 10px;
+      border-radius:14px;
+    }
+    .match-timer{
+      font-size:2.8rem;
+      font-weight:600;
+      letter-spacing:0.08em;
+    }
+    .controls{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+      gap:16px;
+      margin-top:18px;
+    }
+    button{
+      border:none;
+      border-radius:12px;
+      padding:16px;
+      font-size:1rem;
+      font-weight:600;
+      text-transform:uppercase;
+      letter-spacing:0.12em;
+      cursor:pointer;
+      transition:transform 120ms ease,box-shadow 120ms ease,background 200ms ease;
+      color:var(--navy);
+      background:var(--ice);
+      box-shadow:0 14px 22px rgba(0,0,0,0.25);
+    }
+    button:hover{transform:translateY(-3px);}
+    button:active{transform:translateY(1px);box-shadow:0 8px 12px rgba(0,0,0,0.22);}
+    .control-toggle{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:12px 16px;
+      border-radius:12px;
+      background:rgba(255,255,255,0.05);
+      border:1px solid var(--outline);
+    }
+    .control-toggle label{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      font-size:0.85rem;
+      letter-spacing:0.08em;
+    }
+    .control-toggle input[type="number"]{
+      width:70px;
+      padding:6px 8px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.2);
+      background:rgba(0,15,40,0.6);
+      color:var(--ice);
+      text-align:center;
+    }
+    .switch{
+      position:relative;
+      width:54px;
+      height:28px;
+    }
+    .switch input{
+      opacity:0;
+      width:0;
+      height:0;
+    }
+    .slider{
+      position:absolute;
+      cursor:pointer;
+      top:0;
+      left:0;
+      right:0;
+      bottom:0;
+      background:rgba(229,228,226,0.22);
+      border-radius:999px;
+      transition:background 200ms ease;
+    }
+    .slider:before{
+      position:absolute;
+      content:"";
+      height:22px;
+      width:22px;
+      left:4px;
+      top:3px;
+      background-color:var(--ice);
+      border-radius:50%;
+      transition:transform 200ms ease;
+      box-shadow:0 6px 12px rgba(0,0,0,0.26);
+    }
+    .switch input:checked + .slider{
+      background:var(--accent);
+    }
+    .switch input:checked + .slider:before{
+      transform:translateX(26px);
+    }
+    .joystick-panel{
+      display:grid;
+      gap:16px;
+    }
+    .data-block{
+      background:rgba(255,255,255,0.03);
+      border:1px solid var(--outline);
+      border-radius:12px;
+      padding:16px;
+      max-height:200px;
+      overflow:auto;
+      font-family:"SFMono-Regular","Roboto Mono",monospace;
+      font-size:0.85rem;
+    }
+    select{
+      width:100%;
+      padding:12px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.26);
+      background:rgba(0,15,40,0.7);
+      color:var(--ice);
+    }
+    .hint{
+      font-size:0.78rem;
+      opacity:0.7;
+      margin-top:4px;
+    }
+    @media (max-width:720px){
+      header{padding:14px 20px;}
+      main{padding:20px;}
+      .card{padding:20px;}
+      .match-timer{font-size:2.2rem;}
+      button{padding:14px;font-size:0.9rem;}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ProBot Command Deck</h1>
+    <div class="badge" id="phaseBadge">Phase: Standby</div>
+  </header>
+  <main>
+    <section class="card" id="matchControl">
+      <h2>
+        Match Control
+        <span class="status-chip">
+          <span id="joystickIndicator" class="status-dot" style="background:#944;"></span>
+          <span id="joystickStatusTxt">Not Connected</span>
+        </span>
+      </h2>
+      <div class="match-timer" id="matchTimer">00:30</div>
+      <div class="controls">
+        <button id="robotButton">Init</button>
+        <div class="control-toggle">
+          <label>
+            Auto Mode
+            <span class="hint">Enable autonomous sequence</span>
+          </label>
+          <label class="switch">
+            <input type="checkbox" id="enableAutonomous" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="control-toggle">
+          <label>
+            Auto Length
+            <span class="hint">Seconds</span>
+          </label>
+          <input type="number" id="autoPeriod" value="30" min="1" max="120">
+        </div>
+      </div>
+      <p class="hint" id="gamepadHint" style="margin-top:18px; display:none;">Press any controller button to activate.</p>
+    </section>
+    <section class="card joystick-panel">
+      <h2>Joystick Console</h2>
+      <div>
+        <label for="joystickSelect" style="display:block;margin-bottom:8px;">Active Gamepad</label>
+        <select id="joystickSelect" onchange="changeSelectedGamepad()">
+          <option value="-1">No Gamepad</option>
+        </select>
+      </div>
+      <div class="data-block" id="joystickStatus">No gamepad selected.</div>
+      <div class="data-block" id="axisData">No data yet...</div>
+      <div class="data-block" id="buttonData">No data yet...</div>
+    </section>
+  </main>
+  <script>
+    let robotState="init";
+    let selectedGamepadIndex=-1;
+    let gamepads={};
+    let gamepadDetected=false;
+
+    function updatePhaseBadge(status){
+      const badge=document.getElementById('phaseBadge');
+      const colors={init:"#ff8c37",start:"#20ff8f",stop:"#ff5555"};
+      const names={init:"Init",start:"Teleop",stop:"Stopped"};
+      badge.textContent=`Phase: ${names[status]||"Standby"}`;
+      badge.style.background=`linear-gradient(120deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))`;
+      badge.style.boxShadow=`0 0 12px ${colors[status]||"#ff8c37"}`;
+    }
+
+    async function handleRobotButton(){
+      let cmd="";
+      switch(robotState){
+        case "init": cmd="init"; break;
+        case "start": cmd="start"; break;
+        case "stop": cmd="stop"; break;
+      }
+      const enableAuto=document.getElementById('enableAutonomous').checked;
+      const autoLen=document.getElementById('autoPeriod').value || 30;
+      const url=`/robotControl?cmd=${cmd}&auto=${enableAuto?1:0}&autoLen=${autoLen}`;
+      try{
+        const r=await fetch(url);
+        if(!r.ok) throw new Error("Robot command failed");
+      }catch(err){
+        console.error(err);
+        return;
+      }
+      const btn=document.getElementById('robotButton');
+      if(robotState==="init"){
+        robotState="start";
+        btn.textContent="Start";
+        btn.style.background="#20ff8f";
+        btn.style.color="#012339";
+        updatePhaseBadge("init");
+      }else if(robotState==="start"){
+        robotState="stop";
+        btn.textContent="Stop";
+        btn.style.background="#ff5555";
+        btn.style.color="#fff";
+        updatePhaseBadge("start");
+      }else{
+        robotState="init";
+        btn.textContent="Init";
+        btn.style.background="#e5e4e2";
+        btn.style.color="#00204d";
+        updatePhaseBadge("stop");
+      }
+    }
+
+    document.getElementById('robotButton').addEventListener('click',handleRobotButton);
+
+    function updateGamepads(){
+      const gpList=navigator.getGamepads?navigator.getGamepads():[];
+      gamepads={};
+      for(let i=0;i<gpList.length;i++){
+        const gp=gpList[i];
+        if(gp) gamepads[gp.index]=gp;
+      }
+    }
+
+    function rebuildGamepadSelect(){
+      const selectEl=document.getElementById('joystickSelect');
+      while(selectEl.options.length>1){ selectEl.remove(1); }
+      Object.keys(gamepads).forEach(idx=>{
+        const gp=gamepads[idx];
+        const option=document.createElement('option');
+        option.value=idx;
+        option.text=`${gp.id} (idx ${gp.index})`;
+        selectEl.add(option);
+      });
+      if(Object.keys(gamepads).length>0 && selectedGamepadIndex<0){
+        const firstIdx=Object.keys(gamepads)[0];
+        selectEl.value=firstIdx;
+        selectedGamepadIndex=parseInt(firstIdx,10);
+      }
+      if(Object.keys(gamepads).length===0){
+        selectedGamepadIndex=-1;
+        selectEl.value="-1";
+      }
+    }
+
+    function changeSelectedGamepad(){
+      const val=document.getElementById('joystickSelect').value;
+      selectedGamepadIndex=parseInt(val,10);
+      if(isNaN(selectedGamepadIndex)) selectedGamepadIndex=-1;
+    }
+
+    async function sendGamepadData(gp){
+      const data={
+        axes:gp.axes,
+        buttons:gp.buttons.map(b=>b.pressed)
+      };
+      try{
+        await fetch("/updateController",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify(data)
+        });
+      }catch(err){
+        console.error(err);
+      }
+    }
+
+    function displayJoystickData(gp){
+      const statusEl=document.getElementById('joystickStatus');
+      const axisEl=document.getElementById('axisData');
+      const buttonEl=document.getElementById('buttonData');
+      statusEl.textContent=`${gp.id}\nAxes: ${gp.axes.length} | Buttons: ${gp.buttons.length}`;
+      axisEl.textContent=gp.axes.map((v,i)=>`Axis ${i}: ${v.toFixed(2)}`).join("\n");
+      buttonEl.textContent=gp.buttons.map((b,i)=>`Button ${i}: ${b.pressed?"●":"○"}`).join("  ");
+    }
+
+    function updateTimer(){
+      document.getElementById('matchTimer').textContent=document.getElementById('autoPeriod').value.padStart?document.getElementById('autoPeriod').value.padStart(2,"0")+":00":document.getElementById('autoPeriod').value+":00";
+    }
+    document.getElementById('autoPeriod').addEventListener('input',updateTimer);
+    updateTimer();
+
+    function gamepadLoop(){
+      updateGamepads();
+      rebuildGamepadSelect();
+      const indicator=document.getElementById('joystickIndicator');
+      const txt=document.getElementById('joystickStatusTxt');
+      const hint=document.getElementById('gamepadHint');
+      const gp=gamepads[selectedGamepadIndex];
+      if(gp){
+        indicator.style.background="var(--accent)";
+        indicator.style.boxShadow="0 0 16px rgba(255,140,55,0.8)";
+        txt.textContent="Connected";
+        hint.style.display="none";
+        gamepadDetected=true;
+        displayJoystickData(gp);
+        sendGamepadData(gp);
+      }else{
+        indicator.style.background="#944";
+        indicator.style.boxShadow="0 0 8px rgba(255,85,85,0.6)";
+        txt.textContent="Not Connected";
+        if(!gamepadDetected) hint.style.display="block";
+        document.getElementById('joystickStatus').textContent="No gamepad selected.";
+        document.getElementById('axisData').textContent="No data yet...";
+        document.getElementById('buttonData').textContent="No data yet...";
+      }
+      requestAnimationFrame(gamepadLoop);
+    }
+
+    window.addEventListener('gamepadconnected',e=>{
+      console.log('Gamepad connected:',e.gamepad);
+      updateGamepads();
+      rebuildGamepadSelect();
+    });
+    window.addEventListener('gamepaddisconnected',e=>{
+      console.log('Gamepad disconnected:',e.gamepad);
+      delete gamepads[e.gamepad.index];
+    });
+    window.addEventListener('load',()=>{
+      requestAnimationFrame(gamepadLoop);
+    });
+  </script>
+</body>
+</html>
