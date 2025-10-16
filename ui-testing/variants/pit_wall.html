@@ -27,12 +27,28 @@
       align-items:center;
       border-bottom:1px solid rgba(229,228,226,0.12);
       background:linear-gradient(180deg,rgba(0,11,30,0.95),rgba(0,11,30,0.7));
+      gap:24px;
     }
     header h1{
       text-transform:uppercase;
       letter-spacing:0.16em;
       font-size:1.4rem;
     }
+    header nav{
+      display:flex;
+      gap:18px;
+      margin-left:auto;
+    }
+    header nav a{
+      color:rgba(229,228,226,0.85);
+      text-decoration:none;
+      letter-spacing:0.14em;
+      font-size:0.78rem;
+      text-transform:uppercase;
+      opacity:0.75;
+      transition:opacity 120ms ease;
+    }
+    header nav a:hover{opacity:1;}
     .status-strip{
       display:flex;
       gap:18px;
@@ -214,6 +230,11 @@
 <body>
   <header>
     <h1>ProBot Pit Wall</h1>
+    <nav>
+      <a href="#overview">Overview</a>
+      <a href="#settings">Settings</a>
+      <a href="#logs">Logs</a>
+    </nav>
     <div class="status-strip">
       <div class="status-card">
         <span>PHASE</span>
