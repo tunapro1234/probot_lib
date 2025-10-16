@@ -65,13 +65,14 @@
       box-shadow:0 -24px 48px rgba(0,32,77,0.12);
       padding:36px 48px;
       display:grid;
-      grid-template-columns:1.2fr 1fr;
+      grid-template-columns:minmax(0,1fr) minmax(0,1fr);
       gap:36px;
     }
     .column{
       display:flex;
       flex-direction:column;
       gap:32px;
+      min-width:0;
     }
     .stack-card{
       background:#fff;
@@ -399,6 +400,8 @@
       background:#f7f9ff;
       font-family:"SFMono-Regular","Roboto Mono",monospace;
       line-height:1.5;
+      white-space:pre-wrap;
+      word-break:break-word;
     }
     .hint{
       font-size:0.78rem;
