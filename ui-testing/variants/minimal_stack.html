@@ -769,15 +769,11 @@ function applyHeaderMode(){
   if(!headerEl) return;
   const landscapeCompact=landscapeQuery.matches && window.innerWidth<=1024;
   const portraitCompact=portraitQuery.matches;
-  if(landscapeCompact){
+  headerEl.classList.add('compact');
+  if(landscapeCompact || portraitCompact){
     headerEl.classList.add('force-compact');
   }else{
     headerEl.classList.remove('force-compact');
-  }
-  if(portraitCompact || landscapeCompact){
-    headerEl.classList.add('compact');
-  }else{
-    headerEl.classList.toggle('compact', window.scrollY>32);
   }
 }
 
