@@ -20,44 +20,118 @@
       display:flex;
       flex-direction:column;
     }
-    header{
+    .app-header{
+      position:sticky;
+      top:0;
+      z-index:100;
       padding:24px 48px;
       display:flex;
-      justify-content:space-between;
       align-items:center;
+      gap:24px;
+      justify-content:space-between;
       background:var(--navy);
       color:var(--ice);
       box-shadow:0 10px 24px rgba(0,32,77,0.28);
+      border-bottom:1px solid rgba(229,228,226,0.12);
+      transition:padding 180ms ease, box-shadow 180ms ease;
     }
-    .header-left{
+    .app-header .header-left{
       display:flex;
       flex-direction:column;
       gap:6px;
     }
-    header h1{
-      font-size:1.8rem;
-      letter-spacing:0.08em;
+    .app-header .header-left h1{
+      font-size:2.1rem;
+      letter-spacing:0.06em;
     }
-    header span{
-      font-size:0.9rem;
+    .app-header .header-left .header-subtitle{
+      font-size:1rem;
       color:rgba(229,228,226,0.75);
       text-transform:uppercase;
-      letter-spacing:0.14em;
+      letter-spacing:0.1em;
     }
-    header nav{
+    .app-header nav{
       display:flex;
       gap:20px;
+      flex:1;
+      justify-content:center;
     }
-    header nav a{
+    .app-header nav a{
       color:var(--ice);
       text-decoration:none;
       letter-spacing:0.12em;
-      font-size:0.85rem;
+      font-size:0.9rem;
       text-transform:uppercase;
-      opacity:0.8;
+      opacity:0.82;
       transition:opacity 120ms ease;
     }
-    header nav a:hover{opacity:1;}
+    .app-header nav a:hover{opacity:1;}
+    .app-header .header-status{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:4px;
+      text-transform:uppercase;
+      letter-spacing:0.16em;
+    }
+    .app-header .header-status .status-label{
+      font-size:0.68rem;
+      letter-spacing:0.24em;
+      opacity:0.7;
+    }
+    .app-header .header-status .status-value{
+      font-size:1.05rem;
+      letter-spacing:0.16em;
+    }
+    .app-header .header-status .status-detail{
+      font-size:0.78rem;
+      letter-spacing:0.12em;
+      opacity:0.75;
+    }
+    .app-header.compact{
+      padding:8px 24px;
+      box-shadow:0 8px 18px rgba(0,32,77,0.24);
+    }
+    .app-header.compact .header-left h1{
+      font-size:1.45rem;
+    }
+    .app-header.compact .header-left .header-subtitle{
+      display:none;
+    }
+    .app-header.compact nav{
+      gap:16px;
+    }
+    .app-header.compact nav a{
+      font-size:0.85rem;
+      letter-spacing:0.1em;
+    }
+    .app-header.compact .header-status{
+      flex-direction:row;
+      align-items:center;
+      gap:6px;
+    }
+    .app-header.compact .header-status .status-label{
+      font-size:0.6rem;
+      letter-spacing:0.2em;
+    }
+    .app-header.compact .header-status .status-detail{
+      display:none;
+    }
+    .app-header.force-compact{
+      padding:6px 18px;
+      gap:12px;
+    }
+    .app-header.force-compact nav{
+      gap:12px;
+    }
+    .app-header.force-compact nav a{
+      font-size:0.78rem;
+      letter-spacing:0.14em;
+    }
+    .app-header.force-compact .header-status,
+    .app-header.force-compact .header-left{
+      display:none;
+    }
     main{
       flex:1;
       background:linear-gradient(180deg,#ffffff 0%,#f3f7ff 70%,#e7eefb 100%);
@@ -82,72 +156,13 @@
       display:flex;
       flex-direction:column;
       gap:20px;
+      scroll-margin-top:120px;
     }
     .stack-card h2{
       font-size:1rem;
       letter-spacing:0.16em;
       text-transform:uppercase;
       color:#3b4c68;
-    }
-    .phase-chip{
-      position:relative;
-      flex:0 0 220px;
-      padding:16px 18px 16px 58px;
-      border-radius:20px;
-      background:rgba(0,48,96,0.8);
-      border:1px solid rgba(255,255,255,0.18);
-      color:#f3f6ff;
-      letter-spacing:0.16em;
-      font-size:0.78rem;
-      text-transform:uppercase;
-      box-shadow:0 18px 28px rgba(0,20,48,0.35);
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-    }
-    .phase-chip strong{
-      font-size:1.05rem;
-      letter-spacing:0.22em;
-      color:#ffffff;
-    }
-    .phase-chip small{
-      font-size:0.7rem;
-      color:rgba(232,239,255,0.85);
-      letter-spacing:0.12em;
-    }
-    .phase-chip::before{
-      content:"";
-      position:absolute;
-      left:18px;
-      top:50%;
-      transform:translateY(-50%);
-      width:26px;
-      height:26px;
-      border-radius:50%;
-      background:#5f8ee0;
-      box-shadow:0 0 16px rgba(95,142,224,0.45);
-    }
-    body[data-state="start"] .phase-chip{
-      background:linear-gradient(120deg,rgba(79,201,137,0.34),rgba(34,118,82,0.28));
-      border-color:rgba(79,201,137,0.35);
-      color:#ecfff3;
-    }
-    body[data-state="start"] .phase-chip strong{color:#ffffff;}
-    body[data-state="start"] .phase-chip small{color:rgba(222,255,235,0.85);}
-    body[data-state="start"] .phase-chip::before{
-      background:#47d491;
-      box-shadow:0 0 20px rgba(71,212,145,0.55);
-    }
-    body[data-state="stop"] .phase-chip{
-      background:linear-gradient(120deg,rgba(220,96,92,0.36),rgba(148,42,40,0.28));
-      border-color:rgba(220,96,92,0.38);
-      color:#ffeaea;
-    }
-    body[data-state="stop"] .phase-chip strong{color:#ffffff;}
-    body[data-state="stop"] .phase-chip small{color:rgba(255,234,234,0.85);}
-    body[data-state="stop"] .phase-chip::before{
-      background:#ff6b6b;
-      box-shadow:0 0 20px rgba(255,107,107,0.55);
     }
     .control-row{
       display:grid;
@@ -164,8 +179,8 @@
       gap:10px;
     }
     .control label{
-      font-size:0.82rem;
-      letter-spacing:0.12em;
+      font-size:0.96rem;
+      letter-spacing:0.08em;
       color:#556787;
     }
     .control input[type="number"]{
@@ -192,13 +207,13 @@
       display:flex;
       justify-content:space-between;
       align-items:center;
-      font-size:0.85rem;
+      font-size:0.95rem;
       color:#35507a;
-      letter-spacing:0.1em;
+      letter-spacing:0.08em;
       text-transform:uppercase;
     }
     .auto-progress-header strong{
-      font-size:1.1rem;
+      font-size:1.25rem;
       letter-spacing:0.08em;
       color:#0f2c56;
     }
@@ -231,8 +246,8 @@
       align-items:center;
       gap:8px;
       color:#365279;
-      letter-spacing:0.12em;
-      font-size:0.8rem;
+      letter-spacing:0.08em;
+      font-size:0.92rem;
     }
     .joy-axes{
       position:relative;
@@ -315,10 +330,10 @@
       flex-direction:column;
       gap:4px;
       color:#2f4f73;
-      letter-spacing:0.08em;
+      letter-spacing:0.06em;
     }
     .joy-status strong{
-      font-size:0.9rem;
+      font-size:1.05rem;
       text-transform:uppercase;
     }
     .switch{
@@ -330,8 +345,8 @@
       padding:10px 14px;
     }
     .switch span{
-      font-size:0.8rem;
-      letter-spacing:0.14em;
+      font-size:0.92rem;
+      letter-spacing:0.1em;
       color:#3b4c68;
     }
     .switch input{
@@ -368,9 +383,9 @@
       border:none;
       background:var(--navy);
       color:var(--ice);
-      font-size:1rem;
+      font-size:1.14rem;
       font-weight:600;
-      letter-spacing:0.18em;
+      letter-spacing:0.12em;
       text-transform:uppercase;
       cursor:pointer;
       box-shadow:0 18px 26px rgba(0,32,77,0.3);
@@ -389,7 +404,7 @@
       border-radius:16px;
       border:1px solid rgba(0,32,77,0.12);
       background:#fff;
-      font-size:0.95rem;
+      font-size:1.05rem;
       color:var(--navy);
       letter-spacing:0.04em;
     }
@@ -403,9 +418,43 @@
       word-break:break-word;
     }
     .hint{
-      font-size:0.78rem;
+      font-size:0.88rem;
       color:#6a7a93;
-      letter-spacing:0.08em;
+      letter-spacing:0.06em;
+    }
+    @media(max-width:992px){
+      .app-header{
+        padding:16px 28px;
+        gap:18px;
+      }
+      .app-header .header-left h1{
+        font-size:1.7rem;
+      }
+      .app-header .header-left .header-subtitle{
+        font-size:0.9rem;
+        letter-spacing:0.08em;
+      }
+      .app-header nav{
+        gap:16px;
+      }
+      .app-header nav a{
+        font-size:0.9rem;
+        letter-spacing:0.1em;
+      }
+      .app-header .header-status{
+        align-items:flex-start;
+        gap:6px;
+      }
+      .app-header .header-status .status-label{
+        font-size:0.62rem;
+        letter-spacing:0.18em;
+      }
+      .app-header .header-status .status-value{
+        font-size:0.98rem;
+      }
+      .app-header .header-status .status-detail{
+        font-size:0.74rem;
+      }
     }
     @media(max-width:900px){
       main{
@@ -414,108 +463,212 @@
         gap:24px;
       }
       .column{gap:24px;}
-      header{
+      .app-header{
         flex-direction:column;
         align-items:flex-start;
         gap:12px;
-        padding:20px 24px;
+        padding:18px 24px;
       }
-      header h1{font-size:1.65rem;}
-      header span{font-size:0.9rem;}
-      header nav{
+      .app-header .header-left h1{font-size:1.8rem;}
+      .app-header .header-left .header-subtitle{font-size:0.88rem;}
+      .app-header nav{
+        order:3;
         width:100%;
         flex-wrap:wrap;
         gap:12px;
         justify-content:space-between;
       }
-      header nav a{
-        font-size:0.95rem;
-        letter-spacing:0.1em;
+      .app-header nav a{
+        font-size:0.98rem;
+        letter-spacing:0.09em;
       }
-      header .phase-chip{display:none;}
+      .app-header .header-status{
+        order:2;
+        width:100%;
+        align-items:flex-start;
+        gap:4px;
+      }
+      .app-header .header-status .status-value{
+        font-size:0.92rem;
+      }
+      .app-header .header-status .status-detail{
+        font-size:0.72rem;
+      }
+      .stack-card h2{
+        font-size:1.2rem;
+      }
     }
     @media(orientation:portrait){
       main{
         grid-template-columns:1fr;
-        padding:24px 24px 32px;
-        gap:24px;
+        padding:36px 36px 48px;
+        gap:36px;
       }
-      .column{gap:24px;}
-      header{
+      .column{gap:36px;}
+      .app-header{
         flex-direction:column;
         align-items:flex-start;
-        gap:12px;
-        padding:20px 24px;
+        gap:18px;
+        padding:28px 32px;
+        justify-content:flex-start;
       }
-      header nav{
+      .app-header nav{
         order:3;
         width:100%;
         flex-wrap:wrap;
         justify-content:space-between;
-        gap:12px;
+        gap:18px;
       }
-      header nav a{
-        font-size:1rem;
-        letter-spacing:0.1em;
+      .app-header nav a{
+        font-size:1.2rem;
+        letter-spacing:0.08em;
       }
-      header .phase-chip{display:none;}
-      .header-left{
+      .app-header .header-left{
+        gap:8px;
         width:100%;
       }
-      .header-left h1{font-size:1.7rem;}
-      .header-left span{
-        font-size:0.95rem;
-        letter-spacing:0.1em;
+      .app-header .header-left h1{
+        font-size:3rem;
+        letter-spacing:0.05em;
       }
-      body{font-size:1.05rem;}
-      button{font-size:1.05rem;}
-      .control label{font-size:0.92rem;}
-      .switch span{font-size:0.88rem;}
-      .joy-status strong{font-size:1rem;}
-      .joy-indicator{font-size:0.9rem;}
-    }
-    @media(orientation:landscape) and (max-height:600px){
-      header{
+      .app-header .header-left .header-subtitle{
+        font-size:1.3rem;
+        letter-spacing:0.08em;
+      }
+      .app-header .header-status{
+        order:2;
+        width:100%;
+        align-items:flex-start;
+      }
+      body{
+        font-size:1.9rem;
+        line-height:1.5;
+      }
+      .stack-card h2{
+        font-size:1.35rem;
+        letter-spacing:0.12em;
+      }
+      .control-row{
+        grid-template-columns:1fr;
+        gap:20px;
+      }
+      button{
+        font-size:2.4rem;
+        padding:24px;
+      }
+      #robotButton{
+        padding:109px 42px;
+        font-size:4.7rem;
+      }
+      .control label{font-size:1.8rem;}
+      .control input[type="number"]{
+        font-size:2rem;
+        padding:16px;
+      }
+      .switch{
         flex-direction:row;
         align-items:center;
-        padding:8px 28px;
+        gap:18px;
+        padding:14px 18px;
+      }
+      .switch span{font-size:1.6rem;}
+      .switch input{
+        width:88px;
+        height:46px;
+      }
+      .switch input::after{
+        width:38px;
+        height:38px;
+        top:4px;
+        left:6px;
+      }
+      .switch input:checked::after{
+        transform:translateX(42px);
+      }
+      select, .telemetry pre{
+        font-size:1.9rem;
+        padding:22px;
+      }
+      .telemetry pre{
+        line-height:1.6;
+      }
+      .auto-progress-header{
+        font-size:1.8rem;
+        letter-spacing:0.05em;
+      }
+      .auto-progress-header strong{
+        font-size:2.6rem;
+      }
+      .hint{font-size:1.6rem;}
+      .joy-grid{
+        grid-template-columns:1fr;
+        gap:24px;
+      }
+      .joy-indicator{font-size:1.5rem;}
+      .joy-axes{
+        width:220px;
+        height:220px;
+        margin:0 auto;
+      }
+      .joy-buttons{
+        grid-template-columns:repeat(auto-fit,minmax(84px,1fr));
         gap:16px;
       }
-      .header-left{display:none;}
-      header .phase-chip{display:none;}
-      header nav{
+      .joy-button{
+        width:84px;
+        height:84px;
+        font-size:1.4rem;
+        margin:0 auto;
+      }
+      .joy-status strong{font-size:1.8rem;}
+    }
+    @media(max-width:1024px) and (orientation:landscape){
+      .app-header{
+        flex-direction:row;
+        align-items:center;
+        justify-content:center;
+        padding:6px 18px;
+        gap:12px;
+      }
+      .app-header .header-left,
+      .app-header .header-status{
+        display:none;
+      }
+      .app-header nav{
         width:auto;
-        flex:1;
-        gap:16px;
+        flex:0 1 auto;
+        gap:12px;
         flex-wrap:wrap;
         justify-content:center;
       }
-      header nav a{
-        font-size:0.9rem;
-        letter-spacing:0.12em;
+      .app-header nav a{
+        font-size:0.78rem;
+        letter-spacing:0.14em;
       }
       main{
         grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-        gap:24px;
-        padding:20px 28px 28px;
+        gap:20px;
+        padding:16px 20px 22px;
       }
+      .column{gap:20px;}
     }
   </style>
 </head>
 <body>
-  <header>
+  <header class="app-header" id="appHeader">
     <div class="header-left">
-      <h1>ProBot Minimal Stack</h1>
-      <span>Clean command surface</span>
+      <h1>ProBot DriveStation</h1>
+      <span class="header-subtitle">by NFR Products · c2025</span>
     </div>
     <nav>
       <a href="#dashboard">Dashboard</a>
       <a href="#logs">Logs</a>
       <a href="#settings">Settings</a>
     </nav>
-    <div class="phase-chip" id="phaseBadge">
-      <strong id="phaseTitle">Standby</strong>
-      <small id="phaseSubtitle">Awaiting command</small>
+    <div class="header-status">
+      <span class="status-label">Status</span>
+      <span class="status-value" id="headerStatusValue">Standby</span>
+      <span class="status-detail" id="headerStatusDetail">Awaiting command</span>
     </div>
   </header>
 <main>
@@ -581,22 +734,50 @@
     let gamepads={};
     let gamepadDetected=false;
 
+    const headerEl=document.getElementById('appHeader');
+    const headerStatusValue=document.getElementById('headerStatusValue');
+    const headerStatusDetail=document.getElementById('headerStatusDetail');
+    const landscapeQuery=window.matchMedia('(orientation:landscape)');
+
+function applyHeaderMode(){
+  if(!headerEl) return;
+  const forceCompact=window.innerWidth<=1024 && landscapeQuery.matches;
+  headerEl.classList.toggle('force-compact', forceCompact);
+  if(forceCompact){
+    headerEl.classList.remove('compact');
+    return;
+  }
+  const shouldCompact=window.scrollY>32;
+  headerEl.classList.toggle('compact', shouldCompact);
+}
+
+window.addEventListener('scroll', applyHeaderMode, {passive:true});
+window.addEventListener('resize', applyHeaderMode);
+if(typeof landscapeQuery.addEventListener === 'function'){
+  landscapeQuery.addEventListener('change', applyHeaderMode);
+}else if(typeof landscapeQuery.addListener === 'function'){
+  landscapeQuery.addListener(applyHeaderMode);
+}
+applyHeaderMode();
+
 function setPhaseDisplay(mode){
-  const title=document.getElementById('phaseTitle');
-  const subtitle=document.getElementById('phaseSubtitle');
   const map={
-    init:{title:"Init", subtitle:"Systems primed"},
-    auto:{title:"Autonomous", subtitle:`Running script`},
-    teleop:{title:"Teleop", subtitle:"Drivers in control"},
-    stopped:{title:"Stopped", subtitle:"Motors safe"},
-    standby:{title:"Standby", subtitle:"Awaiting command"}
+    init:{title:"Init", detail:"Systems primed"},
+    auto:{title:"Autonomous", detail:"Running script"},
+    teleop:{title:"Teleop", detail:"Drivers in control"},
+    stopped:{title:"Stopped", detail:"Motors safe"},
+    standby:{title:"Standby", detail:"Awaiting command"}
   };
   const next = map[mode] || map.standby;
-  title.textContent = next.title;
-  if(mode === 'auto'){
-    subtitle.textContent = `Auto running – ${autoRemaining.toFixed(1)} s`;
-  }else{
-    subtitle.textContent = next.subtitle;
+  if(headerStatusValue){
+    headerStatusValue.textContent = next.title;
+  }
+  if(headerStatusDetail){
+    if(mode === 'auto'){
+      headerStatusDetail.textContent = `Auto running – ${autoRemaining.toFixed(1)} s`;
+    }else{
+      headerStatusDetail.textContent = next.detail;
+    }
   }
   document.body.dataset.state = mode;
 }
@@ -819,6 +1000,7 @@ function stopAutoTimer(){
       autoRemaining=parseFloat(document.getElementById('autoPeriod').value)||0;
       updateAutoDisplay();
       setPhaseDisplay('standby');
+      applyHeaderMode();
       requestAnimationFrame(gamepadLoop);
     });
 
@@ -837,6 +1019,6 @@ function stopAutoTimer(){
         stopAutoTimer();
       }
     });
-  </script>
+</script>
 </body>
 </html>
