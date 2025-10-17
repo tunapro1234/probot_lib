@@ -24,43 +24,42 @@
       position:sticky;
       top:0;
       z-index:100;
-      padding:24px 48px;
+      padding:16px 28px;
       display:flex;
       align-items:center;
-      gap:24px;
+      gap:16px;
       justify-content:space-between;
       background:var(--navy);
       color:var(--ice);
-      box-shadow:0 10px 24px rgba(0,32,77,0.28);
+      box-shadow:0 8px 18px rgba(0,32,77,0.24);
       border-bottom:1px solid rgba(229,228,226,0.12);
-      transition:padding 180ms ease, box-shadow 180ms ease;
     }
     .app-header .header-left{
       display:flex;
       flex-direction:column;
-      gap:6px;
+      gap:4px;
     }
     .app-header .header-left h1{
-      font-size:2.1rem;
-      letter-spacing:0.06em;
+      font-size:1.5rem;
+      letter-spacing:0.08em;
     }
     .app-header .header-left .header-subtitle{
-      font-size:1rem;
-      color:rgba(229,228,226,0.75);
+      font-size:0.82rem;
+      color:rgba(229,228,226,0.8);
       text-transform:uppercase;
-      letter-spacing:0.1em;
+      letter-spacing:0.08em;
     }
     .app-header nav{
       display:flex;
-      gap:20px;
+      gap:16px;
       flex:1;
       justify-content:center;
     }
     .app-header nav a{
       color:var(--ice);
       text-decoration:none;
-      letter-spacing:0.12em;
-      font-size:0.9rem;
+      letter-spacing:0.1em;
+      font-size:0.85rem;
       text-transform:uppercase;
       opacity:0.82;
       transition:opacity 120ms ease;
@@ -68,90 +67,54 @@
     .app-header nav a:hover{opacity:1;}
     .app-header .header-status{
       display:flex;
-      flex-direction:column;
-      align-items:flex-end;
-      gap:4px;
+      flex-direction:row;
+      align-items:center;
+      gap:6px;
       text-transform:uppercase;
       letter-spacing:0.16em;
     }
     .app-header .header-status .status-label{
-      font-size:0.68rem;
-      letter-spacing:0.24em;
+      font-size:0.6rem;
+      letter-spacing:0.2em;
       opacity:0.7;
     }
     .app-header .header-status .status-value{
-      font-size:1.05rem;
-      letter-spacing:0.16em;
+      font-size:0.9rem;
+      letter-spacing:0.14em;
     }
     .app-header .header-status .status-detail{
-      font-size:0.78rem;
-      letter-spacing:0.12em;
-      opacity:0.75;
-    }
-    .app-header.compact{
-      padding:8px 24px;
-      box-shadow:0 8px 18px rgba(0,32,77,0.24);
-    }
-    .app-header.compact .header-left h1{
-      font-size:1.45rem;
-    }
-    .app-header.compact .header-left .header-subtitle{
-      display:none;
-    }
-    .app-header.compact nav{
-      gap:16px;
-    }
-    .app-header.compact nav a{
-      font-size:0.85rem;
-      letter-spacing:0.1em;
-    }
-    .app-header.compact .header-status{
-      flex-direction:row;
-      align-items:center;
-      gap:6px;
-    }
-    .app-header.compact .header-status .status-label{
-      font-size:0.6rem;
-      letter-spacing:0.2em;
-    }
-    .app-header.compact .header-status .status-detail{
       display:none;
     }
 
     @media(max-width:900px){
-      .app-header.compact{
+      .app-header{
+        flex-direction:column;
+        align-items:flex-start;
+        gap:12px;
         padding:18px 24px;
       }
-      .app-header.compact .header-left h1{
+      .app-header .header-left{
+        width:100%;
+      }
+      .app-header .header-left h1{
         display:none;
       }
-      .app-header.compact .header-left .header-subtitle{
+      .app-header .header-left .header-subtitle{
         display:none;
       }
-      .app-header.compact nav{
+      .app-header nav{
+        order:3;
+        width:100%;
+        flex-wrap:wrap;
+        justify-content:space-between;
         gap:12px;
       }
-      .app-header.compact nav a{
+      .app-header nav a{
         font-size:0.98rem;
       }
-      .app-header.compact .header-status{
+      .app-header .header-status{
         display:none;
       }
-    }
-    .app-header.force-compact{
-      padding:6px 18px;
-      gap:12px;
-    }
-    .app-header.force-compact nav{
-      gap:12px;
-    }
-    .app-header.force-compact nav a{
-      font-size:0.78rem;
-      letter-spacing:0.14em;
-    }
-    .app-header.force-compact .header-status,
-    .app-header.force-compact .header-left{
-      display:none;
     }
     main{
       flex:1;
@@ -520,8 +483,8 @@
       .app-header{
         flex-direction:column;
         align-items:flex-start;
-        gap:18px;
-        padding:28px 32px;
+        gap:16px;
+        padding:18px 24px;
         justify-content:flex-start;
       }
       .app-header nav{
@@ -536,33 +499,22 @@
         letter-spacing:0.08em;
       }
       .app-header .header-left{
-        gap:8px;
+        gap:6px;
         width:100%;
       }
       .app-header .header-left h1{
-        font-size:3rem;
-        letter-spacing:0.05em;
+        display:none;
       }
       .app-header .header-left .header-subtitle{
-        font-size:1.3rem;
-        letter-spacing:0.08em;
-      }
-      .app-header.compact{
-        padding:18px 32px;
-      }
-      .app-header.compact .header-left h1{
         display:none;
       }
-      .app-header.compact .header-left .header-subtitle{
-        display:none;
-      }
-      .app-header.compact nav{
+      .app-header nav{
         gap:18px;
       }
-      .app-header.compact nav a{
+      .app-header nav a{
         font-size:1.15rem;
       }
-      .app-header.compact .header-status{
+      .app-header .header-status{
         display:none;
       }
       body{
@@ -762,34 +714,6 @@
     const headerEl=document.getElementById('appHeader');
     const headerStatusValue=document.getElementById('headerStatusValue');
     const headerStatusDetail=document.getElementById('headerStatusDetail');
-    const landscapeQuery=window.matchMedia('(orientation:landscape)');
-    const portraitQuery=window.matchMedia('(orientation:portrait)');
-
-function applyHeaderMode(){
-  if(!headerEl) return;
-  const landscapeCompact=landscapeQuery.matches && window.innerWidth<=1024;
-  const portraitCompact=portraitQuery.matches;
-  headerEl.classList.add('compact');
-  if(landscapeCompact || portraitCompact){
-    headerEl.classList.add('force-compact');
-  }else{
-    headerEl.classList.remove('force-compact');
-  }
-}
-
-window.addEventListener('scroll', applyHeaderMode, {passive:true});
-window.addEventListener('resize', applyHeaderMode);
-if(typeof landscapeQuery.addEventListener === 'function'){
-  landscapeQuery.addEventListener('change', applyHeaderMode);
-}else if(typeof landscapeQuery.addListener === 'function'){
-  landscapeQuery.addListener(applyHeaderMode);
-}
-if(typeof portraitQuery.addEventListener === 'function'){
-  portraitQuery.addEventListener('change', applyHeaderMode);
-}else if(typeof portraitQuery.addListener === 'function'){
-  portraitQuery.addListener(applyHeaderMode);
-}
-applyHeaderMode();
 
 function setPhaseDisplay(mode){
   const map={
