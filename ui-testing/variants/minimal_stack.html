@@ -763,22 +763,22 @@
     const headerStatusValue=document.getElementById('headerStatusValue');
     const headerStatusDetail=document.getElementById('headerStatusDetail');
     const landscapeQuery=window.matchMedia('(orientation:landscape)');
+    const portraitQuery=window.matchMedia('(orientation:portrait)');
 
 function applyHeaderMode(){
   if(!headerEl) return;
-  const forceCompact=window.innerWidth<=1024 && landscapeQuery.matches;
-  headerEl.classList.toggle('force-compact', forceCompact);
-  if(forceCompact){
-    headerEl.classList.remove('compact');
-    return;
+  const landscapeCompact=landscapeQuery.matches && window.innerWidth<=1024;
+  const portraitCompact=portraitQuery.matches;
+  if(landscapeCompact){
+    headerEl.classList.add('force-compact');
+  }else{
+    headerEl.classList.remove('force-compact');
   }
-  const isNarrowPortrait = window.innerWidth <= 900 && !landscapeQuery.matches;
-  if(isNarrowPortrait){
-    headerEl.classList.remove('compact');
-    return;
+  if(portraitCompact || landscapeCompact){
+    headerEl.classList.add('compact');
+  }else{
+    headerEl.classList.toggle('compact', window.scrollY>32);
   }
-  const shouldCompact=window.scrollY>32;
-  headerEl.classList.toggle('compact', shouldCompact);
 }
 
 window.addEventListener('scroll', applyHeaderMode, {passive:true});
@@ -787,6 +787,11 @@ if(typeof landscapeQuery.addEventListener === 'function'){
   landscapeQuery.addEventListener('change', applyHeaderMode);
 }else if(typeof landscapeQuery.addListener === 'function'){
   landscapeQuery.addListener(applyHeaderMode);
+}
+if(typeof portraitQuery.addEventListener === 'function'){
+  portraitQuery.addEventListener('change', applyHeaderMode);
+}else if(typeof portraitQuery.addListener === 'function'){
+  portraitQuery.addListener(applyHeaderMode);
 }
 applyHeaderMode();
 
