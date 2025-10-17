@@ -41,12 +41,13 @@ python3 ui-testing/server.py --report-only --build-report
 
 ## Varyasyonlarla Çalışma
 
-- `ui-testing/variants/` klasöründe aktif olarak denediğimiz üç tasarım
-  (`command_deck.html`, `minimal_stack.html`, `pit_wall.html`) bulunuyor.
-- Diğer örnekler (`aero_hud.html`, `base.html`, `circuit_glow.html`,
-  `control_tower.html`, `neon_grid.html`, `retro_terminal.html`, `zen_flow.html`)
-  `ui-testing/variants/archive/` altına taşındı; referans olarak saklayabilir
-  ya da tekrar aktive etmek için bu klasörden çıkarabilirsiniz.
+- `ui-testing/variants/` klasöründe artık temel arayüz olarak yalnızca
+  `minimal_stack.html` bulunur.
+- Diğer örnekler (önceki `command_deck.html` ve `pit_wall.html` dahil olmak
+  üzere `aero_hud.html`, `base.html`, `circuit_glow.html`, `control_tower.html`,
+  `neon_grid.html`, `retro_terminal.html`, `zen_flow.html`) referans olarak
+  `ui-testing/variants/archive/` altına taşındı; dilediğiniz zaman geri almak
+  için bu klasörden çıkarabilirsiniz.
 - Seçili bir varyasyonu denemek için:
 
 ```bash

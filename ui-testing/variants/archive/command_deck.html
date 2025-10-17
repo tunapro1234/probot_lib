@@ -344,12 +344,52 @@
       background:rgba(0,32,77,0.08);
       color:#00204d;
     }
+    @media (max-width:900px){
+      header{
+        padding:12px 18px;
+        gap:18px;
+      }
+      header h1{font-size:1.2rem;}
+      header nav{gap:12px;}
+      header nav a{font-size:0.7rem;}
+      .theme-toggle{
+        padding:6px 12px;
+        font-size:0.68rem;
+      }
+      .badge{
+        padding:4px 10px;
+        font-size:0.7rem;
+      }
+    }
     @media (max-width:720px){
-      header{padding:14px 20px;}
+      header{padding:10px 16px;}
+      header nav{display:none;}
       main{padding:20px;}
       .card{padding:20px;}
       .match-timer{font-size:2.2rem;}
       button{padding:14px;font-size:0.9rem;}
+    }
+    @media (max-height:520px) and (orientation:landscape){
+      header{
+        padding:8px 16px;
+        gap:12px;
+      }
+      header h1{font-size:1.1rem;}
+      .theme-toggle{padding:5px 10px;}
+      .badge{
+        padding:4px 8px;
+        font-size:0.65rem;
+      }
+    }
+    @media (max-width:900px) and (orientation:portrait){
+      main{
+        display:flex;
+        flex-direction:column;
+        gap:18px;
+      }
+      main > .card{
+        max-width:100%;
+      }
     }
   </style>
 </head>

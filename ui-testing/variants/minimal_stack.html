@@ -7,15 +7,14 @@
     :root{
       --navy:#00204d;
       --ice:#e5e4e2;
-      --ink:#0b1a33;
-      --sky:#5aa0ff;
-      --sand:#f5f1e6;
+      --start:#28a745;
+      --stop:#d93025;
       font-family:"Inter","Segoe UI",sans-serif;
     }
     *{margin:0;padding:0;box-sizing:border-box;}
     body{
       min-height:100vh;
-      background:var(--sand);
+      background:var(--ice);
       color:var(--navy);
       display:flex;
       flex-direction:column;
@@ -118,7 +117,7 @@
     }
     main{
       flex:1;
-      background:linear-gradient(180deg,#ffffff 0%,#f3f7ff 70%,#e7eefb 100%);
+      background:linear-gradient(180deg,var(--ice) 0%,rgba(229,228,226,0.85) 70%,rgba(229,228,226,0.7) 100%);
       box-shadow:0 -24px 48px rgba(0,32,77,0.12);
       padding:36px 48px 48px;
       display:grid;
@@ -132,7 +131,7 @@
       min-width:0;
     }
     .stack-card{
-      background:#fff;
+      background:var(--ice);
       border-radius:24px;
       padding:28px;
       border:1px solid rgba(0,32,77,0.12);
@@ -146,7 +145,7 @@
       font-size:1.1rem;
       letter-spacing:0.12em;
       text-transform:uppercase;
-      color:#233351;
+      color:rgba(0,32,77,0.85);
     }
     .control-row{
       display:grid;
@@ -154,7 +153,7 @@
       gap:16px;
     }
     .control{
-      background:#f5f8ff;
+      background:rgba(229,228,226,0.9);
       border-radius:16px;
       padding:16px;
       border:1px solid rgba(0,32,77,0.08);
@@ -165,13 +164,13 @@
     .control label{
       font-size:0.96rem;
       letter-spacing:0.08em;
-      color:#556787;
+      color:rgba(0,32,77,0.65);
     }
     .control input[type="number"]{
       padding:10px;
       border-radius:12px;
       border:1px solid rgba(0,32,77,0.14);
-      background:#fff;
+      background:var(--ice);
       text-align:center;
       font-size:1rem;
       color:var(--navy);
@@ -192,14 +191,14 @@
       justify-content:space-between;
       align-items:center;
       font-size:0.95rem;
-      color:#35507a;
+      color:rgba(0,32,77,0.75);
       letter-spacing:0.08em;
       text-transform:uppercase;
     }
     .auto-progress-header strong{
       font-size:1.25rem;
       letter-spacing:0.08em;
-      color:#0f2c56;
+      color:rgba(0,32,77,0.8);
     }
     .auto-progress-bar{
       position:relative;
@@ -214,7 +213,7 @@
       top:0;
       bottom:0;
       width:0%;
-      background:linear-gradient(90deg,#5aa0ff,#6fe2ff);
+      background:linear-gradient(90deg,var(--navy),rgba(0,32,77,0.6));
       border-radius:inherit;
       transition:width 120ms linear;
     }
@@ -229,7 +228,7 @@
       flex-direction:column;
       align-items:center;
       gap:8px;
-      color:#365279;
+      color:rgba(0,32,77,0.7);
       letter-spacing:0.08em;
       font-size:0.92rem;
     }
@@ -238,7 +237,7 @@
       width:120px;
       height:120px;
       border-radius:50%;
-      background:radial-gradient(circle,#ffffff 0%,#f2f6ff 65%,#dce6f8 100%);
+      background:radial-gradient(circle,var(--ice) 0%,rgba(229,228,226,0.85) 65%,rgba(229,228,226,0.7) 100%);
       box-shadow:inset 0 4px 12px rgba(0,32,77,0.12);
     }
     .joy-cross{
@@ -265,8 +264,8 @@
       width:14px;
       height:14px;
       border-radius:50%;
-      background:#ff8c37;
-      box-shadow:0 0 10px rgba(255,140,55,0.4);
+      background:var(--navy);
+      box-shadow:0 0 10px rgba(0,32,77,0.4);
       transform:translate(-50%,-50%);
       left:50%;
       top:50%;
@@ -281,9 +280,9 @@
       width:48px;
       height:48px;
       border-radius:50%;
-      background:radial-gradient(circle at 30% 30%,rgba(255,255,255,0.85),rgba(197,214,241,0.7));
+      background:radial-gradient(circle at 30% 30%,rgba(229,228,226,0.95),rgba(0,32,77,0.08));
       border:1px solid rgba(0,32,77,0.18);
-      color:#1f3e65;
+      color:rgba(0,32,77,0.75);
       font-size:0.75rem;
       display:flex;
       align-items:center;
@@ -302,10 +301,10 @@
       justify-content:center;
     }
     .joy-button.active{
-      background:radial-gradient(circle at 30% 30%,rgba(255,255,255,0.95),rgba(90,160,255,0.85));
-      border-color:#386ecc;
-      color:#00204d;
-      box-shadow:0 10px 20px rgba(90,160,255,0.35),0 0 12px rgba(90,160,255,0.4);
+      background:radial-gradient(circle at 30% 30%,rgba(229,228,226,0.95),rgba(0,32,77,0.2));
+      border-color:rgba(0,32,77,0.7);
+      color:var(--navy);
+      box-shadow:0 10px 20px rgba(0,32,77,0.35),0 0 12px rgba(0,32,77,0.3);
       transform:translateY(-2px);
     }
     .joy-status{
@@ -313,7 +312,7 @@
       display:flex;
       flex-direction:column;
       gap:4px;
-      color:#2f4f73;
+      color:rgba(0,32,77,0.75);
       letter-spacing:0.06em;
     }
     .joy-status strong{
@@ -324,14 +323,14 @@
       display:flex;
       align-items:center;
       justify-content:space-between;
-      background:#e8efff;
+      background:rgba(229,228,226,0.85);
       border-radius:16px;
       padding:10px 14px;
     }
     .switch span{
       font-size:0.92rem;
       letter-spacing:0.1em;
-      color:#3b4c68;
+      color:rgba(0,32,77,0.7);
     }
     .switch input{
       width:46px;
@@ -351,7 +350,7 @@
       position:absolute;
       top:2px;
       left:3px;
-      background:#fff;
+      background:var(--ice);
       box-shadow:0 6px 12px rgba(0,32,77,0.24);
       transition:transform 160ms ease;
     }
@@ -387,7 +386,7 @@
       padding:14px;
       border-radius:16px;
       border:1px solid rgba(0,32,77,0.12);
-      background:#fff;
+      background:var(--ice);
       font-size:1.05rem;
       color:var(--navy);
       letter-spacing:0.04em;
@@ -395,7 +394,7 @@
     .telemetry pre{
       height:140px;
       overflow:auto;
-      background:#f7f9ff;
+      background:rgba(229,228,226,0.92);
       font-family:"SFMono-Regular","Roboto Mono",monospace;
       line-height:1.5;
       white-space:pre-wrap;
@@ -403,7 +402,7 @@
     }
     .hint{
       font-size:0.88rem;
-      color:#6a7a93;
+      color:rgba(0,32,77,0.6);
       letter-spacing:0.06em;
     }
     @media(max-width:992px){
@@ -837,7 +836,8 @@ function stopAutoTimer(){
       if(controlState==="idle"){
         controlState="armed";
         btn.textContent="Start";
-        btn.style.background="#4aa96c";
+        btn.style.background="var(--start)";
+        btn.style.color="var(--ice)";
         stopAutoTimer();
         autoRemaining = autoLen;
         updateAutoDisplay();
@@ -845,7 +845,8 @@ function stopAutoTimer(){
       }else if(controlState==="armed"){
         controlState="running";
         btn.textContent="Stop";
-        btn.style.background="#d9534f";
+        btn.style.background="var(--stop)";
+        btn.style.color="var(--ice)";
         if(enableAuto && autoLen>0){
           startAutoTimer(autoLen);
           setPhaseDisplay('auto');
@@ -857,6 +858,7 @@ function stopAutoTimer(){
         controlState="idle";
         btn.textContent="Init";
         btn.style.background=varGet("--navy");
+        btn.style.color="var(--ice)";
         stopAutoTimer();
         setPhaseDisplay('stopped');
       }
@@ -940,7 +942,7 @@ function stopAutoTimer(){
     function varGet(name){
       return getComputedStyle(document.documentElement).getPropertyValue(name).trim()||varDefaults[name];
     }
-    const varDefaults={"--navy":"#00204d"};
+    const varDefaults={"--navy":"#00204d","--start":"#28a745","--stop":"#d93025","--ice":"#e5e4e2"};
 
     window.addEventListener('gamepadconnected',()=>{
       updateGamepads();
