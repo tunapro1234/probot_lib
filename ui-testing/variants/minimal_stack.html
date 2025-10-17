@@ -117,6 +117,27 @@
     .app-header.compact .header-status .status-detail{
       display:none;
     }
+
+    @media(max-width:900px){
+      .app-header.compact{
+        padding:18px 24px;
+      }
+      .app-header.compact .header-left h1{
+        display:none;
+      }
+      .app-header.compact .header-left .header-subtitle{
+        display:none;
+      }
+      .app-header.compact nav{
+        gap:12px;
+      }
+      .app-header.compact nav a{
+        font-size:0.98rem;
+      }
+      .app-header.compact .header-status{
+        display:none;
+      }
+    }
     .app-header.force-compact{
       padding:6px 18px;
       gap:12px;
@@ -159,10 +180,10 @@
       scroll-margin-top:120px;
     }
     .stack-card h2{
-      font-size:1rem;
-      letter-spacing:0.16em;
+      font-size:1.1rem;
+      letter-spacing:0.12em;
       text-transform:uppercase;
-      color:#3b4c68;
+      color:#233351;
     }
     .control-row{
       display:grid;
@@ -483,16 +504,7 @@
         letter-spacing:0.09em;
       }
       .app-header .header-status{
-        order:2;
-        width:100%;
-        align-items:flex-start;
-        gap:4px;
-      }
-      .app-header .header-status .status-value{
-        font-size:0.92rem;
-      }
-      .app-header .header-status .status-detail{
-        font-size:0.72rem;
+        display:none;
       }
       .stack-card h2{
         font-size:1.2rem;
@@ -520,7 +532,7 @@
         gap:18px;
       }
       .app-header nav a{
-        font-size:1.2rem;
+        font-size:1.15rem;
         letter-spacing:0.08em;
       }
       .app-header .header-left{
@@ -535,10 +547,23 @@
         font-size:1.3rem;
         letter-spacing:0.08em;
       }
-      .app-header .header-status{
-        order:2;
-        width:100%;
-        align-items:flex-start;
+      .app-header.compact{
+        padding:18px 32px;
+      }
+      .app-header.compact .header-left h1{
+        display:none;
+      }
+      .app-header.compact .header-left .header-subtitle{
+        display:none;
+      }
+      .app-header.compact nav{
+        gap:18px;
+      }
+      .app-header.compact nav a{
+        font-size:1.15rem;
+      }
+      .app-header.compact .header-status{
+        display:none;
       }
       body{
         font-size:1.9rem;
@@ -744,6 +769,11 @@ function applyHeaderMode(){
   const forceCompact=window.innerWidth<=1024 && landscapeQuery.matches;
   headerEl.classList.toggle('force-compact', forceCompact);
   if(forceCompact){
+    headerEl.classList.remove('compact');
+    return;
+  }
+  const isNarrowPortrait = window.innerWidth <= 900 && !landscapeQuery.matches;
+  if(isNarrowPortrait){
     headerEl.classList.remove('compact');
     return;
   }
