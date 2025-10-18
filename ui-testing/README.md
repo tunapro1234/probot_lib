@@ -58,6 +58,19 @@ python3 ui-testing/server.py --html ui-testing/variants/base.html
   kullanır. Parametreyi boş bırakırsanız kütüphanedeki gömülü `index_html.h`
   okunmaya devam eder (donanım gerçekliğini test etmek için yararlı).
 
+## Wi-Fi Logging UI
+
+- `minimal_stack.html` arayüzü içinde yeni **Wi-Fi Logging** kartı bulunur.
+- Kart, `/logging/status` uç noktasından durumu okur, `Start/Stop` düğmesiyle
+  `/logging/toggle` komutunu gönderir, `Clear` ise `/logging/clear` çağırır.
+- Log akışı `System Logs` kartında `Wi-Fi Log Stream` alanına `/logging/stream`
+  cevabını yazar; `Download` düğmesi `/logging/download` bağlantısını yeni
+  sekmede açar.
+- Varsayılan olarak her 4 saniyede bir durum ve log bilgileri tazelenir.
+- Otomatik yenileme ve kaydırma kapatılabilir; bu sayede ESP tarafındaki
+  Wi-Fi logging altyapısı hazır olduğunda arayüz ek gelişmeye gerek kalmadan
+  çalışır.
+
 ## Tüm Varyantları Aynı Anda Görmek
 
 - 10 örnek tasarımı (port 9030–9039) aynı anda açmak için:
