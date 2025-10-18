@@ -1,6 +1,8 @@
 #pragma once
 #include <math.h>
 #include <probot/control/imotor_controller.hpp>
+#include <probot/logging/logger.hpp>
+#include <probot/logging/telemetry_profiles.hpp>
 
 namespace probot::mechanism {
   struct ISlider {
@@ -18,7 +20,22 @@ namespace probot::mechanism {
   public:
     explicit Slider(probot::control::IMotorController* controller)
     : controller_(controller), ticks_per_unit_(1.0f), target_len_(0.0f),
-      min_len_(0.0f), max_len_(0.0f), has_limits_(false) {}
+      min_len_(0.0f), max_len_(0.0f), has_limits_(false) {
+      probot::logging::SourceRegistration reg{
+        "slider",
+        nullptr,
+        probot::logging::Priority::kBackground,
+        false,
+        false,
+        probot::logging::profiles::sliderDynamic,
+        nullptr
+      };
+      probot::logging::registerSource(this, reg);
+    }
+
+    ~Slider() override {
+      probot::logging::unregisterSource(this);
+    }
 
     void setTargetLength(float length_units) override {
       if (has_limits_){

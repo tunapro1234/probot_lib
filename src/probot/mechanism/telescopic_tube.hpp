@@ -3,6 +3,8 @@
 #include <math.h>
 #include <probot/control/imotor_controller.hpp>
 #include <probot/control/limiters/slew_rate_limiter.hpp>
+#include <probot/logging/logger.hpp>
+#include <probot/logging/telemetry_profiles.hpp>
 
 namespace probot::mechanism {
 
@@ -32,12 +34,25 @@ namespace probot::mechanism {
       profile_dirty_(true),
       slew_rate_units_per_s_(0.0f),
       slew_limiter_(0.0f, 0.0f),
-      limiter_initialized_(false)
-    {
+      limiter_initialized_(false) {
       if (controller_) {
         controller_->selectDefaultSlot(probot::control::ControlType::kPosition, position_slot_);
         controller_->setPidSlotConfig(position_slot_, pid_config_);
       }
+      probot::logging::SourceRegistration reg{
+        "telescopic_tube",
+        nullptr,
+        probot::logging::Priority::kBackground,
+        false,
+        false,
+        probot::logging::profiles::telescopicDynamic,
+        nullptr
+      };
+      probot::logging::registerSource(this, reg);
+    }
+
+    ~TelescopicTube() override {
+      probot::logging::unregisterSource(this);
     }
 
     void setTargetExtension(float units) override {

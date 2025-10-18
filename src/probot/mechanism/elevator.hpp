@@ -1,6 +1,8 @@
 #pragma once
 #include <math.h>
 #include <probot/control/imotor_controller.hpp>
+#include <probot/logging/logger.hpp>
+#include <probot/logging/telemetry_profiles.hpp>
 
 namespace probot::mechanism {
 
@@ -18,7 +20,22 @@ namespace probot::mechanism {
   public:
     explicit Elevator(probot::control::IMotorController* controller)
     : controller_(controller), ticks_per_unit_(1.0f), target_height_(0.0f),
-      min_height_(0.0f), max_height_(0.0f), has_limits_(false) {}
+      min_height_(0.0f), max_height_(0.0f), has_limits_(false) {
+      probot::logging::SourceRegistration reg{
+        "elevator",
+        nullptr,
+        probot::logging::Priority::kBackground,
+        false,
+        false,
+        probot::logging::profiles::elevatorDynamic,
+        nullptr
+      };
+      probot::logging::registerSource(this, reg);
+    }
+
+    ~Elevator() override {
+      probot::logging::unregisterSource(this);
+    }
 
     void setTargetHeight(float units) override {
       if (has_limits_){
