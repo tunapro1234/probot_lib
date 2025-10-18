@@ -1,12 +1,29 @@
 #pragma once
 #include <probot/control/imotor_controller.hpp>
 #include <math.h>
+#include <probot/logging/logger.hpp>
+#include <probot/logging/telemetry_profiles.hpp>
 
 namespace probot::control {
   class ClosedLoopMotorGroup : public IMotorController {
   public:
     ClosedLoopMotorGroup(IMotorController* a, IMotorController* b)
-    : a_(a), b_(b), owner_(nullptr), inverted_(false) {}
+    : a_(a), b_(b), owner_(nullptr), inverted_(false) {
+      probot::logging::SourceRegistration reg{
+        "motor_group",
+        nullptr,
+        probot::logging::Priority::kUserMarked,
+        false,
+        true,
+        probot::logging::profiles::motorControllerDynamic,
+        probot::logging::profiles::motorControllerStatic
+      };
+      probot::logging::registerSource(this, reg);
+    }
+
+    ~ClosedLoopMotorGroup() override {
+      probot::logging::unregisterSource(this);
+    }
 
     // Group control API
     void setSetpoint(float value, ControlType mode, int slot = -1) override {

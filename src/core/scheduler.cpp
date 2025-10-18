@@ -4,6 +4,7 @@
 #include <esp_task_wdt.h>
 #include <probot/robot/system.hpp>
 #include <probot/robot/state.hpp>
+#include <probot/logging/logger.hpp>
 
 namespace control {
   enum CmdType : uint8_t { CMD_ATTACH=0, CMD_DETACH=1 };
@@ -34,6 +35,7 @@ namespace control {
     if (!qCmd){
       qCmd = xQueueCreate(queue_len, sizeof(Cmd));
     }
+    probot::logging::configureDefaults();
   }
 
   static int find_slot(IUpdatable* obj){
@@ -84,11 +86,13 @@ namespace control {
       Cmd cmd;
       while (xQueueReceive(qCmd, &cmd, 0) == pdTRUE){
         if (cmd.type == CMD_ATTACH){
-          int idx = find_slot(cmd.obj);
+          auto existing = probot::logging::resolveForDetach(cmd.obj);
+          int idx = find_slot(existing);
           if (idx < 0) idx = find_free_slot();
           if (idx >= 0){
             slots[idx].in_use = true;
-            slots[idx].obj = cmd.obj;
+            auto wrapped = probot::logging::wrapForScheduler(cmd.obj);
+            slots[idx].obj = wrapped;
             uint32_t t = millis();
             slots[idx].last_call_ms = t;
             slots[idx].next_due_ms  = t + g_global_period_ms;
@@ -101,9 +105,11 @@ namespace control {
 #endif
           }
         } else {
-          int idx = find_slot(cmd.obj);
+          auto wrapped = probot::logging::resolveForDetach(cmd.obj);
+          int idx = find_slot(wrapped);
           if (idx >= 0){
             slots[idx] = {false, nullptr, 0, 0};
+            probot::logging::releaseForDetach(cmd.obj);
 #ifndef PROBOT_SCHED_NOLOG
             Serial.printf("[CMD  ] detach ok (idx=%d)\n", idx);
 #endif
@@ -144,8 +150,9 @@ namespace control {
       }
       if (deadlineMiss){
         probot::robot::state().setDeadlineMiss(now, true);
+        probot::logging::notifySchedulerOverrun(now, maxOverrun);
 #ifndef PROBOT_SCHED_NOLOG
-        Serial.printf("[SCHED] ⚠️  CONTROL LOOP OVERRUN! Period: %lums, Overrun: +%lums\n", 
+        Serial.printf("[SCHED] ⚠️  CONTROL LOOP OVERRUN! Period: %lums, Overrun: +%lums\n",
                       (unsigned long)g_global_period_ms, (unsigned long)maxOverrun);
 #endif
       }
@@ -161,11 +168,13 @@ namespace control {
       }
       if (xQueueReceive(qCmd, &cmd, waitTicks) == pdTRUE){
         if (cmd.type == CMD_ATTACH){
-          int idx = find_slot(cmd.obj);
+          auto existing = probot::logging::resolveForDetach(cmd.obj);
+          int idx = find_slot(existing);
           if (idx < 0) idx = find_free_slot();
           if (idx >= 0){
             slots[idx].in_use = true;
-            slots[idx].obj = cmd.obj;
+            auto wrapped = probot::logging::wrapForScheduler(cmd.obj);
+            slots[idx].obj = wrapped;
             uint32_t t = millis();
             slots[idx].last_call_ms = t;
             slots[idx].next_due_ms  = t + g_global_period_ms;
@@ -178,9 +187,11 @@ namespace control {
 #endif
           }
         } else {
-          int idx = find_slot(cmd.obj);
+          auto wrapped = probot::logging::resolveForDetach(cmd.obj);
+          int idx = find_slot(wrapped);
           if (idx >= 0){
             slots[idx] = {false, nullptr, 0, 0};
+            probot::logging::releaseForDetach(cmd.obj);
 #ifndef PROBOT_SCHED_NOLOG
             Serial.printf("[CMD  ] detach ok (idx=%d)\n", idx);
 #endif

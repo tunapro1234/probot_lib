@@ -12,6 +12,8 @@
 #include <probot/control/motion_profile/trapezoid_profile.hpp>
 // #include <probot/control/motion_profile/s_curve_profile.hpp>  // Disabled for now
 #include <probot/sensors/encoder.hpp>
+#include <probot/logging/logger.hpp>
+#include <probot/logging/telemetry_profiles.hpp>
 
 namespace probot::control {
   class ClosedLoopMotor : public IMotorController {
@@ -36,9 +38,20 @@ namespace probot::control {
         slot_cfg_[i] = {0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f};
       }
       if (driver_) driver_->claim(owner_token_);
+      probot::logging::SourceRegistration reg{
+        "motor_controller",
+        nullptr,
+        probot::logging::Priority::kUserMarked,
+        false,
+        true,
+        probot::logging::profiles::motorControllerDynamic,
+        probot::logging::profiles::motorControllerStatic
+      };
+      probot::logging::registerSource(this, reg);
     }
 
     ~ClosedLoopMotor(){
+      probot::logging::unregisterSource(this);
       if (driver_) {
         driver_->setPower(0.0f, owner_token_);
         driver_->release(owner_token_);
