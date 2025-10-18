@@ -1,7 +1,6 @@
 #include "test_harness.hpp"
 
 #include <probot/devices/motors/motor_group.hpp>
-#include <probot/devices/motors/motor_handle.hpp>
 #include <probot/test/test_motor.hpp>
 
 #include <probot/devices/motors/boardoza_vnh_motor_driver.hpp>
@@ -31,14 +30,13 @@ TEST_CASE(motor_group_power_and_invert){
   EXPECT_NEAR(a.lastCommand, 0.4f, 1e-5f);
 }
 
-TEST_CASE(motor_handle_controls_motor){
+TEST_CASE(null_motor_behaves_like_driver){
   probot::motor::NullMotor motor;
-  probot::motor::MotorHandle handle(motor);
-  handle.setPower(0.5f);
+  EXPECT_TRUE(motor.setPower(0.5f));
   EXPECT_NEAR(motor.appliedPower(), 0.5f, 1e-5f);
-  handle.setInverted(true);
-  EXPECT_TRUE(handle.getInverted());
-  handle.setPower(0.2f);
+  motor.setInverted(true);
+  EXPECT_TRUE(motor.getInverted());
+  EXPECT_TRUE(motor.setPower(0.2f));
   EXPECT_NEAR(motor.appliedPower(), -0.2f, 1e-5f);
 }
 

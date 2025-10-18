@@ -43,7 +43,6 @@ static probot::motor::BoardozaVNHMotorDriver g_motor(
   PIN_ENA,
   PIN_ENB
 );
-static probot::motor::MotorHandle g_motorHandle(g_motor);
 static float g_lastReportedPower = 0.0f;
 
 static float applyDeadband(float value){
@@ -65,17 +64,17 @@ void robotInit(){
   g_motor.begin();
   g_motor.setBrakeMode(true);     // boşta tam fren
   g_motor.setBrakeStrength(1.0f); // PWM %100 ile fren uygula
-  g_motorHandle.setPower(0.0f);
+  g_motor.setPower(0.0f);
   g_lastReportedPower = 0.0f;
 }
 
 void robotEnd(){
-  g_motorHandle.setPower(0.0f);
+  g_motor.setPower(0.0f);
   Serial.println("[BoardozaVNH] Demo stopped");
 }
 
 void teleopInit(){
-  g_motorHandle.setPower(0.0f);
+  g_motor.setPower(0.0f);
   g_lastReportedPower = 0.0f;
 }
 
@@ -89,14 +88,14 @@ void teleopLoop(){
     power = applyDeadband(power);
   }
 
-  g_motorHandle.setPower(power);
+  g_motor.setPower(power);
 
   // İsteğe bağlı: bir düğmeye basıldığında yönü ters çevirmek
   /*
   if (snapshot.buttonCount > 0 && snapshot.buttons[0]){
-    g_motorHandle.setInverted(true);
+    g_motor.setInverted(true);
   } else {
-    g_motorHandle.setInverted(false);
+    g_motor.setInverted(false);
   }
   */
 

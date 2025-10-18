@@ -3,25 +3,22 @@
 #include <probot/control/feedforward/simple_motor_ff.hpp>
 #include <probot/chassis/nfr_advanced_tank_drive.hpp>
 #include <probot/sensors/imu/mpu6050.hpp>
-#include <probot/devices/motors/motor_handle.hpp>
 #include <probot/test/test_motor.hpp>
 
 // Example demonstrating the NFRAdvancedTankDrive structure with simulated hardware.
 
 static probot::motor::NullMotor leftHW;
 static probot::motor::NullMotor rightHW;
-static probot::motor::MotorHandle leftHandle(leftHW);
-static probot::motor::MotorHandle rightHandle(rightHW);
-
 static probot::control::PID pidLeft({0.4f,0.0f,0.0f,-1.0f,1.0f});
 static probot::control::PID pidRight({0.4f,0.0f,0.0f,-1.0f,1.0f});
 
 // Null controllers stand in for real motor controllers – swap with real ones on hardware.
 class NullMotorController : public probot::control::IMotorController {
 public:
-  bool setPower(float power) override { return handle_.underlying().setPower(power); }
-  void setInverted(bool inv) override { handle_.setInverted(inv); }
-  bool getInverted() const override { return handle_.getInverted(); }
+  explicit NullMotorController(probot::motor::IMotorDriver& driver) : driver_(driver) {}
+  bool setPower(float power) override { return driver_.setPower(power); }
+  void setInverted(bool inv) override { driver_.setInverted(inv); }
+  bool getInverted() const override { return driver_.getInverted(); }
 
   void setSetpoint(float value, probot::control::ControlType mode, int slot = -1) override {}
   void setTimeoutMs(uint32_t) override {}
@@ -38,16 +35,14 @@ public:
   void setMotionProfileConfig(const probot::control::MotionProfileConfig& cfg) override { profileCfg_ = cfg; }
   probot::control::MotionProfileConfig motionProfileConfig() const override { return profileCfg_; }
   void update(uint32_t, uint32_t) override {}
-
-  NullMotorController(probot::motor::MotorHandle& handle) : handle_(handle) {}
 private:
-  probot::motor::MotorHandle& handle_;
+  probot::motor::IMotorDriver& driver_;
   probot::control::MotionProfileType profileType_{probot::control::MotionProfileType::kNone};
   probot::control::MotionProfileConfig profileCfg_{};
 };
 
-static NullMotorController leftController(leftHandle);
-static NullMotorController rightController(rightHandle);
+static NullMotorController leftController(leftHW);
+static NullMotorController rightController(rightHW);
 
 static probot::chassis::NfrAdvancedTankDrive::Config config;
 static probot::chassis::NfrAdvancedTankDrive chassis(&leftController, &rightController, config);

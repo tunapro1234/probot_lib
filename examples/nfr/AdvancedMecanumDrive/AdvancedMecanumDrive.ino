@@ -1,18 +1,16 @@
 #include <probot.h>
 #include <probot/chassis/nfr_advanced_mecanum_drive.hpp>
 #include <probot/sensors/imu/mpu6050.hpp>
-#include <probot/devices/motors/motor_handle.hpp>
 #include <probot/test/test_motor.hpp>
 
 static probot::motor::NullMotor flHW, frHW, rlHW, rrHW;
-static probot::motor::MotorHandle flHandle(flHW), frHandle(frHW), rlHandle(rlHW), rrHandle(rrHW);
 
 class NullMotorController : public probot::control::IMotorController {
 public:
-  explicit NullMotorController(probot::motor::MotorHandle& handle) : handle_(handle) {}
-  bool setPower(float power) override { return handle_.underlying().setPower(power); }
-  void setInverted(bool inv) override { handle_.setInverted(inv); }
-  bool getInverted() const override { return handle_.getInverted(); }
+  explicit NullMotorController(probot::motor::IMotorDriver& driver) : driver_(driver) {}
+  bool setPower(float power) override { return driver_.setPower(power); }
+  void setInverted(bool inv) override { driver_.setInverted(inv); }
+  bool getInverted() const override { return driver_.getInverted(); }
   void setSetpoint(float, probot::controllers::ControlType, int) override {}
   void setTimeoutMs(uint32_t) override {}
   void setPidSlotConfig(int, const probot::control::PidConfig&) override {}
@@ -29,12 +27,12 @@ public:
   probot::control::MotionProfileConfig motionProfileConfig() const override { return profileCfg_; }
   void update(uint32_t, uint32_t) override {}
 private:
-  probot::motor::MotorHandle& handle_;
+  probot::motor::IMotorDriver& driver_;
   probot::control::MotionProfileType profileType_{probot::control::MotionProfileType::kNone};
   probot::control::MotionProfileConfig profileCfg_{};
 };
 
-static NullMotorController fl(flHandle), fr(frHandle), rl(rlHandle), rr(rrHandle);
+static NullMotorController fl(flHW), fr(frHW), rl(rlHW), rr(rrHW);
 static probot::chassis::NfrAdvancedMecanumDrive::Config config;
 static probot::chassis::NfrAdvancedMecanumDrive chassis(&fl, &fr, &rl, &rr, config);
 static probot::sensors::imu::Mpu6050 imu;

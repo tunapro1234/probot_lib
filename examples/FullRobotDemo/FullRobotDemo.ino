@@ -2,7 +2,6 @@
 #include <probot/io/joystick_api.hpp>
 #include <probot/test/test_motor.hpp>
 #include <probot/test/null_encoder.hpp>
-#include <probot/devices/motors/motor_handle.hpp>
 
 // Bu örnek, daha tamamlanmış bir robot iskeleti gösterir:
 // - TankDrive şasi (teleop + otonom)
@@ -28,10 +27,8 @@ static probot::mechanism::Slider sliderL(&left);
 static probot::mechanism::Slider sliderR(&right);
 
 // Intake/Shooter (no-op); gerçek projede gerçek motorla değiştirin
-static probot::motor::NullMotor intakeHW;
-static probot::motor::NullMotor shooterHW;
-static probot::motor::MotorHandle intake(intakeHW);
-static probot::motor::MotorHandle shooter(shooterHW);
+static probot::motor::NullMotor intakeMotor;
+static probot::motor::NullMotor shooterMotor;
 
 // Tuş atamaları (UI tarafındaki buton indeksleri örnektir)
 static const int BTN_INTAKE_IN   = 0; // A
@@ -49,16 +46,16 @@ void robotInit(){
 }
 
 void robotEnd(){
-  intake.setPower(0.0f);
-  shooter.setPower(0.0f);
+  intakeMotor.setPower(0.0f);
+  shooterMotor.setPower(0.0f);
   Serial.println("[FullRobot] robotEnd: Bitti");
 }
 
 static void handleIntakeAndShooter(const probot::io::joystick_api::Joystick& js){
   bool intake_in  = js.getRawButton(BTN_INTAKE_IN);
   bool shoot_btn  = js.getRawButton(BTN_SHOOT);
-  intake.setPower(intake_in ? 0.8f : 0.0f);
-  shooter.setPower(shoot_btn ? 1.0f : 0.0f);
+  intakeMotor.setPower(intake_in ? 0.8f : 0.0f);
+  shooterMotor.setPower(shoot_btn ? 1.0f : 0.0f);
 }
 
 static void handleClimb(const probot::io::joystick_api::Joystick& js){
@@ -113,14 +110,14 @@ void autonomousLoop(){
     case 1:
       if (now - g_autoMs > 3000){
         Serial.println("[FullRobot/Auto] 2) Shooter çalıştır");
-        shooter.setPower(1.0f);
+        shooterMotor.setPower(1.0f);
         g_autoStep=2; g_autoMs=now;
       }
       break;
     case 2:
       if (now - g_autoMs > 2000){
         Serial.println("[FullRobot/Auto] 3) Shooter durdur");
-        shooter.setPower(0.0f);
+        shooterMotor.setPower(0.0f);
         g_autoStep=3; g_autoMs=now;
       }
       break;

@@ -1,7 +1,6 @@
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
 #include <probot/test/test_motor.hpp>
-#include <probot/devices/motors/motor_handle.hpp>
 // Not: Donanımı bağlayana kadar NullMotor kullanabilirsiniz (yer tutucu).
 // Gerçek projede bu yer tutucuyu gerçek sürücülerle (örn. NFRMotor) değiştirin.
 // Desteklenen sürücüler için: https://docs.probotstudio.com/
@@ -12,8 +11,7 @@
 
 PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
-static probot::motor::NullMotor motorHW;           // yer tutucu; gerçek sürücü ile değiştirin
-static probot::motor::MotorHandle motor(motorHW);  // sahipliği içeride yönetir
+static probot::motor::NullMotor motor;           // yer tutucu; gerçek sürücü ile değiştirin
 
 void robotInit() {
   Serial.println("[MotorTest] robotInit: Motor testi başlıyor");
