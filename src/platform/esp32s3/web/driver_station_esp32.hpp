@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #include <probot/robot/state.hpp>
 #include <probot/io/gamepad.hpp>
+#include <probot/logging/logger.hpp>
 #include "index_html.h"
 
 #if defined(PROBOT_WITH_DS) && !defined(PROBOT_WIFI_AP_PASSWORD)
@@ -31,6 +32,7 @@ namespace probot::platform::esp32 {
         return;
       }
       String ssid = generateSSID();
+      ap_ssid_ = ssid;
       WiFi.mode(WIFI_AP);
       WiFi.softAP(ssid.c_str(), pw);
 
@@ -47,6 +49,11 @@ namespace probot::platform::esp32 {
       _server.on("/updateController", HTTP_POST, [this](){ if (!enforceOwner()) return; handleUpdateController(); });
       _server.on("/robotControl", HTTP_GET, [this](){ if (!enforceOwner()) return; handleRobotControl(); });
       _server.on("/getBattery", HTTP_GET, [this](){ handleGetBattery(); });
+      _server.on("/logging/status", HTTP_GET, [this](){ handleLoggingStatus(); });
+      _server.on("/logging/stream", HTTP_GET, [this](){ handleLoggingStream(); });
+      _server.on("/logging/clear", HTTP_POST, [this](){ handleLoggingClear(); });
+      _server.on("/logging/toggle", HTTP_POST, [this](){ handleLoggingToggle(); });
+      _server.on("/logging/download", HTTP_GET, [this](){ handleLoggingDownload(); });
       _server.begin();
     }
 
@@ -129,12 +136,77 @@ namespace probot::platform::esp32 {
       _server.send(200, "text/plain", "OK");
     }
 
+    void handleLoggingStatus(){
+      probot::logging::LoggingStatus status{};
+      probot::logging::loggingStatus(status);
+      String json = "{";
+      bool wifiConnected = WiFi.getMode() != WIFI_MODE_NULL;
+      json += "\"connected\":";
+      json += (wifiConnected ? "true" : "false");
+      json += ",\"streaming\":";
+      json += (status.wifi_streaming && wifiConnected ? "true" : "false");
+      json += ",\"ssid\":\"";
+      json += ap_ssid_;
+      json += "\",\"ip\":\"";
+      json += WiFi.softAPIP().toString();
+      json += "\",\"clients\":";
+      json += WiFi.softAPgetStationNum();
+      json += ",\"rate\":";
+      float rate = 0.0f;
+      if (status.wifi_stream_start_ms > 0){
+        uint32_t elapsed = millis() - status.wifi_stream_start_ms;
+        if (elapsed > 0){
+          rate = (static_cast<float>(status.wifi_bytes_sent) * 1000.0f) / static_cast<float>(elapsed);
+        }
+      }
+      json += static_cast<int>(rate);
+      json += ",\"serial_drop\":";
+      json += status.serial_drop;
+      json += ",\"wifi_drop\":";
+      json += status.wifi_drop;
+      json += ",\"detail\":\"";
+      json += (status.wifi_streaming ? "Streaming" : "Ready");
+      json += "\"}";
+      _server.send(200, "application/json", json);
+    }
+
+    void handleLoggingStream(){
+      int tail = 200;
+      if (_server.hasArg("tail")){
+        tail = _server.arg("tail").toInt();
+        if (tail < 0) tail = 0;
+      }
+      std::string buffer;
+      probot::logging::loggingStream(buffer, static_cast<size_t>(tail));
+      _server.send(200, "text/plain", buffer.c_str());
+    }
+
+    void handleLoggingClear(){
+      probot::logging::clearLoggingStream();
+      _server.send(200, "text/plain", "cleared");
+    }
+
+    void handleLoggingToggle(){
+      String payload = _server.arg("plain");
+      bool enable = payload.indexOf("stop") < 0;
+      probot::logging::setWifiStreamingEnabled(enable);
+      _server.send(200, "text/plain", enable ? "started" : "stopped");
+    }
+
+    void handleLoggingDownload(){
+      std::string buffer;
+      probot::logging::loggingStream(buffer, 0);
+      _server.sendHeader("Content-Disposition", "attachment; filename=probot_logs.txt");
+      _server.send(200, "text/plain", buffer.c_str());
+    }
+
     robot::StateService& _rs;
     io::GamepadService&  _gs;
     WebServer            _server;
     const char*          _apPass;
     bool                 _owner_set=false;
     IPAddress            _owner;
+    String               ap_ssid_;
   };
 }
 #endif // ESP32 

@@ -3,6 +3,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <probot/core/scheduler.hpp>
+#include <Arduino.h>
+#include <string>
 
 namespace probot::logging {
 
@@ -66,6 +68,24 @@ namespace probot::logging {
   void emitStaticSnapshot(const void* source);
   uint32_t wifiEndpointIp();
   uint16_t wifiEndpointPort();
+  void setWifiStreamingEnabled(bool enabled);
+  bool wifiStreamingEnabled();
+
+  struct LoggingStatus {
+    bool     wifi_enabled;
+    bool     wifi_streaming;
+    uint16_t serial_drop;
+    uint16_t wifi_drop;
+    uint32_t total_entries;
+    uint32_t last_entry_ms;
+    uint32_t wifi_bytes_sent;
+    uint32_t wifi_stream_start_ms;
+    uint32_t wifi_last_send_ms;
+  };
+
+  void loggingStatus(LoggingStatus& status);
+  void loggingStream(std::string& out, size_t max_lines = 200);
+  void clearLoggingStream();
 
   class TelemetryCollector {
   public:
@@ -139,6 +159,11 @@ namespace probot::logging {
     void setWifiEndpointInternal(uint32_t ipv4_be, uint16_t port);
     uint32_t wifiEndpointIpInternal() const;
     uint16_t wifiEndpointPortInternal() const;
+    void setWifiStreamingEnabledInternal(bool enabled);
+    bool wifiStreamingEnabledInternal() const;
+    void statusInternal(struct LoggingStatus& status) const;
+    void copyLogLines(std::string& out, size_t max_lines) const;
+    void clearLogLines();
 
   private:
     LoggingManager();

@@ -1059,7 +1059,13 @@ function setLoggingError(message){
 async function refreshLoggingStatus(silent=false){
   try{
     const res=await fetch(LOGGING_ENDPOINTS.status,{cache:"no-store"});
-    if(!res.ok) throw new Error(`status ${res.status}`);
+    if(!res.ok){
+      if(res.status===404 || res.status===501){
+        setLoggingOffline('Logging service unavailable.');
+        return;
+      }
+      throw new Error(`status ${res.status}`);
+    }
     const payload=await res.json();
     applyLoggingState(payload);
   }catch(err){
@@ -1072,7 +1078,13 @@ async function refreshLogStream(silent=false){
   if(!loggingElements.stream) return;
   try{
     const res=await fetch(LOGGING_ENDPOINTS.stream,{cache:"no-store"});
-    if(!res.ok) throw new Error(`stream ${res.status}`);
+    if(!res.ok){
+      if(res.status===404 || res.status===501){
+        updateLogStream('Wi-Fi logging not supported on this firmware.');
+        return;
+      }
+      throw new Error(`stream ${res.status}`);
+    }
     const text=await res.text();
     updateLogStream(text || "No log data yet.");
   }catch(err){
@@ -1114,7 +1126,13 @@ async function handleLoggingToggle(){
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({action:targetAction})
     });
-    if(!res.ok) throw new Error(`toggle ${res.status}`);
+    if(!res.ok){
+      if(res.status===404 || res.status===501){
+        setLoggingOffline('Logging control unavailable.');
+        return;
+      }
+      throw new Error(`toggle ${res.status}`);
+    }
   }catch(err){
     console.error("logging toggle error",err);
     setLoggingError("Unable to toggle logging.");
@@ -1129,7 +1147,13 @@ async function handleLoggingClear(){
   if(loggingBusy) return;
   try{
     const res=await fetch(LOGGING_ENDPOINTS.clear,{method:"POST"});
-    if(!res.ok) throw new Error(`clear ${res.status}`);
+    if(!res.ok){
+      if(res.status===404 || res.status===501){
+        setLoggingError('Logging buffer not supported.');
+        return;
+      }
+      throw new Error(`clear ${res.status}`);
+    }
     updateLogStream("Log buffer cleared.");
     await refreshLogStream(true);
   }catch(err){

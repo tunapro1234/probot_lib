@@ -3,6 +3,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <algorithm>
+#include <string>
+#if defined(ESP32)
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#else
+#include <mutex>
+#endif
 
 namespace probot::logging {
 
@@ -15,6 +22,21 @@ namespace {
   constexpr size_t kMaxInstanceLen   = 32;
   constexpr size_t kMaxFieldLen      = 24;
   constexpr size_t kMaxTextLen       = 64;
+  constexpr size_t kLogLineCapacity  = 160;
+
+#if defined(ESP32)
+  static portMUX_TYPE g_log_mux = portMUX_INITIALIZER_UNLOCKED;
+  struct ScopedLock {
+    ScopedLock(){ portENTER_CRITICAL(&g_log_mux); }
+    ~ScopedLock(){ portEXIT_CRITICAL(&g_log_mux); }
+  };
+#else
+  static std::mutex g_log_mutex;
+  struct ScopedLock {
+    ScopedLock(){ g_log_mutex.lock(); }
+    ~ScopedLock(){ g_log_mutex.unlock(); }
+  };
+#endif
 
   struct SourceRecord {
     bool                 used;
@@ -220,6 +242,21 @@ struct LoggingManager::Impl {
   TransportState serial;
   TransportState wifi;
   WifiSendFn     wifi_writer;
+  bool           wifi_streaming_enabled;
+  uint32_t       wifi_bytes_sent;
+  uint32_t       wifi_stream_start_ms;
+  uint32_t       wifi_last_send_ms;
+  static constexpr size_t kHttpLogCapacity = 256;
+  char           http_log[kHttpLogCapacity][kLogLineCapacity];
+  uint8_t        http_log_len[kHttpLogCapacity];
+  size_t         http_log_head;
+  size_t         http_log_count;
+  uint32_t       http_log_total;
+  uint32_t       last_entry_ms;
+
+  void appendHttpLog(const LogSample& sample);
+  void copyHttpLog(std::string& out, size_t max_lines) const;
+  void clearHttpLog();
 };
 
 LoggingManager& manager(){
@@ -241,6 +278,18 @@ LoggingManager::LoggingManager()
   impl_->wifi.endpoint_ip_be = 0;
   impl_->wifi.endpoint_port = 0;
   impl_->wifi_writer = nullptr;
+  impl_->wifi_streaming_enabled = true;
+  impl_->wifi_bytes_sent = 0;
+  impl_->wifi_stream_start_ms = 0;
+  impl_->wifi_last_send_ms = 0;
+  impl_->http_log_head = 0;
+  impl_->http_log_count = 0;
+  impl_->http_log_total = 0;
+  impl_->last_entry_ms = 0;
+  memset(impl_->http_log_len, 0, sizeof(impl_->http_log_len));
+  for (size_t i=0;i<Impl::kHttpLogCapacity;i++){
+    impl_->http_log[i][0] = '\0';
+  }
 }
 
 LoggingManager::~LoggingManager(){
@@ -254,26 +303,32 @@ LoggingManager& LoggingManager::instance(){
 }
 
 void LoggingManager::enableSerial(bool enabled){
+  ScopedLock guard;
   impl_->serial.enabled = enabled;
 }
 
 void LoggingManager::setSerialBandwidth(BandwidthMode mode){
+  ScopedLock guard;
   impl_->serial.mode = mode;
 }
 
 void LoggingManager::enableWifi(bool enabled){
+  ScopedLock guard;
   impl_->wifi.enabled = enabled;
 }
 
 void LoggingManager::setWifiBandwidth(BandwidthMode mode){
+  ScopedLock guard;
   impl_->wifi.mode = mode;
 }
 
 void LoggingManager::setWifiSendCallbackInternal(WifiSendFn fn){
+  ScopedLock guard;
   impl_->wifi_writer = fn;
 }
 
 void LoggingManager::setWifiEndpointInternal(uint32_t ipv4_be, uint16_t port){
+  ScopedLock guard;
   impl_->wifi.endpoint_ip_be = ipv4_be;
   impl_->wifi.endpoint_port = port;
 }
@@ -514,7 +569,12 @@ void LoggingManager::update(uint32_t now_ms, uint32_t dt_ms){
   auto sendSerialFrame = [&](const LogSample& sample){
     uint8_t frame[256];
     size_t len = 0;
-    if (!encodeFrame(impl_->serial, sample, frame, sizeof(frame), len)){
+    bool encoded = false;
+    {
+      ScopedLock guard;
+      encoded = encodeFrame(impl_->serial, sample, frame, sizeof(frame), len);
+    }
+    if (!encoded){
       recordDrop(true, false);
       return;
     }
@@ -523,22 +583,46 @@ void LoggingManager::update(uint32_t now_ms, uint32_t dt_ms){
       recordDrop(true, false);
       return;
     }
-    impl_->serial.drop_counter = 0;
+    {
+      ScopedLock guard;
+      impl_->serial.drop_counter = 0;
+    }
   };
 
   auto sendWifiFrame = [&](const LogSample& sample){
-    if (!impl_->wifi_writer) return;
     uint8_t frame[256];
     size_t len = 0;
-    if (!encodeFrame(impl_->wifi, sample, frame, sizeof(frame), len)){
+    WifiSendFn writer = nullptr;
+    bool encoded = false;
+    bool streaming = false;
+    {
+      ScopedLock guard;
+      writer = impl_->wifi_writer;
+      streaming = impl_->wifi_streaming_enabled && impl_->wifi.enabled;
+      if (writer && streaming){
+        encoded = encodeFrame(impl_->wifi, sample, frame, sizeof(frame), len);
+      }
+    }
+    if (!writer || !streaming){
+      return;
+    }
+    if (!encoded){
       recordDrop(false, true);
       return;
     }
-    if (!impl_->wifi_writer(frame, len)){
+    if (!writer(frame, len)){
       recordDrop(false, true);
       return;
     }
-    impl_->wifi.drop_counter = 0;
+    {
+      ScopedLock guard;
+      impl_->wifi.drop_counter = 0;
+      impl_->wifi_bytes_sent += static_cast<uint32_t>(len);
+      impl_->wifi_last_send_ms = millis();
+      if (impl_->wifi_stream_start_ms == 0){
+        impl_->wifi_stream_start_ms = impl_->wifi_last_send_ms;
+      }
+    }
   };
 
   while ((serial_budget > 0) || (wifi_budget > 0)){
@@ -574,12 +658,139 @@ void LoggingManager::emitStatic(const void* source){
 }
 
 void LoggingManager::recordDrop(bool serial, bool wifi){
+  ScopedLock guard;
   if (serial && impl_->serial.drop_counter < 0xFFFFu){
     impl_->serial.drop_counter += 1;
   }
   if (wifi && impl_->wifi.drop_counter < 0xFFFFu){
     impl_->wifi.drop_counter += 1;
   }
+}
+
+inline void LoggingManager::Impl::appendHttpLog(const LogSample& sample){
+  ScopedLock guard;
+  char* dest = http_log[http_log_head];
+  size_t cap = kLogLineCapacity;
+  size_t pos = 0;
+  auto appendChar = [&](char c){ if (pos + 1 < cap){ dest[pos++] = c; } };
+  auto appendCStr = [&](const char* s){ if (!s) return; while (*s && pos + 1 < cap){ dest[pos++] = *s++; } };
+  auto appendUInt = [&](uint32_t v){ char buf[16]; snprintf(buf, sizeof(buf), "%lu", static_cast<unsigned long>(v)); appendCStr(buf); };
+  auto appendInt = [&](int32_t v){ char buf[16]; snprintf(buf, sizeof(buf), "%ld", static_cast<long>(v)); appendCStr(buf); };
+  auto appendFloat = [&](float v){ char buf[20]; snprintf(buf, sizeof(buf), "%.4f", static_cast<double>(v)); appendCStr(buf); };
+
+  appendChar('[');
+  appendUInt(sample.timestamp_ms);
+  appendCStr("] ");
+  switch (sample.priority){
+    case Priority::kSystemCritical: appendCStr("SYS"); break;
+    case Priority::kUserMarked:     appendCStr("USR"); break;
+    default:                        appendCStr("BG");  break;
+  }
+  appendChar(' ');
+  if (sample.reg && sample.reg->type_name){
+    appendCStr(sample.reg->type_name);
+    if (sample.reg->instance_name){
+      appendChar(':');
+      appendCStr(sample.reg->instance_name);
+    }
+  } else {
+    appendCStr("component");
+  }
+  appendChar(' ');
+  appendCStr(sample.field);
+  appendChar('=');
+  switch (sample.type){
+    case ValueType::kInt:
+      appendInt(sample.int_value);
+      break;
+    case ValueType::kFloat:
+      appendFloat(sample.float_value);
+      break;
+    case ValueType::kBool:
+      appendCStr(sample.bool_value ? "true" : "false");
+      break;
+    case ValueType::kString:
+      if (sample.has_text){ appendCStr(sample.text); }
+      break;
+  }
+  dest[pos] = '\0';
+  http_log_len[http_log_head] = static_cast<uint8_t>(pos);
+  http_log_head = (http_log_head + 1) % kHttpLogCapacity;
+  if (http_log_count < kHttpLogCapacity){
+    http_log_count += 1;
+  }
+  http_log_total += 1;
+  last_entry_ms = sample.timestamp_ms;
+}
+
+void LoggingManager::Impl::copyHttpLog(std::string& out, size_t max_lines) const{
+  ScopedLock guard;
+  out.clear();
+  if (http_log_count == 0){
+    return;
+  }
+  size_t lines = http_log_count;
+  if (max_lines > 0 && lines > max_lines){
+    lines = max_lines;
+  }
+  size_t start = (http_log_head + kHttpLogCapacity - http_log_count) % kHttpLogCapacity;
+  size_t idx = start;
+  for (size_t i = 0; i < lines; ++i){
+    out += http_log[idx];
+    if (i + 1 < lines) out += '\n';
+    idx = (idx + 1) % kHttpLogCapacity;
+  }
+}
+
+void LoggingManager::Impl::clearHttpLog(){
+  ScopedLock guard;
+  for (size_t i = 0; i < kHttpLogCapacity; ++i){
+    http_log[i][0] = '\0';
+    http_log_len[i] = 0;
+  }
+  http_log_head = 0;
+  http_log_count = 0;
+  http_log_total = 0;
+  last_entry_ms = 0;
+}
+
+void LoggingManager::setWifiStreamingEnabledInternal(bool enabled){
+  ScopedLock guard;
+  impl_->wifi_streaming_enabled = enabled;
+  if (enabled){
+    impl_->wifi_stream_start_ms = millis();
+    impl_->wifi_bytes_sent = 0;
+    impl_->wifi_last_send_ms = 0;
+  } else {
+    impl_->wifi_stream_start_ms = 0;
+    impl_->wifi_last_send_ms = 0;
+  }
+}
+
+bool LoggingManager::wifiStreamingEnabledInternal() const{
+  ScopedLock guard;
+  return impl_->wifi_streaming_enabled;
+}
+
+void LoggingManager::statusInternal(LoggingStatus& status) const{
+  ScopedLock guard;
+  status.wifi_enabled = impl_->wifi.enabled;
+  status.wifi_streaming = impl_->wifi_streaming_enabled && impl_->wifi.enabled;
+  status.serial_drop = impl_->serial.drop_counter;
+  status.wifi_drop = impl_->wifi.drop_counter;
+  status.total_entries = impl_->http_log_total;
+  status.last_entry_ms = impl_->last_entry_ms;
+  status.wifi_bytes_sent = impl_->wifi_bytes_sent;
+  status.wifi_stream_start_ms = impl_->wifi_stream_start_ms;
+  status.wifi_last_send_ms = impl_->wifi_last_send_ms;
+}
+
+void LoggingManager::copyLogLines(std::string& out, size_t max_lines) const{
+  impl_->copyHttpLog(out, max_lines);
+}
+
+void LoggingManager::clearLogLines(){
+  impl_->clearHttpLog();
 }
 
 ::control::IUpdatable* LoggingManager::wrap(::control::IUpdatable* object){
@@ -842,6 +1053,26 @@ uint32_t wifiEndpointIp(){
 
 uint16_t wifiEndpointPort(){
   return LoggingManager::instance().wifiEndpointPortInternal();
+}
+
+void setWifiStreamingEnabled(bool enabled){
+  LoggingManager::instance().setWifiStreamingEnabledInternal(enabled);
+}
+
+bool wifiStreamingEnabled(){
+  return LoggingManager::instance().wifiStreamingEnabledInternal();
+}
+
+void loggingStatus(LoggingStatus& status){
+  LoggingManager::instance().statusInternal(status);
+}
+
+void loggingStream(std::string& out, size_t max_lines){
+  LoggingManager::instance().copyLogLines(out, max_lines);
+}
+
+void clearLoggingStream(){
+  LoggingManager::instance().clearLogLines();
 }
 
 } // namespace probot::logging
