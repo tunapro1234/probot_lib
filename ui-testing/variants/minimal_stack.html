@@ -9,6 +9,7 @@
       --ice:#e5e4e2;
       --start:#28a745;
       --stop:#d93025;
+      --sky:#0aa6d9;
       font-family:"Inter","Segoe UI",sans-serif;
     }
     *{margin:0;padding:0;box-sizing:border-box;}
@@ -405,6 +406,176 @@
       color:rgba(0,32,77,0.6);
       letter-spacing:0.06em;
     }
+    .logging-status{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      margin-bottom:16px;
+    }
+    .status-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 12px;
+      border-radius:999px;
+      font-size:0.75rem;
+      letter-spacing:0.12em;
+      text-transform:uppercase;
+      background:rgba(0,32,77,0.15);
+      color:var(--navy);
+      font-weight:600;
+      transition:background 160ms ease, color 160ms ease;
+    }
+    .status-pill[data-state="connected"]{
+      background:var(--start);
+      color:var(--ice);
+    }
+    .status-pill[data-state="streaming"]{
+      background:linear-gradient(135deg,var(--start),rgba(0,32,77,0.7));
+      color:var(--ice);
+    }
+    .status-pill[data-state="error"]{
+      background:var(--stop);
+      color:var(--ice);
+    }
+    .logging-detail{
+      font-size:0.9rem;
+      color:rgba(0,32,77,0.75);
+      letter-spacing:0.04em;
+    }
+    .logging-metrics{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+      gap:12px;
+      margin-bottom:16px;
+    }
+    .logging-metric{
+      background:rgba(229,228,226,0.9);
+      border-radius:14px;
+      padding:12px 14px;
+      border:1px solid rgba(0,32,77,0.1);
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-height:70px;
+    }
+    .logging-metric-label{
+      font-size:0.72rem;
+      text-transform:uppercase;
+      letter-spacing:0.14em;
+      color:rgba(0,32,77,0.55);
+    }
+    .logging-metric-value{
+      font-size:1.1rem;
+      letter-spacing:0.04em;
+      color:rgba(0,32,77,0.85);
+      word-break:break-word;
+    }
+    .logging-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-bottom:12px;
+    }
+    .logging-actions button{
+      flex:1 1 120px;
+      padding:12px;
+      border:none;
+      border-radius:14px;
+      font-size:0.9rem;
+      letter-spacing:0.08em;
+      text-transform:uppercase;
+      cursor:pointer;
+      transition:transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+      background:rgba(0,32,77,0.12);
+      color:var(--navy);
+      box-shadow:0 6px 12px rgba(0,32,77,0.14);
+    }
+    .logging-actions button:hover{
+      transform:translateY(-1px);
+    }
+    .logging-actions button:active{
+      transform:translateY(1px);
+      box-shadow:0 4px 8px rgba(0,32,77,0.2);
+    }
+    .logging-actions button.primary{
+      background:var(--navy);
+      color:var(--ice);
+    }
+    .logging-actions button.danger{
+      background:var(--stop);
+      color:var(--ice);
+    }
+    .logging-options{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      align-items:center;
+      font-size:0.88rem;
+      letter-spacing:0.04em;
+      color:rgba(0,32,77,0.75);
+      margin-bottom:16px;
+    }
+    .logging-options label{
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+    .logging-options input[type="checkbox"]{
+      accent-color:var(--navy);
+      width:16px;
+      height:16px;
+    }
+    .logging-stream{
+      margin-top:20px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .logging-stream-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:0.86rem;
+      letter-spacing:0.04em;
+      color:rgba(0,32,77,0.7);
+    }
+    .logging-stream-header strong{
+      font-size:0.9rem;
+      color:rgba(0,32,77,0.85);
+    }
+    .logging-stream-header button{
+      background:rgba(0,32,77,0.12);
+      color:var(--navy);
+      border:none;
+      padding:6px 12px;
+      border-radius:10px;
+      letter-spacing:0.08em;
+      text-transform:uppercase;
+      font-size:0.72rem;
+      cursor:pointer;
+      box-shadow:none;
+      transition:background 120ms ease, transform 120ms ease;
+    }
+    .logging-stream-header button:hover{
+      background:rgba(0,32,77,0.22);
+      transform:translateY(-1px);
+    }
+    .logging-stream-header button:active{
+      transform:translateY(1px);
+    }
+    #wifiLogStream{
+      height:160px;
+      border-radius:14px;
+      padding:16px;
+      border:1px solid rgba(0,32,77,0.12);
+      background:var(--ice);
+      font-family:"SFMono-Regular","Roboto Mono",monospace;
+      color:var(--navy);
+      line-height:1.45;
+      white-space:pre-wrap;
+      overflow:auto;
+    }
     @media(max-width:992px){
       .app-header{
         padding:16px 28px;
@@ -691,14 +862,62 @@
     </section>
   </div>
   <div class="column column-secondary">
+    <section class="stack-card" id="logging">
+      <h2>Wi-Fi Logging</h2>
+      <div class="logging-status">
+        <span class="status-pill" id="loggingStatePill" data-state="disconnected">Disconnected</span>
+        <span class="logging-detail" id="loggingDetail">Waiting for Wi-Fi module...</span>
+      </div>
+      <div class="logging-metrics">
+        <div class="logging-metric">
+          <span class="logging-metric-label">Network</span>
+          <strong class="logging-metric-value" id="loggingSsid">—</strong>
+        </div>
+        <div class="logging-metric">
+          <span class="logging-metric-label">Robot IP</span>
+          <strong class="logging-metric-value" id="loggingIp">—</strong>
+        </div>
+        <div class="logging-metric">
+          <span class="logging-metric-label">Clients</span>
+          <strong class="logging-metric-value" id="loggingClients">0</strong>
+        </div>
+        <div class="logging-metric">
+          <span class="logging-metric-label">Rate</span>
+          <strong class="logging-metric-value" id="loggingRate">0 KB/s</strong>
+        </div>
+      </div>
+      <div class="logging-actions">
+        <button type="button" class="primary" id="loggingToggleButton">Start Logging</button>
+        <button type="button" id="loggingRefreshButton">Refresh</button>
+        <button type="button" class="danger" id="loggingClearButton">Clear</button>
+      </div>
+      <div class="logging-options">
+        <label>
+          <input type="checkbox" id="loggingAutoRefresh" checked>
+          <span>Auto-refresh status</span>
+        </label>
+        <label>
+          <input type="checkbox" id="loggingAutoScroll" checked>
+          <span>Auto-scroll log</span>
+        </label>
+        <span id="loggingLastUpdated">Last sync: never</span>
+      </div>
+    </section>
     <section class="stack-card telemetry" id="logs">
-      <h2>Telemetry Log</h2>
+      <h2>System Logs</h2>
       <select id="joystickSelect" onchange="changeSelectedGamepad()">
         <option value="-1">No Gamepad</option>
       </select>
       <pre id="joystickStatus">No gamepad selected.</pre>
       <pre id="axisData">No axis data...</pre>
       <pre id="buttonData">No button data...</pre>
+      <div class="logging-stream">
+        <div class="logging-stream-header">
+          <strong>Wi-Fi Log Stream</strong>
+          <button type="button" id="loggingDownloadButton">Download</button>
+        </div>
+        <pre id="wifiLogStream">Waiting for log data...</pre>
+      </div>
     </section>
   </div>
 </main>
@@ -710,8 +929,223 @@
     let gamepadDetected=false;
 
     const headerEl=document.getElementById('appHeader');
-    const headerStatusValue=document.getElementById('headerStatusValue');
-    const headerStatusDetail=document.getElementById('headerStatusDetail');
+const headerStatusValue=document.getElementById('headerStatusValue');
+const headerStatusDetail=document.getElementById('headerStatusDetail');
+
+const loggingElements={
+  pill:document.getElementById('loggingStatePill'),
+  detail:document.getElementById('loggingDetail'),
+  ssid:document.getElementById('loggingSsid'),
+  ip:document.getElementById('loggingIp'),
+  clients:document.getElementById('loggingClients'),
+  rate:document.getElementById('loggingRate'),
+  toggleBtn:document.getElementById('loggingToggleButton'),
+  refreshBtn:document.getElementById('loggingRefreshButton'),
+  clearBtn:document.getElementById('loggingClearButton'),
+  autoRefresh:document.getElementById('loggingAutoRefresh'),
+  autoScroll:document.getElementById('loggingAutoScroll'),
+  lastUpdated:document.getElementById('loggingLastUpdated'),
+  stream:document.getElementById('wifiLogStream'),
+  downloadBtn:document.getElementById('loggingDownloadButton')
+};
+
+const LOGGING_ENDPOINTS={
+  status:"/logging/status",
+  toggle:"/logging/toggle",
+  clear:"/logging/clear",
+  stream:"/logging/stream?tail=200",
+  download:"/logging/download"
+};
+
+let loggingState={
+  connected:false,
+  streaming:false,
+  ssid:"—",
+  ip:"—",
+  clients:0,
+  rate:0,
+  lastSync:null
+};
+let loggingPollingTimer=null;
+let loggingBusy=false;
+
+function setLoggingLastUpdated(text){
+  if(loggingElements.lastUpdated){
+    loggingElements.lastUpdated.textContent=`Last sync: ${text}`;
+  }
+}
+
+function formatRate(value){
+  if(typeof value!=="number" || !isFinite(value) || value<0){
+    return "0 KB/s";
+  }
+  const kb=value/1024;
+  if(kb>=1024){
+    return `${(kb/1024).toFixed(1)} MB/s`;
+  }
+  return `${Math.max(0,kb).toFixed(1)} KB/s`;
+}
+
+function applyLoggingState(data){
+  loggingState.connected=!!data.connected;
+  loggingState.streaming=!!data.streaming;
+  loggingState.ssid=data.ssid || "—";
+  loggingState.ip=data.ip || "—";
+  loggingState.clients=Number.isFinite(data.clients)?data.clients:0;
+  loggingState.rate=Number.isFinite(data.rate)?data.rate:0;
+  loggingState.lastSync=new Date();
+
+  if(loggingElements.ssid) loggingElements.ssid.textContent=loggingState.ssid;
+  if(loggingElements.ip) loggingElements.ip.textContent=loggingState.ip;
+  if(loggingElements.clients) loggingElements.clients.textContent=String(loggingState.clients);
+  if(loggingElements.rate) loggingElements.rate.textContent=formatRate(loggingState.rate);
+
+  if(loggingElements.pill){
+    const mode=loggingState.streaming ? "streaming" : (loggingState.connected ? "connected" : "disconnected");
+    loggingElements.pill.dataset.state=mode;
+    loggingElements.pill.textContent=mode==="streaming" ? "Streaming" : mode==="connected" ? "Connected" : "Disconnected";
+  }
+  if(loggingElements.detail){
+    loggingElements.detail.textContent=data.detail || (loggingState.connected ? "Ready to stream logs." : "Waiting for Wi-Fi module...");
+  }
+
+  if(loggingElements.toggleBtn){
+    loggingElements.toggleBtn.disabled=false;
+    loggingElements.toggleBtn.classList.toggle('primary',!loggingState.streaming);
+    loggingElements.toggleBtn.classList.toggle('danger',loggingState.streaming);
+    loggingElements.toggleBtn.textContent=loggingState.streaming ? "Stop Logging" : "Start Logging";
+  }
+
+  setLoggingLastUpdated(loggingState.lastSync.toLocaleTimeString());
+}
+
+function setLoggingOffline(message){
+  loggingState.connected=false;
+  loggingState.streaming=false;
+  loggingState.ssid="—";
+  loggingState.ip="—";
+  loggingState.clients=0;
+  loggingState.rate=0;
+  if(loggingElements.ssid) loggingElements.ssid.textContent="—";
+  if(loggingElements.ip) loggingElements.ip.textContent="—";
+  if(loggingElements.clients) loggingElements.clients.textContent="0";
+  if(loggingElements.rate) loggingElements.rate.textContent="0 KB/s";
+  if(loggingElements.pill){
+    loggingElements.pill.dataset.state="disconnected";
+    loggingElements.pill.textContent="Disconnected";
+  }
+  if(loggingElements.detail){
+    loggingElements.detail.textContent=message || "Wi-Fi logging unavailable.";
+  }
+  if(loggingElements.toggleBtn){
+    loggingElements.toggleBtn.disabled=false;
+    loggingElements.toggleBtn.classList.add('primary');
+    loggingElements.toggleBtn.classList.remove('danger');
+    loggingElements.toggleBtn.textContent="Start Logging";
+  }
+  setLoggingLastUpdated("offline");
+}
+
+function setLoggingError(message){
+  if(loggingElements.pill){
+    loggingElements.pill.dataset.state="error";
+    loggingElements.pill.textContent="Error";
+  }
+  if(loggingElements.detail){
+    loggingElements.detail.textContent=message || "Command failed.";
+  }
+}
+
+async function refreshLoggingStatus(silent=false){
+  try{
+    const res=await fetch(LOGGING_ENDPOINTS.status,{cache:"no-store"});
+    if(!res.ok) throw new Error(`status ${res.status}`);
+    const payload=await res.json();
+    applyLoggingState(payload);
+  }catch(err){
+    if(!silent) console.error("logging status error",err);
+    setLoggingOffline("No response from robot.");
+  }
+}
+
+async function refreshLogStream(silent=false){
+  if(!loggingElements.stream) return;
+  try{
+    const res=await fetch(LOGGING_ENDPOINTS.stream,{cache:"no-store"});
+    if(!res.ok) throw new Error(`stream ${res.status}`);
+    const text=await res.text();
+    updateLogStream(text || "No log data yet.");
+  }catch(err){
+    if(!silent) console.error("log stream error",err);
+  }
+}
+
+function updateLogStream(content){
+  if(!loggingElements.stream) return;
+  loggingElements.stream.textContent=content;
+  if(loggingElements.autoScroll && loggingElements.autoScroll.checked){
+    loggingElements.stream.scrollTop=loggingElements.stream.scrollHeight;
+  }
+}
+
+function setLoggingAutoRefresh(enabled){
+  if(loggingPollingTimer){
+    clearInterval(loggingPollingTimer);
+    loggingPollingTimer=null;
+  }
+  if(enabled){
+    loggingPollingTimer=setInterval(()=>{
+      refreshLoggingStatus(true);
+      refreshLogStream(true);
+    },4000);
+  }
+}
+
+async function handleLoggingToggle(){
+  if(loggingBusy) return;
+  if(!loggingElements.toggleBtn) return;
+  loggingBusy=true;
+  loggingElements.toggleBtn.disabled=true;
+  const targetAction=loggingState.streaming ? "stop" : "start";
+  loggingElements.toggleBtn.textContent=targetAction==="stop" ? "Stopping..." : "Starting...";
+  try{
+    const res=await fetch(LOGGING_ENDPOINTS.toggle,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action:targetAction})
+    });
+    if(!res.ok) throw new Error(`toggle ${res.status}`);
+  }catch(err){
+    console.error("logging toggle error",err);
+    setLoggingError("Unable to toggle logging.");
+  }finally{
+    loggingBusy=false;
+    await refreshLoggingStatus(true);
+    await refreshLogStream(true);
+  }
+}
+
+async function handleLoggingClear(){
+  if(loggingBusy) return;
+  try{
+    const res=await fetch(LOGGING_ENDPOINTS.clear,{method:"POST"});
+    if(!res.ok) throw new Error(`clear ${res.status}`);
+    updateLogStream("Log buffer cleared.");
+    await refreshLogStream(true);
+  }catch(err){
+    console.error("logging clear error",err);
+    setLoggingError("Unable to clear buffer.");
+  }
+}
+
+function handleLoggingDownload(){
+  window.open(LOGGING_ENDPOINTS.download,"_blank","noopener");
+}
+
+function handleLoggingRefresh(){
+  refreshLoggingStatus();
+  refreshLogStream();
+}
 
 function setPhaseDisplay(mode){
   const map={
@@ -938,10 +1372,26 @@ function stopAutoTimer(){
       }
       requestAnimationFrame(gamepadLoop);
     }
-    function varGet(name){
-      return getComputedStyle(document.documentElement).getPropertyValue(name).trim()||varDefaults[name];
-    }
-    const varDefaults={"--navy":"#00204d","--start":"#28a745","--stop":"#d93025","--ice":"#e5e4e2"};
+function varGet(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim()||varDefaults[name];
+}
+const varDefaults={"--navy":"#00204d","--start":"#28a745","--stop":"#d93025","--ice":"#e5e4e2"};
+
+if(loggingElements.toggleBtn) loggingElements.toggleBtn.addEventListener('click',handleLoggingToggle);
+if(loggingElements.refreshBtn) loggingElements.refreshBtn.addEventListener('click',handleLoggingRefresh);
+if(loggingElements.clearBtn) loggingElements.clearBtn.addEventListener('click',handleLoggingClear);
+if(loggingElements.downloadBtn) loggingElements.downloadBtn.addEventListener('click',handleLoggingDownload);
+if(loggingElements.autoRefresh) loggingElements.autoRefresh.addEventListener('change',e=>{
+  setLoggingAutoRefresh(e.target.checked);
+  if(e.target.checked){
+    handleLoggingRefresh();
+  }
+});
+if(loggingElements.autoScroll) loggingElements.autoScroll.addEventListener('change',()=>{
+  if(loggingElements.autoScroll.checked && loggingElements.stream){
+    loggingElements.stream.scrollTop=loggingElements.stream.scrollHeight;
+  }
+});
 
     window.addEventListener('gamepadconnected',()=>{
       updateGamepads();
@@ -957,6 +1407,10 @@ function stopAutoTimer(){
       updateAutoDisplay();
       setPhaseDisplay('standby');
       applyHeaderMode();
+      handleLoggingRefresh();
+      if(loggingElements.autoRefresh){
+        setLoggingAutoRefresh(loggingElements.autoRefresh.checked);
+      }
       requestAnimationFrame(gamepadLoop);
     });
 
