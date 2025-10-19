@@ -13,14 +13,9 @@
 
 namespace {
   struct DummyMotor : probot::motor::IMotorDriver {
-    void* owner = nullptr;
     float lastPower = 0.0f;
     bool inverted = false;
-    bool claim(void* o) override { if (owner && owner != o) return false; owner = o; return true; }
-    void release(void* o) override { if (owner == o){ owner = nullptr; lastPower = 0.0f; } }
-    bool setPower(float power, void* o) override { if (owner != o) return false; lastPower = inverted ? -power : power; return true; }
-    bool isClaimed() const override { return owner != nullptr; }
-    void* currentOwner() const override { return owner; }
+    bool setPower(float power) override { lastPower = inverted ? -power : power; return true; }
     void setInverted(bool inv) override { inverted = inv; }
     bool getInverted() const override { return inverted; }
   };
@@ -33,7 +28,6 @@ namespace {
   };
 
   struct MockMotorController : probot::control::IMotorController {
-    void* owner = nullptr;
     float lastSetpointValue = 0.0f;
     probot::control::ControlType lastMode = probot::control::ControlType::kPercent;
     int lastSlot = -1;
@@ -43,20 +37,11 @@ namespace {
     bool setPowerCalled = false;
     float lastPower = 0.0f;
 
-    bool claim(void* o) override {
-      if (owner && owner != o) return false;
-      owner = o;
-      return true;
-    }
-    void release(void* o) override { if (owner == o) owner = nullptr; }
-    bool setPower(float power, void* o) override {
-      if (owner != o) return false;
+    bool setPower(float power) override {
       setPowerCalled = true;
       lastPower = inverted ? -power : power;
       return true;
     }
-    bool isClaimed() const override { return owner != nullptr; }
-    void* currentOwner() const override { return owner; }
     void setInverted(bool inv) override { inverted = inv; }
     bool getInverted() const override { return inverted; }
 
@@ -150,8 +135,6 @@ TEST_CASE(nfr_tank_drive_closed_loop_should_command_power){
   probot::control::ClosedLoopMotor clR(&encR, &pidR, &motorR, 1.0f, 1.0f);
   clL.setTimeoutMs(0);
   clR.setTimeoutMs(0);
-  EXPECT_TRUE(motorL.isClaimed());
-  EXPECT_TRUE(motorR.isClaimed());
 
   probot::chassis::NfrAdvancedTankDrive chassis(&clL, &clR);
   chassis.resetPose(probot::control::Pose2d(), 0.0f, 0.0f);
@@ -177,10 +160,6 @@ TEST_CASE(nfr_mecanum_drive_closed_loop_should_command_power){
   clFR.setTimeoutMs(0);
   clRL.setTimeoutMs(0);
   clRR.setTimeoutMs(0);
-  EXPECT_TRUE(motorFL.isClaimed());
-  EXPECT_TRUE(motorFR.isClaimed());
-  EXPECT_TRUE(motorRL.isClaimed());
-  EXPECT_TRUE(motorRR.isClaimed());
 
   probot::chassis::NfrAdvancedMecanumDrive chassis(&clFL, &clFR, &clRL, &clRR);
   probot::control::kinematics::WheelPositions4 wheels{0.0f, 0.0f, 0.0f, 0.0f};

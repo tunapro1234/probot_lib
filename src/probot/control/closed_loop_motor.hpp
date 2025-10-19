@@ -12,8 +12,10 @@
 #include <probot/control/motion_profile/trapezoid_profile.hpp>
 // #include <probot/control/motion_profile/s_curve_profile.hpp>  // Disabled for now
 #include <probot/sensors/encoder.hpp>
+#ifndef PROBOT_CLM_NOLOG
 #include <probot/logging/logger.hpp>
 #include <probot/logging/telemetry_profiles.hpp>
+#endif
 
 namespace probot::control {
   class ClosedLoopMotor : public IMotorController {
@@ -30,14 +32,12 @@ namespace probot::control {
       active_mode_(ControlType::kVelocity),
       default_slot_velocity_(0),
       default_slot_position_(1),
-      owner_token_(this),
-      external_owner_(nullptr),
       inverted_(false)
     {
       for (int i=0;i<4;i++){
         slot_cfg_[i] = {0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f};
       }
-      if (driver_) driver_->claim(owner_token_);
+#ifndef PROBOT_CLM_NOLOG
       probot::logging::SourceRegistration reg{
         "motor_controller",
         nullptr,
@@ -48,13 +48,15 @@ namespace probot::control {
         probot::logging::profiles::motorControllerStatic
       };
       probot::logging::registerSource(this, reg);
+#endif
     }
 
     ~ClosedLoopMotor(){
+#ifndef PROBOT_CLM_NOLOG
       probot::logging::unregisterSource(this);
+#endif
       if (driver_) {
-        driver_->setPower(0.0f, owner_token_);
-        driver_->release(owner_token_);
+        driver_->setPower(0.0f);
       }
     }
 
@@ -144,29 +146,21 @@ namespace probot::control {
 
     bool setPowerDirect(float power){
       if (!driver_) return false;
-      if (external_owner_) return false;  // Respect external ownership
-      return driver_->setPower(power, owner_token_);
+      bool ok = driver_->setPower(power);
+      if (ok){
+        last_output_ = inverted_ ? -power : power;
+      }
+      return ok;
     }
 
-    // IMotor interface (external ownership control). External owner must claim/release.
-    bool claim(void* owner) override {
-      if (external_owner_ && external_owner_ != owner) return false;
+    bool setPower(float power) override {
       if (!driver_) return false;
-      external_owner_ = owner;
-      return true;
+      bool ok = driver_->setPower(power);
+      if (ok){
+        last_output_ = inverted_ ? -power : power;
+      }
+      return ok;
     }
-    void release(void* owner) override {
-      if (!driver_ || external_owner_ != owner) return;
-      driver_->setPower(0.0f, owner_token_);
-      external_owner_ = nullptr;
-    }
-    bool setPower(float power, void* owner) override {
-      if (!driver_ || external_owner_ != owner) return false;
-      float p = inverted_ ? -power : power;
-      return driver_->setPower(p, owner_token_);
-    }
-    bool isClaimed() const override { return external_owner_ != nullptr; }
-    void* currentOwner() const override { return external_owner_; }
 
     void setInverted(bool inverted) override {
       inverted_ = inverted;
@@ -178,18 +172,18 @@ namespace probot::control {
       if (!encoder_ || !pid_ || !driver_) return;
 
       if (timeout_ms_ > 0 && (now_ms - last_ref_ms_.load()) > timeout_ms_){
-        driver_->setPower(0.0f, owner_token_);
+        driver_->setPower(0.0f);
         last_output_ = 0.0f;
         return;
       }
 
       if (active_mode_ == ControlType::kPercent){
         float target_val = target_value_.load();
-        float output = inverted_ ? -target_val : target_val;
+        float applied = inverted_ ? -target_val : target_val;
         ref_value_.store(target_val);
-        driver_->setPower(output, owner_token_);
+        driver_->setPower(target_val);
         last_measurement_ = target_val;
-        last_output_ = output;
+        last_output_ = applied;
         return;
       }
 
@@ -236,9 +230,9 @@ namespace probot::control {
       float cmd = pid_out + ff;
       cmd = std::clamp(cmd, slot_cfg_[slot].out_min, slot_cfg_[slot].out_max);
 
-      driver_->setPower(cmd, owner_token_);
+      driver_->setPower(cmd);
       last_measurement_ = meas;
-      last_output_ = cmd;
+      last_output_ = inverted_ ? -cmd : cmd;
 
 #ifndef PROBOT_CLM_NOLOG
       Serial.printf("[CLM ] mode=%s ref=%.3f meas=%.3f err=%.3f out=%.3f slot=%d\n",
@@ -396,8 +390,6 @@ namespace probot::control {
     ControlType profile_mode_ = ControlType::kPercent;
     std::unique_ptr<probot::control::motion_profile::IMotionProfile> motion_profile_;
 
-    void* owner_token_;
-    void* external_owner_;
     bool  inverted_;
     float last_measurement_ = 0.0f;
     float last_output_      = 0.0f;

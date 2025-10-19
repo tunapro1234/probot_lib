@@ -22,11 +22,7 @@ namespace {
     probot::control::MotionProfileType profileType = probot::control::MotionProfileType::kNone;
     probot::control::MotionProfileConfig profileCfg{};
 
-    bool claim(void*) override { return true; }
-    void release(void*) override {}
-    bool setPower(float, void*) override { return true; }
-    bool isClaimed() const override { return false; }
-    void* currentOwner() const override { return nullptr; }
+    bool setPower(float) override { return true; }
     void setInverted(bool) override {}
     bool getInverted() const override { return false; }
 

@@ -85,21 +85,7 @@ void BoardozaVNHMotorDriver::setBrakeStrength(float dutyFraction){
   }
 }
 
-bool BoardozaVNHMotorDriver::claim(void* owner){
-  if (owner_ && owner_ != owner) return false;
-  owner_ = owner;
-  return true;
-}
-
-void BoardozaVNHMotorDriver::release(void* owner){
-  if (owner_ != owner) return;
-  owner_ = nullptr;
-  applyStop();
-}
-
-bool BoardozaVNHMotorDriver::setPower(float power, void* owner){
-  if (owner_ && owner_ != owner) return false;
-
+bool BoardozaVNHMotorDriver::setPower(float power){
   ensureInitialized();
   if (!initialized_) return false;
 

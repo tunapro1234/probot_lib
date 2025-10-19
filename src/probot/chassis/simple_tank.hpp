@@ -10,15 +10,7 @@ namespace probot::chassis {
   class SimpleTankDrive {
   public:
     SimpleTankDrive(probot::motor::IMotorDriver* left, probot::motor::IMotorDriver* right)
-    : left_(left), right_(right), ownerLeft_(this), ownerRight_(reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(this)+1)) {
-      if (left_)  left_->claim(ownerLeft_);
-      if (right_) right_->claim(ownerRight_);
-    }
-
-    ~SimpleTankDrive(){
-      if (left_)  left_->release(ownerLeft_);
-      if (right_) right_->release(ownerRight_);
-    }
+    : left_(left), right_(right) {}
 
     void setInverted(bool left, bool right){
       if (left_)  left_->setInverted(left);
@@ -28,19 +20,17 @@ namespace probot::chassis {
     void drive(float leftPower, float rightPower){
       leftPower = std::clamp(leftPower, -1.0f, 1.0f);
       rightPower = std::clamp(rightPower, -1.0f, 1.0f);
-      if (left_)  left_->setPower(leftPower, ownerLeft_);
-      if (right_) right_->setPower(rightPower, ownerRight_);
+      if (left_)  left_->setPower(leftPower);
+      if (right_) right_->setPower(rightPower);
     }
 
     void stop(){
-      if (left_)  left_->setPower(0.0f, ownerLeft_);
-      if (right_) right_->setPower(0.0f, ownerRight_);
+      if (left_)  left_->setPower(0.0f);
+      if (right_) right_->setPower(0.0f);
     }
 
   private:
     probot::motor::IMotorDriver* left_;
     probot::motor::IMotorDriver* right_;
-    void* ownerLeft_;
-    void* ownerRight_;
   };
 }

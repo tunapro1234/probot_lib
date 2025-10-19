@@ -50,20 +50,7 @@ void BoardozaBA6208Driver::setBrakeMode(bool enabled){
   applyStop();
 }
 
-bool BoardozaBA6208Driver::claim(void* owner){
-  if (owner_ && owner_ != owner) return false;
-  owner_ = owner;
-  return true;
-}
-
-void BoardozaBA6208Driver::release(void* owner){
-  if (owner_ != owner) return;
-  owner_ = nullptr;
-  applyStop();
-}
-
-bool BoardozaBA6208Driver::setPower(float power, void* owner){
-  if (owner_ && owner_ != owner) return false;
+bool BoardozaBA6208Driver::setPower(float power){
   ensureInitialized();
   if (!initialized_) return false;
 

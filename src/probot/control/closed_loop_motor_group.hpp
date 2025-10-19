@@ -1,14 +1,17 @@
 #pragma once
 #include <probot/control/imotor_controller.hpp>
 #include <math.h>
+#ifndef PROBOT_CLM_NOLOG
 #include <probot/logging/logger.hpp>
 #include <probot/logging/telemetry_profiles.hpp>
+#endif
 
 namespace probot::control {
   class ClosedLoopMotorGroup : public IMotorController {
   public:
     ClosedLoopMotorGroup(IMotorController* a, IMotorController* b)
-    : a_(a), b_(b), owner_(nullptr), inverted_(false) {
+    : a_(a), b_(b), inverted_(false) {
+#ifndef PROBOT_CLM_NOLOG
       probot::logging::SourceRegistration reg{
         "motor_group",
         nullptr,
@@ -19,10 +22,13 @@ namespace probot::control {
         probot::logging::profiles::motorControllerStatic
       };
       probot::logging::registerSource(this, reg);
+#endif
     }
 
     ~ClosedLoopMotorGroup() override {
+#ifndef PROBOT_CLM_NOLOG
       probot::logging::unregisterSource(this);
+#endif
     }
 
     // Group control API
@@ -79,29 +85,11 @@ namespace probot::control {
     }
 
     // IMotor for raw power when needed
-    bool claim(void* owner) override {
-      if (owner_ && owner_ != owner) return false;
-      if (!a_ || !b_) return false;
-      if (!a_->claim(owner)) return false;
-      if (!b_->claim(owner)) { a_->release(owner); return false; }
-      owner_ = owner;
-      return true;
-    }
-    void release(void* owner) override {
-      if (owner_ != owner) return;
-      if (b_) b_->release(owner);
-      if (a_) a_->release(owner);
-      owner_ = nullptr;
-    }
-    bool setPower(float power, void* owner) override {
-      if (owner_ != owner) return false;
-      float p = inverted_ ? -power : power;
-      bool ok1 = a_ ? a_->setPower(p, owner) : false;
-      bool ok2 = b_ ? b_->setPower(p, owner) : false;
+    bool setPower(float power) override {
+      bool ok1 = a_ ? a_->setPower(power) : false;
+      bool ok2 = b_ ? b_->setPower(power) : false;
       return ok1 && ok2;
     }
-    bool isClaimed() const override { return owner_ != nullptr; }
-    void* currentOwner() const override { return owner_; }
 
     void setInverted(bool inverted) override {
       inverted_ = inverted;
@@ -113,7 +101,6 @@ namespace probot::control {
   private:
     IMotorController* a_;
     IMotorController* b_;
-    void* owner_;
     bool  inverted_;
   };
 } // namespace probot::control 
