@@ -5,7 +5,7 @@
 #include <avr/pgmspace.h>
 #endif
 
-const char MAIN_page[] PROGMEM = R"=====
+const char MAIN_page[] PROGMEM = R"=====(
 <!DOCTYPE html>
 <html lang="en">
 <head>
