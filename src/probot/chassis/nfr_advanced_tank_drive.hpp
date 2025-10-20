@@ -42,20 +42,11 @@ namespace probot::chassis {
       pidLeft_(config.velocityPid), pidRight_(config.velocityPid),
       feedforward_(config.feedforward)
     {
-      if (left_) {
-        left_->claim(&tokenLeft_);
-        applyWheelMotionProfile(left_);
-      }
-      if (right_) {
-        right_->claim(&tokenRight_);
-        applyWheelMotionProfile(right_);
-      }
+      applyWheelMotionProfile(left_);
+      applyWheelMotionProfile(right_);
     }
 
-    ~NfrAdvancedTankDrive(){
-      if (left_) left_->release(&tokenLeft_);
-      if (right_) right_->release(&tokenRight_);
-    }
+    ~NfrAdvancedTankDrive() = default;
 
     void setImu(probot::sensors::imu::IImu* imu){ imu_ = imu; }
     probot::sensors::imu::IImu* imu() const { return imu_; }
@@ -192,8 +183,8 @@ namespace probot::chassis {
         float leftPower = std::clamp(leftOutput * scale / config_.maxOutput, -1.0f, 1.0f);
         float rightPower = std::clamp(rightOutput * scale / config_.maxOutput, -1.0f, 1.0f);
 
-        if (left_) left_->setPower(leftPower, &tokenLeft_);
-        if (right_) right_->setPower(rightPower, &tokenRight_);
+        if (left_) left_->setPower(leftPower);
+        if (right_) right_->setPower(rightPower);
       }
 
       prevLeftTarget_ = leftTarget;
@@ -206,8 +197,6 @@ namespace probot::chassis {
   private:
     probot::control::IMotorController* left_;
     probot::control::IMotorController* right_;
-    void* tokenLeft_ = this;
-    void* tokenRight_ = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(this) + 1);
 
     Config config_;
     probot::control::kinematics::DifferentialDriveKinematics kinematics_;

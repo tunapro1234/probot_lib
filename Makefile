@@ -5,6 +5,10 @@ FQBN        ?= esp32:esp32:esp32s3
 PORT        ?= /dev/ttyACM0
 BAUD        ?= 115200
 ARDUINO_CLI ?= arduino-cli
+PYTHON      ?= python3
+
+VERSION_FILE        := $(CURDIR)/VERSION
+VERSION_SYNC_SCRIPT := $(CURDIR)/tools/sync_version.py
 
 # Examples
 EXAMPLES_DIR   := $(CURDIR)/examples
@@ -15,6 +19,9 @@ BUILD_DIR_BASE := $(CURDIR)/.build
 
 TEST_STUB_DIR := $(CURDIR)/tests/stubs
 TEST_SOURCES := $(filter %.cpp,$(wildcard $(CURDIR)/tests/*.cpp))
+TEST_EXTRA_SOURCES := \
+	$(CURDIR)/src/probot/logging/logger.cpp \
+	$(CURDIR)/src/probot/logging/telemetry_profiles.cpp
 
 # Common flags
 EXTRA_FLAGS_COMMON := -DESP32S3 -DARDUINO_USB_MODE=1 -DARDUINO_USB_CDC_ON_BOOT=1
@@ -54,6 +61,7 @@ build-all:
 
 _build_single:
 	@echo "==> Building $(EXAMPLE)"
+	$(PYTHON) $(VERSION_SYNC_SCRIPT)
 	$(ARDUINO_CLI) compile --fqbn $(FQBN) --warnings all \
 	  --library $(CURDIR) \
 	  --build-path $(BUILD_DIR_BASE)/$(EXAMPLE) \
@@ -78,8 +86,11 @@ boards:
 libs:
 	arduino-cli lib install "Adafruit NeoPixel" 
 
+version-sync:
+	$(PYTHON) $(VERSION_SYNC_SCRIPT)
+
 tests/control_tests: $(TEST_SOURCES)
-	g++ -std=c++17 -Wall -Wextra -pedantic -I src -I $(TEST_STUB_DIR) -DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1 -o $@ $(TEST_SOURCES)
+	g++ -std=c++17 -Wall -Wextra -pedantic -I src -I $(TEST_STUB_DIR) -DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1 -DPROBOT_LOGGER_NO_SCHED_ATTACH=1 -o $@ $(TEST_SOURCES) $(TEST_EXTRA_SOURCES)
 
 test: build tests/control_tests
 	./tests/control_tests

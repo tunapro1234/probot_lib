@@ -3,6 +3,8 @@
 #include <probot/control/imotor_controller.hpp>
 #include <probot/control/pid.hpp>
 #include <math.h>
+#include <probot/logging/logger.hpp>
+#include <probot/logging/telemetry_profiles.hpp>
 
 namespace probot::drive {
   struct IChassis {
@@ -30,6 +32,20 @@ namespace probot::drive {
         right_->selectDefaultSlot(probot::control::ControlType::kVelocity, velocity_slot_);
         right_->selectDefaultSlot(probot::control::ControlType::kPosition, position_slot_);
       }
+      probot::logging::SourceRegistration reg{
+        "tank_drive",
+        nullptr,
+        probot::logging::Priority::kBackground,
+        false,
+        false,
+        probot::logging::profiles::tankDriveDynamic,
+        nullptr
+      };
+      probot::logging::registerSource(this, reg);
+    }
+
+    ~BasicTankDrive() override {
+      probot::logging::unregisterSource(this);
     }
 
     void configurePid(const probot::control::PidConfig& velocityCfg,

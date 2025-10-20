@@ -1,6 +1,8 @@
 #pragma once
 #include <math.h>
 #include <probot/control/imotor_controller.hpp>
+#include <probot/logging/logger.hpp>
+#include <probot/logging/telemetry_profiles.hpp>
 
 namespace probot::mechanism {
 
@@ -18,7 +20,22 @@ namespace probot::mechanism {
   public:
     explicit Arm(probot::control::IMotorController* controller)
     : controller_(controller), ticks_per_degree_(1.0f), target_angle_(0.0f),
-      min_angle_(-90.0f), max_angle_(90.0f), has_limits_(false) {}
+      min_angle_(-90.0f), max_angle_(90.0f), has_limits_(false) {
+      probot::logging::SourceRegistration reg{
+        "arm",
+        nullptr,
+        probot::logging::Priority::kBackground,
+        false,
+        false,
+        probot::logging::profiles::armDynamic,
+        nullptr
+      };
+      probot::logging::registerSource(this, reg);
+    }
+
+    ~Arm() override {
+      probot::logging::unregisterSource(this);
+    }
 
     void setTargetAngleDeg(float degrees) override {
       if (has_limits_){

@@ -40,6 +40,16 @@ Her örnek doğrudan çalışır durumda ve yorumlarla açıklanmıştır.
 
 ---
 
+## Platform Desteği
+
+- **Arduino IDE / arduino-cli:** `library.properties` ve `Makefile` üzerinden doğrudan desteklenir. `make build EXAMPLE=TankDriveDemo` komutu, `arduino-cli` ile örnekleri derler.
+- **PlatformIO (Arduino framework):** Kütüphaneyi `lib_deps = /path/to/probot-lib` ya da Git URL'siyle ekleyin. `library.json` sürüm bilgisi `VERSION` dosyasından otomatik güncellenir.
+- **ESP-IDF + Arduino bileşeni:** Depoyu IDF projenizin `components/` klasörüne yerleştirip `idf.py build` çalıştırabilirsiniz. `idf_component.yml` otomatik olarak Arduino bileşenine bağımlıdır; `app_main` içinde `probot::runtime_setup()` çağırarak Arduino dışındaki uygulamalarda da aynı robot yaşam döngüsünü başlatabilirsiniz.
+
+Tüm platformlarda sürüm numarası `VERSION` dosyasından yönetilir; `make version-sync` çağrısı metadata dosyalarını günceller.
+
+---
+
 ## Ne içeriyor?
 
 Kütüphane şunları sağlar:
@@ -135,6 +145,16 @@ The library ships with examples organized by proficiency level:
 - `nfr/AdvancedTankDrive` - Trajectory following and motion profiling
 
 Every example runs out of the box and is documented with inline comments.
+
+---
+
+## Platform Support
+
+- **Arduino IDE / arduino-cli:** build examples with `make build EXAMPLE=TankDriveDemo`; metadata comes from `library.properties`.
+- **PlatformIO (Arduino framework):** add `lib_deps = /path/to/probot-lib` or the Git URL; `library.json` stays in sync with `VERSION`.
+- **ESP-IDF with the Arduino component:** drop the repository under your project's `components/` directory (or use `idf_component.yml` via the component manager) and call `idf.py build`. Invoke `probot::runtime_setup()` from `app_main()` to reuse the Arduino lifecycle on pure ESP-IDF projects.
+
+`make version-sync` keeps all manifests aligned with the single `VERSION` file.
 
 ---
 

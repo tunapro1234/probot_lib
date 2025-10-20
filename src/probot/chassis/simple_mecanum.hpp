@@ -13,19 +13,7 @@ namespace probot::chassis {
                       probot::motor::IMotorDriver* frontRight,
                       probot::motor::IMotorDriver* rearLeft,
                       probot::motor::IMotorDriver* rearRight)
-    : fl_(frontLeft), fr_(frontRight), rl_(rearLeft), rr_(rearRight) {
-      if (fl_) fl_->claim(&tokenFL_);
-      if (fr_) fr_->claim(&tokenFR_);
-      if (rl_) rl_->claim(&tokenRL_);
-      if (rr_) rr_->claim(&tokenRR_);
-    }
-
-    ~SimpleMecanumDrive(){
-      if (fl_) fl_->release(&tokenFL_);
-      if (fr_) fr_->release(&tokenFR_);
-      if (rl_) rl_->release(&tokenRL_);
-      if (rr_) rr_->release(&tokenRR_);
-    }
+    : fl_(frontLeft), fr_(frontRight), rl_(rearLeft), rr_(rearRight) {}
 
     void setInverted(bool frontLeft, bool frontRight, bool rearLeft, bool rearRight){
       if (fl_) fl_->setInverted(frontLeft);
@@ -41,10 +29,10 @@ namespace probot::chassis {
       float rr = vx - vy + omega;
       float maxMag = std::max({std::fabs(fl), std::fabs(fr), std::fabs(rl), std::fabs(rr), 1.0f});
       fl /= maxMag; fr /= maxMag; rl /= maxMag; rr /= maxMag;
-      if (fl_) fl_->setPower(fl, &tokenFL_);
-      if (fr_) fr_->setPower(fr, &tokenFR_);
-      if (rl_) rl_->setPower(rl, &tokenRL_);
-      if (rr_) rr_->setPower(rr, &tokenRR_);
+      if (fl_) fl_->setPower(fl);
+      if (fr_) fr_->setPower(fr);
+      if (rl_) rl_->setPower(rl);
+      if (rr_) rr_->setPower(rr);
     }
 
     void stop(){ driveCartesian(0.0f, 0.0f, 0.0f); }
@@ -54,9 +42,5 @@ namespace probot::chassis {
     probot::motor::IMotorDriver* fr_;
     probot::motor::IMotorDriver* rl_;
     probot::motor::IMotorDriver* rr_;
-    void* tokenFL_ = this;
-    void* tokenFR_ = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(this) + 1);
-    void* tokenRL_ = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(this) + 2);
-    void* tokenRR_ = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(this) + 3);
   };
 }

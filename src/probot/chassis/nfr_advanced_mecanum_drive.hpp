@@ -53,19 +53,14 @@ namespace probot::chassis {
       limiterVx_(config.slewRateVx, 0.0f),
       limiterVy_(config.slewRateVy, 0.0f)
     {
-      if (fl_) { fl_->claim(&tokenFL_); applyWheelMotionProfile(fl_); }
-      if (fr_) { fr_->claim(&tokenFR_); applyWheelMotionProfile(fr_); }
-      if (rl_) { rl_->claim(&tokenRL_); applyWheelMotionProfile(rl_); }
-      if (rr_) { rr_->claim(&tokenRR_); applyWheelMotionProfile(rr_); }
+      applyWheelMotionProfile(fl_);
+      applyWheelMotionProfile(fr_);
+      applyWheelMotionProfile(rl_);
+      applyWheelMotionProfile(rr_);
       controller_.setEnabled(true);
     }
 
-    ~NfrAdvancedMecanumDrive(){
-      if (fl_) fl_->release(&tokenFL_);
-      if (fr_) fr_->release(&tokenFR_);
-      if (rl_) rl_->release(&tokenRL_);
-      if (rr_) rr_->release(&tokenRR_);
-    }
+    ~NfrAdvancedMecanumDrive() = default;
 
     void setImu(probot::sensors::imu::IImu* imu){ imu_ = imu; }
     probot::sensors::imu::IImu* imu() const { return imu_; }
@@ -206,10 +201,10 @@ namespace probot::chassis {
         for (float o : outputs) maxMag = std::max(maxMag, std::fabs(o));
         float scale = (maxMag > config_.maxOutput) ? config_.maxOutput / maxMag : 1.0f;
 
-        if (fl_) fl_->setPower(std::clamp(outputs[0] * scale / config_.maxOutput, -1.0f, 1.0f), &tokenFL_);
-        if (fr_) fr_->setPower(std::clamp(outputs[1] * scale / config_.maxOutput, -1.0f, 1.0f), &tokenFR_);
-        if (rl_) rl_->setPower(std::clamp(outputs[2] * scale / config_.maxOutput, -1.0f, 1.0f), &tokenRL_);
-        if (rr_) rr_->setPower(std::clamp(outputs[3] * scale / config_.maxOutput, -1.0f, 1.0f), &tokenRR_);
+        if (fl_) fl_->setPower(std::clamp(outputs[0] * scale / config_.maxOutput, -1.0f, 1.0f));
+        if (fr_) fr_->setPower(std::clamp(outputs[1] * scale / config_.maxOutput, -1.0f, 1.0f));
+        if (rl_) rl_->setPower(std::clamp(outputs[2] * scale / config_.maxOutput, -1.0f, 1.0f));
+        if (rr_) rr_->setPower(std::clamp(outputs[3] * scale / config_.maxOutput, -1.0f, 1.0f));
       }
 
       prevWheelTargets_ = wheelTargets;
@@ -232,10 +227,6 @@ namespace probot::chassis {
     probot::control::IMotorController* fr_;
     probot::control::IMotorController* rl_;
     probot::control::IMotorController* rr_;
-    void* tokenFL_ = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(this) + 0);
-    void* tokenFR_ = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(this) + 1);
-    void* tokenRL_ = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(this) + 2);
-    void* tokenRR_ = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(this) + 3);
 
     Config config_;
     probot::control::kinematics::MecanumDriveKinematics kinematics_;

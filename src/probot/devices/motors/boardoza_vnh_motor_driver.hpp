@@ -20,11 +20,7 @@ public:
   float brakeStrength() const { return brake_strength_; }
 
   // IMotorDriver
-  bool claim(void* owner) override;
-  void release(void* owner) override;
-  bool setPower(float power, void* owner) override;
-  bool isClaimed() const override { return owner_ != nullptr; }
-  void* currentOwner() const override { return owner_; }
+  bool setPower(float power) override;
   void setInverted(bool inverted) override { inverted_ = inverted; }
   bool getInverted() const override { return inverted_; }
 
@@ -40,7 +36,6 @@ private:
   int      pwm_pin_;
   int      ena_pin_;
   int      enb_pin_;
-  void*  owner_          = nullptr;
   bool   inverted_       = false;
   bool   initialized_    = false;
   bool   brake_mode_     = true;

@@ -1,6 +1,8 @@
 #pragma once
 #include <stdint.h>
 #include <math.h>
+#include <vector>
+#include <cstddef>
 
 #define HIGH 1
 #define LOW 0
@@ -32,13 +34,39 @@ inline void analogWriteResolution(int, int) {}
 inline void analogWriteFrequency(int, int) {}
 
 struct __SerialStub {
+  std::vector<uint8_t> buffer;
   void begin(unsigned long) {}
   void println(const char*) {}
   void println(int) {}
   void print(const char*) {}
   void printf(const char*, ...) {}
+  size_t write(uint8_t value){
+    buffer.push_back(value);
+    return 1;
+  }
+  size_t write(const uint8_t* data, size_t len){
+    if (data && len){
+      buffer.insert(buffer.end(), data, data + len);
+    }
+    return len;
+  }
+  void clear(){ buffer.clear(); }
 } __attribute__((unused));
 
-static __SerialStub Serial;
+inline __SerialStub Serial;
+
+inline void __serialStubClear(){ Serial.clear(); }
+inline const std::vector<uint8_t>& __serialStubBuffer(){ return Serial.buffer; }
+
+inline std::vector<uint8_t>& __wifiStubBuffer(){ static std::vector<uint8_t> buf; return buf; }
+inline void __wifiStubClear(){ __wifiStubBuffer().clear(); }
+inline bool __wifiStubSend(const uint8_t* data, size_t len){
+  auto& buf = __wifiStubBuffer();
+  buf.assign(data, data + len);
+  return true;
+}
+inline bool __wifiStubSendFail(const uint8_t*, size_t){
+  return false;
+}
 
 inline uint32_t micros(){ return millis() * 1000u; }
