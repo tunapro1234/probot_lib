@@ -1341,8 +1341,15 @@ function stopAutoTimer(){
       selectedGamepadIndex=parseInt(val,10);
       if(isNaN(selectedGamepadIndex)) selectedGamepadIndex=-1;
     }
+    let gamepadSending=false;
+    let lastGamepadSend=0;
+    const GAMEPAD_SEND_INTERVAL=20; // 50Hz max
     async function sendGamepadData(gp){
-      const data={axes:gp.axes,buttons:gp.buttons.map(b=>b.pressed)};
+      const now=performance.now();
+      if(gamepadSending || (now-lastGamepadSend)<GAMEPAD_SEND_INTERVAL) return;
+      gamepadSending=true;
+      lastGamepadSend=now;
+      const data={axes:Array.from(gp.axes),buttons:gp.buttons.map(b=>b.pressed)};
       try{
         await fetch("/updateController",{
           method:"POST",
@@ -1351,6 +1358,8 @@ function stopAutoTimer(){
         });
       }catch(err){
         console.error(err);
+      }finally{
+        gamepadSending=false;
       }
     }
     function displayJoystickData(gp){
@@ -1412,7 +1421,7 @@ if(loggingElements.autoScroll) loggingElements.autoScroll.addEventListener('chan
       autoRemaining=parseFloat(document.getElementById('autoPeriod').value)||0;
       updateAutoDisplay();
       setPhaseDisplay('standby');
-      applyHeaderMode();
+      // applyHeaderMode();  // TODO: header mode switching removed for now
       handleLoggingRefresh();
       if(loggingElements.autoRefresh){
         setLoggingAutoRefresh(loggingElements.autoRefresh.checked);
