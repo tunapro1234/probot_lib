@@ -1010,13 +1010,14 @@ void notifySchedulerOverrun(uint32_t now_ms, uint32_t overrun_ms){
 
 void configureDefaults(){
   LoggingManager& mgr = LoggingManager::instance();
-  mgr.enableSerial(true);
+  mgr.enableSerial(false);  // Default: kapalı
   mgr.setSerialBandwidth(BandwidthMode::kNormal);
   mgr.enableWifi(false);
   mgr.setWifiBandwidth(BandwidthMode::kLow);
-#ifndef PROBOT_LOGGER_NO_SCHED_ATTACH
-  control::attach(&mgr);
-#endif
+// Logger scheduler'a baglanmiyor - varsayilan olarak kapali
+// #ifndef PROBOT_LOGGER_NO_SCHED_ATTACH
+//   control::attach(&mgr);
+// #endif
 }
 
 void enableSerialLogging(bool enabled){

@@ -21,6 +21,7 @@ const char MAIN_page[] PROGMEM = R"=====(
       font-family:"Inter","Segoe UI",sans-serif;
     }
     *{margin:0;padding:0;box-sizing:border-box;}
+    #logging{display:none;}  /* Logging section hidden for now */
     body{
       min-height:100vh;
       background:var(--ice);
