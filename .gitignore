@@ -1,4 +1,6 @@
 # Local scripts
-liner.py 
+liner.py
 tests/control_tests
 .build/
+review/
+tuna_test/
