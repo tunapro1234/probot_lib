@@ -1,14 +1,14 @@
 #pragma once
 #include <cmath>
-#include <probot/control/imotor_controller.hpp>
+#include <probot/control/pid_motor_controller.hpp>
 #include <probot/mechanism/nfr/common.hpp>
 
 namespace probot::mechanism::nfr {
 
   class NfrShooter {
   public:
-    explicit NfrShooter(probot::control::IMotorController* primary,
-                        probot::control::IMotorController* secondary = nullptr)
+    explicit NfrShooter(probot::control::PidMotorController* primary,
+                        probot::control::PidMotorController* secondary = nullptr)
     : primary_(primary), secondary_(secondary) {
       configureController(primary_);
       configureController(secondary_);
@@ -42,25 +42,22 @@ namespace probot::mechanism::nfr {
     float secondaryTargetRpm() const { return secondary_target_rpm_; }
 
   private:
-    void configureController(probot::control::IMotorController* ctrl){
+    void configureController(probot::control::PidMotorController* ctrl){
       if (!ctrl) return;
-      ctrl->configurePidSlots(detail::kVelocitySlot, detail::kDefaultVelocityPid,
-                              detail::kPositionSlot, detail::kDefaultPositionPid);
-      ctrl->selectDefaultSlot(probot::control::ControlType::kVelocity, detail::kVelocitySlot);
-      ctrl->setMotionProfile(probot::control::MotionProfileType::kNone);
-      ctrl->setMotionProfileConfig({0.0f, 0.0f, 0.0f});
+      ctrl->setVelocityPidConfig(detail::kDefaultVelocityPid);
+      ctrl->setPositionPidConfig(detail::kDefaultPositionPid);
     }
 
-    void applySetpoint(probot::control::IMotorController* ctrl, float rpm){
+    void applySetpoint(probot::control::PidMotorController* ctrl, float rpm){
       if (!ctrl) return;
       float ticks_per_second = rpmToTicks(rpm);
-      ctrl->setSetpoint(ticks_per_second, probot::control::ControlType::kVelocity, detail::kVelocitySlot);
+      ctrl->setVelocity(ticks_per_second);
     }
 
     float rpmToTicks(float rpm) const { return ticks_per_rev_ * rpm / 60.0f; }
 
-    probot::control::IMotorController* primary_;
-    probot::control::IMotorController* secondary_;
+    probot::control::PidMotorController* primary_;
+    probot::control::PidMotorController* secondary_;
     float ticks_per_rev_ = 2048.0f; // default encoder resolution
     float primary_target_rpm_ = 0.0f;
     float secondary_target_rpm_ = 0.0f;

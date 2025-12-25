@@ -1,9 +1,7 @@
 #include <probot.h>
-#include <probot/test/null_encoder.hpp>
 #include <probot/io/joystick_api.hpp>
-#include <probot/devices/motors/boardoza_vnh_motor_driver.hpp>
-#include <probot/control/closed_loop_motor.hpp>
-#include <probot/control/pid.hpp>
+#include <probot/devices/motors/boardoza_vnh5019_motor_driver.hpp>
+#include <probot/sensors/encoder.hpp>
 
 // Kullanılan Boardoza VNH sürücü pinleri (kendi kartınıza göre güncelleyin).
 static constexpr int PIN_INA = 9;
@@ -12,16 +10,15 @@ static constexpr int PIN_PWM = 11;
 static constexpr int PIN_ENA = -1;
 static constexpr int PIN_ENB = -1;
 
-static probot::motor::BoardozaVNHMotorDriver motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
-static probot::test::NullEncoder          encoder;
+static probot::motor::BoardozaVNH5019MotorDriver motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
 static const probot::control::PidConfig      kVelocityPid{.kp = 0.35f, .ki = 0.02f, .kd = 0.0f,
                                                           .kf = 0.0f, .out_min = -1.0f, .out_max = 1.0f};
-static probot::control::PID                  pid(kVelocityPid);
-static probot::control::ClosedLoopMotor      controller(&encoder, &pid, &motor, 1.0f, 1.0f);
+static probot::sensors::IEncoder* encoder = nullptr;
 
 PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
 static probot::control::ControlType g_mode = probot::control::ControlType::kVelocity;
+static bool g_has_encoder = false;
 
 void robotInit() {
   Serial.begin(115200);
@@ -30,59 +27,90 @@ void robotInit() {
   motor.begin();
   motor.setBrakeMode(true);
 
-  controller.setTimeoutMs(0); // joystick bırakıldığında çıkış sıfırlanmasın
-  controller.setSetpoint(0.0f, g_mode);
+  motor.setTimeoutMs(0); // joystick bırakıldığında çıkış sıfırlanmasın
+  if (encoder) {
+    motor.attachEncoder(encoder);
+    motor.setVelocityPidConfig(kVelocityPid);
+    motor.setVelocity(0.0f);
+    g_has_encoder = true;
+  } else {
+    g_mode = probot::control::ControlType::kPercent;
+    g_has_encoder = false;
+  }
 
-  Serial.println("[MotorControllerDemo] robotInit: Kapalı çevrim denemesi için hazır");
+  Serial.println("[IMotorControllerDemo] robotInit: Kapalı çevrim denemesi için hazır");
+  if (!g_has_encoder) {
+    Serial.println("[IMotorControllerDemo] Encoder yok, sadece yüzde modunda çalışır");
+  }
 }
 
 void robotEnd() {
-  controller.setPowerDirect(0.0f);
-  Serial.println("[MotorControllerDemo] robotEnd: Motor kapatıldı");
+  motor.setPower(0.0f);
+  Serial.println("[IMotorControllerDemo] robotEnd: Motor kapatıldı");
 }
 
 void teleopInit() {
-  Serial.println("[MotorControllerDemo] teleopInit:"
-                 " sol eksen referans, A butonu mod değiştirir (yüzde/velocity)");
+  Serial.println("[IMotorControllerDemo] teleopInit:"
+                 " sol eksen referans, A butonu mod değiştirir (encoder varsa velocity)");
 }
 
 void teleopLoop() {
   auto js = probot::io::joystick_api::makeDefault();
 
   if (js.getRawButton(0)) {
-    g_mode = (g_mode == probot::control::ControlType::kVelocity)
-               ? probot::control::ControlType::kPercent
-               : probot::control::ControlType::kVelocity;
-    controller.setSetpoint(0.0f, g_mode);
-    Serial.printf("[MotorControllerDemo] Mod değişti: %s\n",
+    if (g_has_encoder) {
+      g_mode = (g_mode == probot::control::ControlType::kVelocity)
+                 ? probot::control::ControlType::kPercent
+                 : probot::control::ControlType::kVelocity;
+    } else {
+      g_mode = probot::control::ControlType::kPercent;
+    }
+    if (g_mode == probot::control::ControlType::kVelocity) {
+      motor.setVelocity(0.0f);
+    } else {
+      motor.setPower(0.0f);
+    }
+    Serial.printf("[IMotorControllerDemo] Mod değişti: %s\n",
                   g_mode == probot::control::ControlType::kVelocity ? "HIZ" : "YÜZDE");
     delay(200); // buton debouncing
   }
 
   float axis = js.getLeftY();
   float target = axis * (g_mode == probot::control::ControlType::kVelocity ? 100.0f : 1.0f);
-  controller.setSetpoint(target, g_mode);
-  controller.update(millis(), 20);
+  if (g_mode == probot::control::ControlType::kVelocity) {
+    motor.setVelocity(target);
+  } else {
+    motor.setPower(target);
+  }
+  motor.update(millis(), 20);
 
-  Serial.printf("[MotorControllerDemo] mode=%s target=%.2f measurement=%.2f out=%.2f\n",
+  Serial.printf("[IMotorControllerDemo] mode=%s target=%.2f measurement=%.2f out=%.2f\n",
                 g_mode == probot::control::ControlType::kVelocity ? "VEL" : "PCT",
                 target,
-                controller.lastMeasurement(),
-                controller.lastOutput());
+                motor.lastMeasurement(),
+                motor.lastOutput());
 
   delay(20);
 }
 
 void autonomousInit() {
-  Serial.println("[MotorControllerDemo] autonomousInit: 2 saniyelik hız profili");
-  controller.setSetpoint(80.0f, probot::control::ControlType::kVelocity);
+  Serial.println("[IMotorControllerDemo] autonomousInit: 2 saniyelik hız profili");
+  if (g_has_encoder) {
+    motor.setVelocity(80.0f);
+  } else {
+    motor.setPower(0.6f);
+  }
 }
 
 void autonomousLoop() {
   static uint32_t start = millis();
-  controller.update(millis(), 20);
+  motor.update(millis(), 20);
   if (millis() - start > 2000) {
-    controller.setSetpoint(0.0f, probot::control::ControlType::kVelocity);
+    if (g_has_encoder) {
+      motor.setVelocity(0.0f);
+    } else {
+      motor.setPower(0.0f);
+    }
   }
   delay(20);
 }

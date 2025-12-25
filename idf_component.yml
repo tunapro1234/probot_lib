@@ -1,4 +1,4 @@
-version: 0.1.6
+version: 0.2.0
 description: ESP32-S3 robotics control library
 url: https://github.com/nfrproducts/probot-lib
 dependencies:

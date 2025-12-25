@@ -3,29 +3,14 @@
 #include <stdint.h>
 #include <probot/core/scheduler.hpp>
 #include <probot/devices/leds/builtin.hpp>
-#include <probot/logging/logger.hpp>
-#include <probot/logging/telemetry_profiles.hpp>
 
 namespace probot::control {
   class BlinkPid : public ::control::IUpdatable {
   public:
     BlinkPid()
-    : current_reference_(0), pending_reference_(0), has_pending_reference_(false), led_is_on_(false) {
-      probot::logging::SourceRegistration reg{
-        "blink_pid",
-        nullptr,
-        probot::logging::Priority::kUserMarked,
-        true,
-        false,
-        probot::logging::profiles::blinkPidDynamic,
-        nullptr
-      };
-      probot::logging::registerSource(this, reg);
-    }
+    : current_reference_(0), pending_reference_(0), has_pending_reference_(false), led_is_on_(false) {}
 
-    ~BlinkPid() override {
-      probot::logging::unregisterSource(this);
-    }
+    ~BlinkPid() override = default;
 
     void setReference(uint32_t new_reference){
       __atomic_store_n(&pending_reference_, new_reference, __ATOMIC_SEQ_CST);

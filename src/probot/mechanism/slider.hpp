@@ -1,8 +1,6 @@
 #pragma once
 #include <math.h>
-#include <probot/control/imotor_controller.hpp>
-#include <probot/logging/logger.hpp>
-#include <probot/logging/telemetry_profiles.hpp>
+#include <probot/control/pid_motor_controller.hpp>
 
 namespace probot::mechanism {
   struct ISlider {
@@ -18,23 +16,12 @@ namespace probot::mechanism {
 
   class Slider : public ISlider, public ::control::IUpdatable {
   public:
-    explicit Slider(probot::control::IMotorController* controller)
+    explicit Slider(probot::control::PidMotorController* controller)
     : controller_(controller), ticks_per_unit_(1.0f), target_len_(0.0f),
       min_len_(0.0f), max_len_(0.0f), has_limits_(false) {
-      probot::logging::SourceRegistration reg{
-        "slider",
-        nullptr,
-        probot::logging::Priority::kBackground,
-        false,
-        false,
-        probot::logging::profiles::sliderDynamic,
-        nullptr
-      };
-      probot::logging::registerSource(this, reg);
     }
 
     ~Slider() override {
-      probot::logging::unregisterSource(this);
     }
 
     void setTargetLength(float length_units) override {
@@ -75,11 +62,11 @@ namespace probot::mechanism {
     void update(uint32_t now_ms, uint32_t dt_ms) override {
       (void)now_ms; (void)dt_ms;
       float ticks_setpoint = target_len_ * ticks_per_unit_;
-      if (controller_) controller_->setSetpoint(ticks_setpoint, probot::control::ControlType::kPosition, -1);
+      if (controller_) controller_->setPosition(ticks_setpoint);
     }
 
   private:
-    probot::control::IMotorController* controller_;
+    probot::control::PidMotorController* controller_;
     float                 ticks_per_unit_;
     float                 target_len_;
     float                 min_len_;

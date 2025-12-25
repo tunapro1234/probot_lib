@@ -1,6 +1,6 @@
 # Probot Lib
 
-MEB robot yarışmaları için geliştirilmiş Arduino kütüphanesi. PID kontrolü, motion profiling, WiFi sürücü istasyonu ve ESP32-S3 desteği ile geliyor.
+MEB robot yarışmaları için geliştirilmiş Arduino kütüphanesi. PID kontrolü, WiFi sürücü istasyonu ve ESP32-S3 desteği ile geliyor.
 
 **Tüm dokümantasyon için:** https://docs.probotstudio.com/yazilim/
 
@@ -12,7 +12,7 @@ MEB robot yarışmaları için geliştirilmiş Arduino kütüphanesi. PID kontro
 Arduino IDE'nin Library Manager'ından "Probot Lib" arayıp yükleyin.
 
 **İlk robot kodunuz:**
-1. `File → Examples → Probot Lib → BasicTankDrive` açın
+1. `File → Examples → Probot Lib → TankDriveDemo` açın
 2. ESP32-S3'e yükleyin
 3. `Probot-XXXX` WiFi ağına bağlanın
 4. Tarayıcıdan `http://192.168.4.1` adresini açın
@@ -25,16 +25,16 @@ Arduino IDE'nin Library Manager'ından "Probot Lib" arayıp yükleyin.
 Kütüphane seviyelerine göre düzenlenmiş örneklerle geliyor:
 
 **Başlangıç seviyesi:**
-- `BasicTankDrive` - Tank sürüş sistemi ve joystick kontrolü
-- `MotorTest` - Motor test ve kalibrasyon
+- `TankDriveDemo` - Tank sürüş sistemi ve joystick kontrolü
+- `MotorDriverDemo` - Motor sürücü test ve kalibrasyonu
 
 **Orta seviye:**
-- `ClosedLoopMotorTest` - PID tabanlı hız kontrolü
-- `TankDriveAuto` - Otonom hareket (mesafe ve dönüş)
+- `MotorControllerDemo` - PID tabanlı hız kontrolü (PidMotorController)
+- `AutonomousDemo` - Otonom hareket (mesafe ve dönüş)
 
 **İleri seviye:**
-- `FullRobotDemo` - Tam donanımlı robot (sürüş + mekanizmalar)
-- `nfr/AdvancedTankDrive` - Trajectory following ve motion profiling
+- `MecanumDriveDemo` - Mecanum sürüş ve kinematik kontrol
+- `ShooterDemo` - Kapalı çevrim atıcı kontrolü
 
 Her örnek doğrudan çalışır durumda ve yorumlarla açıklanmıştır.
 
@@ -54,7 +54,7 @@ Tüm platformlarda sürüm numarası `VERSION` dosyasından yönetilir; `make ve
 
 Kütüphane şunları sağlar:
 - WiFi tabanlı driver station (web arayüzü)
-- PID, feedforward ve motion profiling
+- PID ve feedforward
 - State-space kontrol araçları (Kalman filtre, LQR)
 - Tank ve mecanum sürüş soyutlamaları
 - Mekanizma yardımcıları (kol, asansör, slider)
@@ -68,7 +68,7 @@ Detaylı API dokümantasyonu ve kullanım örnekleri için https://docs.probotst
 
 **Önerilen:** [Boardoza Pulse S32-S3](https://boardoza.com/product/boardoza-pulse-s32-s3-breakout-board/)
 
-Kütüphane ESP32-S3 için geliştirilmiştir. Motor sürücü olarak herhangi bir PWM sürücü kullanabilirsiniz (Boardoza BA6208, TB6612, vb.)
+Kütüphane ESP32-S3 için geliştirilmiştir. Motor sürücü olarak herhangi bir PWM sürücü kullanabilirsiniz (Boardoza VNH5019, BTS7960B, TB6612, vb.)
 
 ---
 
@@ -108,7 +108,7 @@ Amacımız ekiplerin yarışma gününe hazır robotlarla çıkmasını sağlama
 
 # Probot Lib (EN)
 
-Arduino library built for Ministry of Education robot competitions. Includes PID control, motion profiling, a WiFi driver station, and ESP32-S3 support.
+Arduino library built for Ministry of Education robot competitions. Includes PID control, a WiFi driver station, and ESP32-S3 support.
 
 **Full documentation:** https://docs.probotstudio.com/yazilim/
 
@@ -120,7 +120,7 @@ Arduino library built for Ministry of Education robot competitions. Includes PID
 Open the Arduino IDE Library Manager, search for "Probot Lib", and install it.
 
 **Your first robot code:**
-1. Open `File → Examples → Probot Lib → BasicTankDrive`
+1. Open `File → Examples → Probot Lib → TankDriveDemo`
 2. Upload it to the ESP32-S3
 3. Connect to the `Probot-XXXX` WiFi network
 4. Visit `http://192.168.4.1` in your browser
@@ -137,12 +137,12 @@ The library ships with examples organized by proficiency level:
 - `MotorTest` - Motor testing and calibration
 
 **Intermediate:**
-- `ClosedLoopMotorTest` - PID-based speed control
-- `TankDriveAuto` - Autonomous motion (distance and turn)
+- `MotorControllerDemo` - PID-based speed control (PidMotorController)
+- `AutonomousDemo` - Autonomous motion (distance and turn)
 
 **Advanced:**
-- `FullRobotDemo` - Full-featured robot (drive + mechanisms)
-- `nfr/AdvancedTankDrive` - Trajectory following and motion profiling
+- `MecanumDriveDemo` - Mecanum drive and kinematic control
+- `ShooterDemo` - Closed-loop shooter control
 
 Every example runs out of the box and is documented with inline comments.
 
@@ -162,7 +162,7 @@ Every example runs out of the box and is documented with inline comments.
 
 The library provides:
 - WiFi-based driver station (web interface)
-- PID, feedforward, and motion profiling utilities
+- PID and feedforward utilities
 - State-space control tools (Kalman filter, LQR)
 - Tank and mecanum drive abstractions
 - Mechanism helpers (arm, elevator, slider)
@@ -176,7 +176,7 @@ For in-depth API docs and usage guides, visit https://docs.probotstudio.com/yazi
 
 **Recommended:** [Boardoza Pulse S32-S3](https://boardoza.com/product/boardoza-pulse-s32-s3-breakout-board/)
 
-The library targets the ESP32-S3. You can use any PWM motor driver (Boardoza BA6208, TB6612, etc.).
+The library targets the ESP32-S3. You can use any PWM motor driver (Boardoza VNH5019, BTS7960B, TB6612, etc.).
 
 ---
 

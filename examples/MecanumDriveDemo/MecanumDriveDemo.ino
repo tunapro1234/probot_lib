@@ -1,10 +1,7 @@
 #include <probot.h>
-#include <probot/test/null_encoder.hpp>
 #include <probot/io/joystick_api.hpp>
-#include <probot/control/closed_loop_motor.hpp>
-#include <probot/control/pid.hpp>
-#include <probot/chassis/simple_mecanum.hpp>
-#include <probot/devices/motors/boardoza_vnh_motor_driver.hpp>
+#include <probot/chassis/mecanum_drive.hpp>
+#include <probot/devices/motors/boardoza_vnh5019_motor_driver.hpp>
 
 // Mecanum sürüş için dört motorun pin atamaları.
 struct MotorPins {
@@ -16,30 +13,12 @@ static constexpr MotorPins PINS_FR{21, 22, 23, -1, -1};
 static constexpr MotorPins PINS_RL{24, 25, 26, -1, -1};
 static constexpr MotorPins PINS_RR{27, 28, 29, -1, -1};
 
-static probot::motor::BoardozaVNHMotorDriver drvFL(PINS_FL.ina, PINS_FL.inb, PINS_FL.pwm, PINS_FL.ena, PINS_FL.enb);
-static probot::motor::BoardozaVNHMotorDriver drvFR(PINS_FR.ina, PINS_FR.inb, PINS_FR.pwm, PINS_FR.ena, PINS_FR.enb);
-static probot::motor::BoardozaVNHMotorDriver drvRL(PINS_RL.ina, PINS_RL.inb, PINS_RL.pwm, PINS_RL.ena, PINS_RL.enb);
-static probot::motor::BoardozaVNHMotorDriver drvRR(PINS_RR.ina, PINS_RR.inb, PINS_RR.pwm, PINS_RR.ena, PINS_RR.enb);
+static probot::motor::BoardozaVNH5019MotorDriver drvFL(PINS_FL.ina, PINS_FL.inb, PINS_FL.pwm, PINS_FL.ena, PINS_FL.enb);
+static probot::motor::BoardozaVNH5019MotorDriver drvFR(PINS_FR.ina, PINS_FR.inb, PINS_FR.pwm, PINS_FR.ena, PINS_FR.enb);
+static probot::motor::BoardozaVNH5019MotorDriver drvRL(PINS_RL.ina, PINS_RL.inb, PINS_RL.pwm, PINS_RL.ena, PINS_RL.enb);
+static probot::motor::BoardozaVNH5019MotorDriver drvRR(PINS_RR.ina, PINS_RR.inb, PINS_RR.pwm, PINS_RR.ena, PINS_RR.enb);
 
-static probot::test::NullEncoder encFL;
-static probot::test::NullEncoder encFR;
-static probot::test::NullEncoder encRL;
-static probot::test::NullEncoder encRR;
-
-static const probot::control::PidConfig kPid{.kp = 0.30f, .ki = 0.01f, .kd = 0.0f, .kf = 0.0f,
-                                             .out_min = -1.0f, .out_max = 1.0f};
-
-static probot::control::PID pidFL(kPid);
-static probot::control::PID pidFR(kPid);
-static probot::control::PID pidRL(kPid);
-static probot::control::PID pidRR(kPid);
-
-static probot::control::ClosedLoopMotor motorFL(&encFL, &pidFL, &drvFL, 1.0f, 1.0f);
-static probot::control::ClosedLoopMotor motorFR(&encFR, &pidFR, &drvFR, 1.0f, 1.0f);
-static probot::control::ClosedLoopMotor motorRL(&encRL, &pidRL, &drvRL, 1.0f, 1.0f);
-static probot::control::ClosedLoopMotor motorRR(&encRR, &pidRR, &drvRR, 1.0f, 1.0f);
-
-static probot::chassis::SimpleMecanumDrive mecanum(&motorFL, &motorFR, &motorRL, &motorRR);
+static probot::chassis::MecanumDrive mecanum(&drvFL, &drvFR, &drvRL, &drvRR);
 
 PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
@@ -54,6 +33,8 @@ void robotInit() {
   drvRR.setBrakeMode(true);
 
   mecanum.setInverted(false, true, false, true); // sağ taraf ters kabloluysa düzelt
+  mecanum.setWheelBase(30.0f);
+  mecanum.setTrackWidth(28.0f);
 
   Serial.println("[MecanumDriveDemo] robotInit: Mecanum sürüşe hazır");
 }
@@ -75,12 +56,12 @@ void teleopLoop() {
   float vy = js.getLeftX();    // yan hareket
   float omega = js.getRightX();// dönüş
 
-  mecanum.driveCartesian(vx, vy, omega);
+  mecanum.drivePower(vx, vy, omega);
 
   Serial.printf("[MecanumDriveDemo] vx=%.2f vy=%.2f w=%.2f fl=%.2f fr=%.2f rl=%.2f rr=%.2f\n",
                 vx, vy, omega,
-                motorFL.lastOutput(), motorFR.lastOutput(),
-                motorRL.lastOutput(), motorRR.lastOutput());
+                drvFL.getPower(), drvFR.getPower(),
+                drvRL.getPower(), drvRR.getPower());
 
   delay(20);
 }
@@ -106,6 +87,6 @@ void autonomousLoop() {
     start = millis();
   }
 
-  mecanum.driveCartesian(vx, vy, omega);
+  mecanum.drivePower(vx, vy, omega);
   delay(20);
 }

@@ -5,11 +5,11 @@
 namespace probot::mechanism::nfr {
   class NfrArm : public probot::mechanism::Arm {
   public:
-    explicit NfrArm(probot::control::IMotorController* controller)
+    explicit NfrArm(probot::control::PidMotorController* controller)
     : probot::mechanism::Arm(controller) {
       if (!controller) return;
-      controller->configurePidSlots(detail::kVelocitySlot, detail::kDefaultVelocityPid,
-                                    detail::kPositionSlot, detail::kDefaultPositionPid);
+      controller->setVelocityPidConfig(detail::kDefaultVelocityPid);
+      controller->setPositionPidConfig(detail::kDefaultPositionPid);
       setDegreesToTicks(kTicksPerDegree);
       setAngleLimits(-120.0f, 120.0f);
     }

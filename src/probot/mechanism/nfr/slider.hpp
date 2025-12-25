@@ -5,7 +5,7 @@
 namespace probot::mechanism::nfr {
   class NfrBasicSlider : public probot::mechanism::Slider {
   public:
-    explicit NfrBasicSlider(probot::control::IMotorController* controller)
+    explicit NfrBasicSlider(probot::control::PidMotorController* controller)
     : probot::mechanism::Slider(controller) {
       setLengthToTicks(kTicksPerUnit);
       setLengthLimits(0.0f, kMaxLengthUnits);
@@ -18,13 +18,11 @@ namespace probot::mechanism::nfr {
 
   class NfrSlider : public NfrBasicSlider {
   public:
-    explicit NfrSlider(probot::control::IMotorController* controller)
+    explicit NfrSlider(probot::control::PidMotorController* controller)
     : NfrBasicSlider(controller) {
       if (!controller) return;
-      controller->configurePidSlots(detail::kVelocitySlot, detail::kDefaultVelocityPid,
-                                    detail::kPositionSlot, detail::kDefaultPositionPid);
-      controller->setMotionProfile(probot::control::MotionProfileType::kTrapezoid);
-      controller->setMotionProfileConfig({0.6f * kTicksPerUnit, 2.0f * kTicksPerUnit, 0.0f});
+      controller->setVelocityPidConfig(detail::kDefaultVelocityPid);
+      controller->setPositionPidConfig(detail::kDefaultPositionPid);
     }
 
   };

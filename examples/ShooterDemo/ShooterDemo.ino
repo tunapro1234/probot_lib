@@ -1,10 +1,6 @@
 #include <probot.h>
-#include <probot/test/null_encoder.hpp>
 #include <probot/io/joystick_api.hpp>
-#include <probot/control/closed_loop_motor.hpp>
-#include <probot/control/pid.hpp>
-#include <probot/devices/motors/boardoza_vnh_motor_driver.hpp>
-#include <probot/mechanism/nfr/shooter.hpp>
+#include <probot/devices/motors/boardoza_vnh5019_motor_driver.hpp>
 
 // Shooter tekeri için Boardoza VNH pin konfigürasyonu.
 static constexpr int PIN_INA = 15;
@@ -13,13 +9,7 @@ static constexpr int PIN_PWM = 17;
 static constexpr int PIN_ENA = -1;
 static constexpr int PIN_ENB = -1;
 
-static probot::motor::BoardozaVNHMotorDriver motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
-static probot::test::NullEncoder          encoder;
-static const probot::control::PidConfig      kVelocityPid{.kp = 0.4f, .ki = 0.02f, .kd = 0.0f,
-                                                          .kf = 0.0f, .out_min = -1.0f, .out_max = 1.0f};
-static probot::control::PID                  pid(kVelocityPid);
-static probot::control::ClosedLoopMotor      shooterMotor(&encoder, &pid, &motor, 1.0f, 1.0f);
-static probot::mechanism::nfr::NfrShooter    shooter(&shooterMotor);
+static probot::motor::BoardozaVNH5019MotorDriver motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
 
 PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
@@ -29,18 +19,13 @@ void robotInit() {
 
   motor.begin();
   motor.setBrakeMode(false); // shooter çarkında coast tercihi yapılabilir
-
-  shooterMotor.setTimeoutMs(0);
-  shooterMotor.selectDefaultSlot(probot::control::ControlType::kVelocity, 0);
-  shooterMotor.setPidSlotConfig(0, kVelocityPid);
-  shooter.setTicksPerRevolution(4096.0f); // kullandığınız enkoder değerini girin
-  shooter.setRpm(0.0f, 0.0f);
+  motor.setPower(0.0f);
 
   Serial.println("[ShooterDemo] robotInit: Shooter kontrolü başlatıldı");
 }
 
 void robotEnd() {
-  shooter.stop();
+  motor.setPower(0.0f);
   Serial.println("[ShooterDemo] robotEnd: Teker kapatıldı");
 }
 
@@ -55,30 +40,27 @@ void teleopLoop() {
   float accel = js.getRightTriggerAxis(); // 0..1
   float brake = js.getLeftTriggerAxis();  // 0..1
 
-  float targetRpm = accel * 3200.0f;      // istenen maksimum RPM
-  if (brake > 0.2f) targetRpm = 0.0f;     // fren tetiklendiğinde durdur
+  float power = accel;                   // 0..1 açık çevrim güç
+  if (brake > 0.2f) power = 0.0f;        // fren tetiklendiğinde durdur
 
-  shooter.setPrimaryRpm(targetRpm);
-  shooterMotor.update(millis(), 20);
+  motor.setPower(power);
 
-  Serial.printf("[ShooterDemo] hedef=%.0f rpm ölçüm=%.1f rpm çıkış=%.2f\n",
-                targetRpm,
-                shooterMotor.lastMeasurement(),
-                shooterMotor.lastOutput());
+  Serial.printf("[ShooterDemo] power=%.2f out=%.2f\n",
+                power,
+                motor.getPower());
 
   delay(20);
 }
 
 void autonomousInit() {
   Serial.println("[ShooterDemo] autonomousInit: 2 saniye spool, sonra durdur");
-  shooter.setPrimaryRpm(3000.0f);
+  motor.setPower(0.8f);
 }
 
 void autonomousLoop() {
   static uint32_t start = millis();
-  shooterMotor.update(millis(), 20);
   if (millis() - start > 2000) {
-    shooter.stop();
+    motor.setPower(0.0f);
   }
   delay(20);
 }

@@ -18,4 +18,4 @@ namespace probot {
   InputState read_input_snapshot();
   void uiTask(void*);
 }
-#endif // PROBOT_INPUT_HPP 
+#endif // PROBOT_INPUT_HPP

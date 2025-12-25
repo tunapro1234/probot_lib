@@ -5,11 +5,11 @@
 namespace probot::mechanism::nfr {
   class NfrElevator : public probot::mechanism::Elevator {
   public:
-    explicit NfrElevator(probot::control::IMotorController* controller)
+    explicit NfrElevator(probot::control::PidMotorController* controller)
     : probot::mechanism::Elevator(controller) {
       if (!controller) return;
-      controller->configurePidSlots(detail::kVelocitySlot, detail::kDefaultVelocityPid,
-                                    detail::kPositionSlot, detail::kDefaultPositionPid);
+      controller->setVelocityPidConfig(detail::kDefaultVelocityPid);
+      controller->setPositionPidConfig(detail::kDefaultPositionPid);
       setUnitsToTicks(kTicksPerUnit);
       setHeightLimits(0.0f, kMaxHeightUnits);
     }

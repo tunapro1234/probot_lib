@@ -7,4 +7,4 @@ namespace probot {
   struct UiState { uint32_t seq; uint32_t ms; };
   UiState read_ui_snapshot();
 }
-#endif // PROBOT_TIME_HPP 
+#endif // PROBOT_TIME_HPP

@@ -24,4 +24,4 @@ namespace joystick {
   inline bool     get_button(){ return probot::read_input_snapshot().btn != 0; }
   inline uint32_t get_ms(){ return probot::read_input_snapshot().ms; }
 }
-#endif // PROBOT_JOYSTICK_HPP 
+#endif // PROBOT_JOYSTICK_HPP

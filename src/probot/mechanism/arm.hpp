@@ -1,8 +1,6 @@
 #pragma once
 #include <math.h>
-#include <probot/control/imotor_controller.hpp>
-#include <probot/logging/logger.hpp>
-#include <probot/logging/telemetry_profiles.hpp>
+#include <probot/control/pid_motor_controller.hpp>
 
 namespace probot::mechanism {
 
@@ -18,23 +16,12 @@ namespace probot::mechanism {
 
   class Arm : public IArm {
   public:
-    explicit Arm(probot::control::IMotorController* controller)
+    explicit Arm(probot::control::PidMotorController* controller)
     : controller_(controller), ticks_per_degree_(1.0f), target_angle_(0.0f),
       min_angle_(-90.0f), max_angle_(90.0f), has_limits_(false) {
-      probot::logging::SourceRegistration reg{
-        "arm",
-        nullptr,
-        probot::logging::Priority::kBackground,
-        false,
-        false,
-        probot::logging::profiles::armDynamic,
-        nullptr
-      };
-      probot::logging::registerSource(this, reg);
     }
 
     ~Arm() override {
-      probot::logging::unregisterSource(this);
     }
 
     void setTargetAngleDeg(float degrees) override {
@@ -72,11 +59,11 @@ namespace probot::mechanism {
       (void)now_ms; (void)dt_ms;
       if (!controller_) return;
       float target_ticks = target_angle_ * ticks_per_degree_;
-      controller_->setSetpoint(target_ticks, probot::control::ControlType::kPosition, -1);
+      controller_->setPosition(target_ticks);
     }
 
   private:
-    probot::control::IMotorController* controller_;
+    probot::control::PidMotorController* controller_;
     float             ticks_per_degree_;
     float             target_angle_;
     float             min_angle_;

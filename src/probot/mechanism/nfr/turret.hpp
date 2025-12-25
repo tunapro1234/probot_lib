@@ -5,7 +5,7 @@
 namespace probot::mechanism::nfr {
   class NfrBasicTurret : public probot::mechanism::Turret {
   public:
-    explicit NfrBasicTurret(probot::control::IMotorController* controller)
+    explicit NfrBasicTurret(probot::control::PidMotorController* controller)
     : probot::mechanism::Turret(controller) {
       setDegreesToTicks(kTicksPerDegree);
       setAngleLimits(-180.0f, 180.0f);
@@ -17,14 +17,11 @@ namespace probot::mechanism::nfr {
 
   class NfrTurret : public NfrBasicTurret {
   public:
-    explicit NfrTurret(probot::control::IMotorController* controller)
+    explicit NfrTurret(probot::control::PidMotorController* controller)
     : NfrBasicTurret(controller) {
       if (!controller) return;
-      controller->configurePidSlots(detail::kVelocitySlot, detail::kDefaultVelocityPid,
-                                    detail::kPositionSlot, detail::kDefaultPositionPid);
-      setPidConfig(detail::kDefaultPositionPid, detail::kPositionSlot);
-      setMotionProfile(probot::control::MotionProfileType::kTrapezoid,
-                       {90.0f, 360.0f, 0.0f});
+      controller->setVelocityPidConfig(detail::kDefaultVelocityPid);
+      setPositionPidConfig(detail::kDefaultPositionPid);
       setSlewRateLimit(180.0f);
     }
   };

@@ -5,7 +5,7 @@
 namespace probot::mechanism::nfr {
   class NfrBasicTelescopicTube : public probot::mechanism::TelescopicTube {
   public:
-    explicit NfrBasicTelescopicTube(probot::control::IMotorController* controller)
+    explicit NfrBasicTelescopicTube(probot::control::PidMotorController* controller)
     : probot::mechanism::TelescopicTube(controller) {
       setUnitsToTicks(kTicksPerUnit);
       setStageConfiguration(kStageCount, kStageLengthUnits);
@@ -19,14 +19,11 @@ namespace probot::mechanism::nfr {
 
   class NfrTelescopicTube : public NfrBasicTelescopicTube {
   public:
-    explicit NfrTelescopicTube(probot::control::IMotorController* controller)
+    explicit NfrTelescopicTube(probot::control::PidMotorController* controller)
     : NfrBasicTelescopicTube(controller) {
       if (!controller) return;
-      controller->configurePidSlots(detail::kVelocitySlot, detail::kDefaultVelocityPid,
-                                    detail::kPositionSlot, detail::kDefaultPositionPid);
-      setPidConfig(detail::kDefaultPositionPid, detail::kPositionSlot);
-      setMotionProfile(probot::control::MotionProfileType::kTrapezoid,
-                       {0.5f, 1.5f, 0.0f});
+      controller->setVelocityPidConfig(detail::kDefaultVelocityPid);
+      setPositionPidConfig(detail::kDefaultPositionPid);
       setSlewRateLimit(25.0f);
     }
   };

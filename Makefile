@@ -19,12 +19,10 @@ BUILD_DIR_BASE := $(CURDIR)/.build
 
 TEST_STUB_DIR := $(CURDIR)/tests/stubs
 TEST_SOURCES := $(filter %.cpp,$(wildcard $(CURDIR)/tests/*.cpp))
-TEST_EXTRA_SOURCES := \
-	$(CURDIR)/src/probot/logging/logger.cpp \
-	$(CURDIR)/src/probot/logging/telemetry_profiles.cpp
+TEST_EXTRA_SOURCES :=
 
 # Common flags
-EXTRA_FLAGS_COMMON := -DESP32S3 -DARDUINO_USB_MODE=1 -DARDUINO_USB_CDC_ON_BOOT=1
+EXTRA_FLAGS_COMMON := -DESP32S3 -DARDUINO_USB_MODE=1
 
 # Example-specific extra flags (function)
 example_flags = $(if $(filter LoopPeriodStress,$(1)),-DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1,)

@@ -1,8 +1,6 @@
 #pragma once
 #include <math.h>
-#include <probot/control/imotor_controller.hpp>
-#include <probot/logging/logger.hpp>
-#include <probot/logging/telemetry_profiles.hpp>
+#include <probot/control/pid_motor_controller.hpp>
 
 namespace probot::mechanism {
 
@@ -18,23 +16,12 @@ namespace probot::mechanism {
 
   class Elevator : public IElevator {
   public:
-    explicit Elevator(probot::control::IMotorController* controller)
+    explicit Elevator(probot::control::PidMotorController* controller)
     : controller_(controller), ticks_per_unit_(1.0f), target_height_(0.0f),
       min_height_(0.0f), max_height_(0.0f), has_limits_(false) {
-      probot::logging::SourceRegistration reg{
-        "elevator",
-        nullptr,
-        probot::logging::Priority::kBackground,
-        false,
-        false,
-        probot::logging::profiles::elevatorDynamic,
-        nullptr
-      };
-      probot::logging::registerSource(this, reg);
     }
 
     ~Elevator() override {
-      probot::logging::unregisterSource(this);
     }
 
     void setTargetHeight(float units) override {
@@ -74,11 +61,11 @@ namespace probot::mechanism {
       (void)now_ms; (void)dt_ms;
       if (!controller_) return;
       float target_ticks = target_height_ * ticks_per_unit_;
-      controller_->setSetpoint(target_ticks, probot::control::ControlType::kPosition, -1);
+      controller_->setPosition(target_ticks);
     }
 
   private:
-    probot::control::IMotorController* controller_;
+    probot::control::PidMotorController* controller_;
     float             ticks_per_unit_;
     float             target_height_;
     float             min_height_;
