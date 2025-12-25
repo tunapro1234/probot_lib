@@ -8,7 +8,6 @@
 #include <probot/core/runtime.hpp>
 
 // IO
-#include <probot/io/time.hpp>
 #include <probot/io/gamepad.hpp>
 
 // Devices
@@ -58,21 +57,10 @@
 #include <probot/chassis/tank_drive.hpp>
 #include <probot/chassis/mecanum_drive.hpp>
 
-// NFR presets
-#include <probot/mechanism/nfr/slider.hpp>
-#include <probot/mechanism/nfr/shooter.hpp>
-#include <probot/mechanism/nfr/elevator.hpp>
-#include <probot/mechanism/nfr/turret.hpp>
-#include <probot/mechanism/nfr/arm.hpp>
-#include <probot/mechanism/nfr/telescopic_tube.hpp>
 
 // Robot
 #include <probot/robot/state.hpp>
 #include <probot/robot/system.hpp> 
-
-namespace probot {
-  namespace nfr = probot::mechanism::nfr;
-}
 
 namespace probot::control {
   namespace ff = probot::control::feedforward;

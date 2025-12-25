@@ -3,7 +3,6 @@
 #include <probot/core/core_config.hpp>
 #include <probot/core/wdt.hpp>
 #include <probot/core/scheduler.hpp>
-#include <probot/io/input.hpp>
 #include <probot/robot/system.hpp>
 #include <probot/devices/leds/builtin.hpp>
 
@@ -14,10 +13,8 @@ extern const char* PROBOT__DS_PASSWORD_REQUIRED;
 #endif
 
 namespace probot {
-  static TaskHandle_t hUi=nullptr, hCtrl=nullptr, hUser=nullptr;
+  static TaskHandle_t hCtrl=nullptr, hUser=nullptr;
   static TaskHandle_t hAuto=nullptr, hTeleop=nullptr;
-
-  extern void uiTask(void*);
 
   static void autonomousWorker(void*){
     for(;;){ ::autonomousLoop(); vTaskDelay(pdMS_TO_TICKS(1)); }
@@ -96,7 +93,7 @@ namespace probot {
   void runtime_setup(){
     Serial.begin(115200);
     delay(200);
-    Serial.println("\n[PROBOT] Core0=UI+INPUT, Core1=CTRL(high)+USER(low)");
+    Serial.println("\n[PROBOT] Core0=FREE, Core1=CTRL(high)+USER(low)");
 
     wdt_init_no_idle(3, true);
     control::init(8);
@@ -105,7 +102,6 @@ namespace probot {
     probot::platform::start_driver_station();
 #endif
 
-    xTaskCreatePinnedToCore(uiTask,                 "ui",   STACK_UI,   NULL, PRIO_UI,   &hUi,   CORE_UI);
     xTaskCreatePinnedToCore(control::schedulerTask, "ctrl", STACK_CTRL, NULL, PRIO_CTRL, &hCtrl, CORE_CTRL);
     xTaskCreatePinnedToCore([](void*){ userLoopTask(); }, "user", STACK_USER, NULL, PRIO_USER, &hUser, CORE_CTRL);
   }

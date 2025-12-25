@@ -7,10 +7,6 @@
 #include <probot/mechanism/slider.hpp>
 #include <probot/mechanism/telescopic_tube.hpp>
 #include <probot/mechanism/turret.hpp>
-#include <probot/mechanism/nfr/slider.hpp>
-#include <probot/mechanism/nfr/telescopic_tube.hpp>
-#include <probot/mechanism/nfr/turret.hpp>
-#include <probot/mechanism/nfr/shooter.hpp>
 #include <probot/control/pid_motor_controller.hpp>
 #include <probot/test/test_encoder.hpp>
 #include <probot/test/test_motor.hpp>
@@ -76,23 +72,6 @@ TEST_CASE(turret_slew_limit){
 
   turret.update(40, 20);
   EXPECT_TRUE(harness.motor.lastSetpoint() >= expectedDegrees * 10.0f);
-}
-
-TEST_CASE(nfr_shooter_sets_velocity){
-  PidHarness primary;
-  PidHarness secondary;
-  probot::mechanism::nfr::NfrShooter shooter(&primary.motor, &secondary.motor);
-  shooter.setTicksPerRevolution(4096.0f);
-  shooter.setRpm(3000.0f, 2500.0f);
-
-  EXPECT_TRUE(primary.motor.activeMode() == probot::control::ControlType::kVelocity);
-  EXPECT_TRUE(secondary.motor.activeMode() == probot::control::ControlType::kVelocity);
-  EXPECT_NEAR(primary.motor.lastSetpoint(), 4096.0f * 3000.0f / 60.0f, 1e-5f);
-  EXPECT_NEAR(secondary.motor.lastSetpoint(), 4096.0f * 2500.0f / 60.0f, 1e-5f);
-
-  shooter.stop();
-  EXPECT_NEAR(primary.motor.lastSetpoint(), 0.0f, 1e-5f);
-  EXPECT_NEAR(secondary.motor.lastSetpoint(), 0.0f, 1e-5f);
 }
 
 TEST_CASE(arm_angle_limits){
