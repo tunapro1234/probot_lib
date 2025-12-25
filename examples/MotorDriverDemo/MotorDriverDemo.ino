@@ -1,4 +1,5 @@
 #include <probot.h>
+#include <probot/test/null_encoder.hpp>
 #include <probot/io/joystick_api.hpp>
 #include <probot/devices/motors/boardoza_vnh_motor_driver.hpp>
 #include <probot/control/closed_loop_motor.hpp>
@@ -12,7 +13,7 @@ static constexpr int PIN_ENA = -1;
 static constexpr int PIN_ENB = -1;
 
 static probot::motor::BoardozaVNHMotorDriver motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
-static probot::sensors::NullEncoder          encoder;
+static probot::test::NullEncoder          encoder;
 static const probot::control::PidConfig      kPid{.kp = 0.30f, .ki = 0.0f, .kd = 0.0f, .kf = 0.0f,
                                                   .out_min = -1.0f, .out_max = 1.0f};
 static probot::control::PID                  pid(kPid);

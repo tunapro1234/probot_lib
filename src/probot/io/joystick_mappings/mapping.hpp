@@ -87,17 +87,18 @@ inline const MappingProfile* findByName(const char* name){
   return &mapping_logitech_f310();
 }
 
-inline const MappingProfile& getActive(){
+inline const MappingProfile*& activeMapping(){
   static const MappingProfile* active = &mapping_logitech_f310();
-  return *active;
+  return active;
+}
+
+inline const MappingProfile& getActive(){
+  return *activeMapping();
 }
 
 inline void setActive(const MappingProfile* m){
   if (!m) return; (void)*m; // ensure not null
-  static const MappingProfile** slot = nullptr;
-  static const MappingProfile* init = &mapping_logitech_f310();
-  if (!slot){ slot = &init; }
-  *slot = m;
+  activeMapping() = m;
 }
 
 inline bool setActiveByName(const char* name){

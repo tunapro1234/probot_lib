@@ -1,4 +1,5 @@
 #include <probot.h>
+#include <probot/test/null_encoder.hpp>
 #include <probot/io/joystick_api.hpp>
 #include <probot/control/closed_loop_motor.hpp>
 #include <probot/control/pid.hpp>
@@ -20,8 +21,8 @@ static constexpr int RIGHT_ENB = -1;
 
 static probot::motor::BoardozaVNHMotorDriver leftDriver(LEFT_INA, LEFT_INB, LEFT_PWM, LEFT_ENA, LEFT_ENB);
 static probot::motor::BoardozaVNHMotorDriver rightDriver(RIGHT_INA, RIGHT_INB, RIGHT_PWM, RIGHT_ENA, RIGHT_ENB);
-static probot::sensors::NullEncoder          leftEncoder;
-static probot::sensors::NullEncoder          rightEncoder;
+static probot::test::NullEncoder          leftEncoder;
+static probot::test::NullEncoder          rightEncoder;
 
 static const probot::control::PidConfig      kPidCfg{.kp = 0.28f, .ki = 0.01f, .kd = 0.0f, .kf = 0.0f,
                                                      .out_min = -1.0f, .out_max = 1.0f};

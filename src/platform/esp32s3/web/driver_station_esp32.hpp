@@ -57,15 +57,46 @@ namespace probot::platform::esp32 {
       _server.begin();
     }
 
-    void handleClient(){ _server.handleClient(); }
+    void handleClient(){
+      _server.handleClient();
+      expireOwnerIfIdle();
+    }
 
   private:
     bool enforceOwner(){
+      uint32_t now = millis();
       IPAddress ip = _server.client().remoteIP();
-      if (!_owner_set){ _owner = ip; _owner_set = true; _rs.setClientCount(millis(), 1); return true; }
-      if (ip == _owner) return true;
+      if (_owner_set && _owner_timeout_ms > 0 &&
+          (uint32_t)(now - _owner_last_ms) > _owner_timeout_ms){
+        releaseOwner(now);
+      }
+      if (!_owner_set){
+        _owner = ip;
+        _owner_set = true;
+        _owner_last_ms = now;
+        _rs.setClientCount(now, 1);
+        return true;
+      }
+      if (ip == _owner){
+        _owner_last_ms = now;
+        return true;
+      }
       _server.send(403, "text/plain", "Another client is already connected.");
       return false;
+    }
+
+    void expireOwnerIfIdle(){
+      if (!_owner_set || _owner_timeout_ms == 0) return;
+      uint32_t now = millis();
+      if ((uint32_t)(now - _owner_last_ms) > _owner_timeout_ms){
+        releaseOwner(now);
+      }
+    }
+
+    void releaseOwner(uint32_t now_ms){
+      _owner_set = false;
+      _owner = IPAddress();
+      _rs.setClientCount(now_ms, 0);
     }
 
     static bool parseFloatArray(const String& body, const char* key, float* out, uint32_t maxCount, uint32_t& written){
@@ -206,6 +237,8 @@ namespace probot::platform::esp32 {
     const char*          _apPass;
     bool                 _owner_set=false;
     IPAddress            _owner;
+    uint32_t             _owner_last_ms=0;
+    uint32_t             _owner_timeout_ms=5000;
     String               ap_ssid_;
   };
 }

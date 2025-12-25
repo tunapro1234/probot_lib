@@ -8,8 +8,6 @@
 #include <probot/core/runtime.hpp>
 
 // IO
-#include <probot/io/input.hpp>
-#include <probot/io/joystick.hpp>
 #include <probot/io/time.hpp>
 #include <probot/io/gamepad.hpp>
 
@@ -76,12 +74,6 @@
 #include <probot/mechanism/nfr/arm.hpp>
 #include <probot/mechanism/nfr/telescopic_tube.hpp>
 
-// Test doubles
-#include <probot/test/test_motor.hpp>
-#include <probot/test/test_encoder.hpp>
-#include <probot/test/null_encoder.hpp>
-#include <probot/test/test_plant.hpp>
-
 // Robot
 #include <probot/robot/state.hpp>
 #include <probot/robot/system.hpp> 
@@ -99,9 +91,4 @@ namespace probot::control {
   namespace odometry = probot::control::odometry;
   namespace ss = probot::control::state_space;
   namespace est = probot::control::estimation;
-}
-
-namespace probot::sensors {
-  using TestEncoder = probot::test::TestEncoder;
-  using NullEncoder = probot::test::NullEncoder;
 }

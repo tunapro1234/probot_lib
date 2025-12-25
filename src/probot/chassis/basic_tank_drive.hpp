@@ -107,7 +107,6 @@ namespace probot::drive {
     }
 
     void update(uint32_t now_ms, uint32_t dt_ms) override {
-      if (!vel_mode_) return; // position updates were already sent; hold until next command
       if (left_)  left_->update(now_ms, dt_ms);
       if (right_) right_->update(now_ms, dt_ms);
     }

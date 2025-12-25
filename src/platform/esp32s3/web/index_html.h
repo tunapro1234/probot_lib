@@ -10,7 +10,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>ProBot Minimal Stack</title>
+  <title>ProBot DriverStation</title>
   <style>
     :root{
       --navy:#00204d;
@@ -813,7 +813,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 <body>
   <header class="app-header" id="appHeader">
     <div class="header-left">
-      <h1>ProBot DriveStation</h1>
+      <h1>ProBot DriverStation</h1>
       <span class="header-subtitle">by NFR Products · c2025</span>
     </div>
     <nav>
@@ -1421,7 +1421,6 @@ if(loggingElements.autoScroll) loggingElements.autoScroll.addEventListener('chan
       autoRemaining=parseFloat(document.getElementById('autoPeriod').value)||0;
       updateAutoDisplay();
       setPhaseDisplay('standby');
-      // applyHeaderMode();  // TODO: header mode switching removed for now
       handleLoggingRefresh();
       if(loggingElements.autoRefresh){
         setLoggingAutoRefresh(loggingElements.autoRefresh.checked);

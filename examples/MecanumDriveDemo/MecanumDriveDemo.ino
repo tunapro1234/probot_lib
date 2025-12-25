@@ -1,4 +1,5 @@
 #include <probot.h>
+#include <probot/test/null_encoder.hpp>
 #include <probot/io/joystick_api.hpp>
 #include <probot/control/closed_loop_motor.hpp>
 #include <probot/control/pid.hpp>
@@ -20,10 +21,10 @@ static probot::motor::BoardozaVNHMotorDriver drvFR(PINS_FR.ina, PINS_FR.inb, PIN
 static probot::motor::BoardozaVNHMotorDriver drvRL(PINS_RL.ina, PINS_RL.inb, PINS_RL.pwm, PINS_RL.ena, PINS_RL.enb);
 static probot::motor::BoardozaVNHMotorDriver drvRR(PINS_RR.ina, PINS_RR.inb, PINS_RR.pwm, PINS_RR.ena, PINS_RR.enb);
 
-static probot::sensors::NullEncoder encFL;
-static probot::sensors::NullEncoder encFR;
-static probot::sensors::NullEncoder encRL;
-static probot::sensors::NullEncoder encRR;
+static probot::test::NullEncoder encFL;
+static probot::test::NullEncoder encFR;
+static probot::test::NullEncoder encRL;
+static probot::test::NullEncoder encRR;
 
 static const probot::control::PidConfig kPid{.kp = 0.30f, .ki = 0.01f, .kd = 0.0f, .kf = 0.0f,
                                              .out_min = -1.0f, .out_max = 1.0f};
