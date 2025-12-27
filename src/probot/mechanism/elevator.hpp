@@ -4,7 +4,7 @@
 
 namespace probot::mechanism {
 
-  struct IElevator : public ::control::IUpdatable {
+  struct IElevator : public probot::control::IUpdatable {
     virtual void setTargetHeight(float units) = 0;
     virtual float getTargetHeight() const = 0;
     virtual void setHeightLimits(float min_units, float max_units) = 0;

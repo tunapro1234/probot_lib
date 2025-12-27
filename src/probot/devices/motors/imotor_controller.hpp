@@ -3,7 +3,7 @@
 #include <probot/core/scheduler.hpp>
 
 namespace probot::motor {
-  struct IMotorController : public ::control::IUpdatable {
+  struct IMotorController : public probot::control::IUpdatable {
     virtual bool setPower(float power) = 0; // -1.0..1.0 normalized output
 
     // Direction inversion: if inverted, drivers should negate applied power internally

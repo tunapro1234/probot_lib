@@ -14,7 +14,7 @@ namespace probot::mechanism {
     virtual ~ISlider() {}
   };
 
-  class Slider : public ISlider, public ::control::IUpdatable {
+  class Slider : public ISlider, public probot::control::IUpdatable {
   public:
     explicit Slider(probot::control::PidMotorController* controller)
     : controller_(controller), ticks_per_unit_(1.0f), target_len_(0.0f),

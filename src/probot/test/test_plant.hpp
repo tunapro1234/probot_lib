@@ -4,7 +4,7 @@
 #include <probot/test/test_encoder.hpp>
 
 namespace probot::test {
-  class TestPlant : public ::control::IUpdatable {
+  class TestPlant : public probot::control::IUpdatable {
   public:
     TestPlant(TestMotor* m, TestEncoder* e) : motor_(m), enc_(e) {}
 

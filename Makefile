@@ -88,7 +88,7 @@ version-sync:
 	$(PYTHON) $(VERSION_SYNC_SCRIPT)
 
 tests/control_tests: $(TEST_SOURCES)
-	g++ -std=c++17 -Wall -Wextra -pedantic -I src -I $(TEST_STUB_DIR) -DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1 -DPROBOT_LOGGER_NO_SCHED_ATTACH=1 -o $@ $(TEST_SOURCES) $(TEST_EXTRA_SOURCES)
+	g++ -std=c++17 -Wall -Wextra -pedantic -I src -I $(TEST_STUB_DIR) -DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1 -DPROBOT_LOGGER_NO_SCHED_ATTACH=1 -DPROBOT_BUILTINLED_EXTERNAL=1 -o $@ $(TEST_SOURCES) $(TEST_EXTRA_SOURCES)
 
 test: build tests/control_tests
 	./tests/control_tests

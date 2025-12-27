@@ -46,6 +46,10 @@
 #include <probot/control/state_space/lqr.hpp>
 #include <probot/control/estimation/pose_estimator.hpp>
 
+// Command-based
+#include <probot/command/subsystem.hpp>
+#include <probot/command/command.hpp>
+
 // Mechanisms
 #include <probot/mechanism/slider.hpp>
 #include <probot/mechanism/elevator.hpp>

@@ -9,7 +9,7 @@
 
 namespace probot::chassis {
 
-class TankDrive : public ::control::IUpdatable {
+class TankDrive : public probot::control::IUpdatable {
 public:
   enum class DriveMode {
     kPower,

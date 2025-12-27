@@ -6,7 +6,7 @@
 
 namespace probot::mechanism {
 
-  struct ITelescopicTube : public ::control::IUpdatable {
+  struct ITelescopicTube : public probot::control::IUpdatable {
     virtual void setTargetExtension(float units) = 0;
     virtual float getTargetExtension() const = 0;
     virtual void setStageConfiguration(int stage_count, float stage_length_units) = 0;

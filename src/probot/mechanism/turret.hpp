@@ -6,7 +6,7 @@
 
 namespace probot::mechanism {
 
-  struct ITurret : public ::control::IUpdatable {
+  struct ITurret : public probot::control::IUpdatable {
     virtual void setTargetAngleDeg(float degrees) = 0;
     virtual float getTargetAngleDeg() const = 0;
     virtual void setAngleLimits(float min_deg, float max_deg) = 0;

@@ -9,7 +9,7 @@
 
 namespace probot::chassis {
 
-class MecanumDrive : public ::control::IUpdatable {
+class MecanumDrive : public probot::control::IUpdatable {
 public:
   enum class DriveMode {
     kPower,
