@@ -2,7 +2,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <cmath>
-#include <probot/sensors/imu/imu.hpp>
+#include <probot/devices/sensors/imu/imu.hpp>
 
 namespace probot::sensors::imu {
   namespace detail {

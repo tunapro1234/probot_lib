@@ -1,7 +1,9 @@
+#define PROBOT_WIFI_AP_PASSWORD "ProBot1234"
+
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
 #include <probot/devices/motors/boardoza_vnh5019_motor_driver.hpp>
-#include <probot/sensors/encoder.hpp>
+#include <probot/devices/sensors/encoder.hpp>
 
 // Kullanılan Boardoza VNH sürücü pinleri (kendi kartınıza göre güncelleyin).
 static constexpr int PIN_INA = 9;
@@ -15,7 +17,6 @@ static const probot::control::PidConfig      kVelocityPid{.kp = 0.35f, .ki = 0.0
                                                           .kf = 0.0f, .out_min = -1.0f, .out_max = 1.0f};
 static probot::sensors::IEncoder* encoder = nullptr;
 
-PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
 static probot::control::ControlType g_mode = probot::control::ControlType::kVelocity;
 static bool g_has_encoder = false;

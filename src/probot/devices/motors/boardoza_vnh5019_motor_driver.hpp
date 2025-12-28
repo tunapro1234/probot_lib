@@ -5,7 +5,7 @@
 #include <probot/control/control_types.hpp>
 #include <probot/control/pid.hpp>
 #include <probot/devices/motors/imotor_controller.hpp>
-#include <probot/sensors/encoder.hpp>
+#include <probot/devices/sensors/encoder.hpp>
 
 namespace probot::motor {
 

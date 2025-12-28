@@ -1,5 +1,3 @@
-#ifndef PROBOT_WDT_HPP
-#define PROBOT_WDT_HPP
 #pragma once
 #include <stdint.h>
 
@@ -28,4 +26,3 @@ namespace probot {
 #endif
   }
 }
-#endif // PROBOT_WDT_HPP

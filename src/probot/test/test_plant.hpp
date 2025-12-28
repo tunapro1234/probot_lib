@@ -1,14 +1,13 @@
 #pragma once
-#include <probot/core/scheduler.hpp>
 #include <probot/test/test_motor.hpp>
 #include <probot/test/test_encoder.hpp>
 
 namespace probot::test {
-  class TestPlant : public probot::control::IUpdatable {
+  class TestPlant {
   public:
     TestPlant(TestMotor* m, TestEncoder* e) : motor_(m), enc_(e) {}
 
-    void update(uint32_t now_ms, uint32_t dt_ms) override {
+    void update(uint32_t now_ms, uint32_t dt_ms) {
       (void)now_ms;
       float dt_s = dt_ms * 0.001f;
       if (dt_s <= 0.0f) dt_s = 0.001f;

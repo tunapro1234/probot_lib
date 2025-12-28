@@ -1,17 +1,18 @@
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
-#include <probot/core/scheduler.hpp>
 #include <probot/command/subsystem.hpp>
 
 namespace probot::command {
 
-struct ICommand : public probot::control::IUpdatable {
+struct ICommand {
   virtual const char* name() const { return "Command"; }
   virtual void initialize() {}
   virtual void execute(uint32_t now_ms, uint32_t dt_ms) = 0;
   virtual void end(bool interrupted) { (void)interrupted; }
   virtual bool isFinished() const = 0;
+  virtual void periodic(uint32_t now_ms, uint32_t dt_ms) = 0;
+  virtual void onSchedulerStop() { end(true); }
   virtual bool addRequirement(ISubsystem* subsystem) { (void)subsystem; return false; }
   virtual size_t requirementCount() const { return 0; }
   virtual ISubsystem* requirementAt(size_t idx) const { (void)idx; return nullptr; }
@@ -24,7 +25,7 @@ public:
 
   const char* name() const override { return name_; }
 
-  void update(uint32_t now_ms, uint32_t dt_ms) override {
+  void periodic(uint32_t now_ms, uint32_t dt_ms) override {
     if (finished_) return;
     if (!initialized_){
       initialize();
@@ -51,6 +52,8 @@ public:
 
   bool isInitialized() const { return initialized_; }
   bool isCompleted() const { return finished_; }
+
+  void onSchedulerStop() override { cancel(); }
 
   bool addRequirement(ISubsystem* subsystem) override {
     if (!subsystem) return false;

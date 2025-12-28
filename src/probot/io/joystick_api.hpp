@@ -1,5 +1,3 @@
-#ifndef PROBOT_IO_JOYSTICK_API_HPP
-#define PROBOT_IO_JOYSTICK_API_HPP
 #pragma once
 #include <cmath>
 #include <probot/io/gamepad.hpp>
@@ -125,5 +123,3 @@ inline Joystick makeDefault(const Options& opts = {}) {
 }
 
 } // namespace probot::io::joystick_api
-
-#endif // PROBOT_IO_JOYSTICK_API_HPP 

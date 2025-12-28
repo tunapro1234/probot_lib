@@ -1,23 +1,22 @@
 #pragma once
 #include <Arduino.h>
 #include <stdint.h>
-#include <probot/core/scheduler.hpp>
 #include <probot/devices/leds/builtin.hpp>
 
 namespace probot::control {
-  class BlinkPid : public probot::control::IUpdatable {
+  class BlinkPid {
   public:
     BlinkPid()
     : current_reference_(0), pending_reference_(0), has_pending_reference_(false), led_is_on_(false) {}
 
-    ~BlinkPid() override = default;
+    ~BlinkPid() = default;
 
     void setReference(uint32_t new_reference){
       __atomic_store_n(&pending_reference_, new_reference, __ATOMIC_SEQ_CST);
       __atomic_store_n(&has_pending_reference_, true, __ATOMIC_SEQ_CST);
     }
 
-    void update(uint32_t now_ms, uint32_t dt_ms) override {
+    void update(uint32_t now_ms, uint32_t dt_ms) {
       (void)now_ms; (void)dt_ms;
       bool has_pending = __atomic_exchange_n(&has_pending_reference_, false, __ATOMIC_SEQ_CST);
       if (has_pending){

@@ -1,12 +1,13 @@
 #pragma once
 #include <algorithm>
 #include <math.h>
+#include <probot/command/subsystem.hpp>
 #include <probot/control/pid_motor_controller.hpp>
 #include <probot/control/limiters/slew_rate_limiter.hpp>
 
-namespace probot::mechanism {
+namespace probot::command::examples {
 
-  struct ITurret : public probot::control::IUpdatable {
+  struct ITurret {
     virtual void setTargetAngleDeg(float degrees) = 0;
     virtual float getTargetAngleDeg() const = 0;
     virtual void setAngleLimits(float min_deg, float max_deg) = 0;
@@ -16,10 +17,11 @@ namespace probot::mechanism {
     virtual ~ITurret() {}
   };
 
-  class Turret : public ITurret {
+  class Turret : public probot::command::SubsystemBase, public ITurret {
   public:
     explicit Turret(probot::control::PidMotorController* controller)
-    : controller_(controller),
+    : probot::command::SubsystemBase("Turret"),
+      controller_(controller),
       ticks_per_degree_(1.0f),
       target_angle_(0.0f),
       min_angle_(-180.0f),
@@ -30,8 +32,7 @@ namespace probot::mechanism {
       limiter_initialized_(false) {
     }
 
-    ~Turret() override {
-    }
+    ~Turret() override = default;
 
     void setTargetAngleDeg(float degrees) override {
       if (has_limits_){
@@ -78,7 +79,7 @@ namespace probot::mechanism {
       limiter_initialized_ = false;
     }
 
-    void update(uint32_t now_ms, uint32_t dt_ms) override {
+    void periodic(uint32_t now_ms, uint32_t dt_ms) override {
       (void)now_ms;
       if (!controller_) return;
 
@@ -119,4 +120,4 @@ namespace probot::mechanism {
     bool limiter_initialized_;
   };
 
-} // namespace probot::mechanism
+} // namespace probot::command::examples

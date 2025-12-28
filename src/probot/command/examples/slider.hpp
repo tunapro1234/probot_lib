@@ -1,8 +1,9 @@
 #pragma once
 #include <math.h>
+#include <probot/command/subsystem.hpp>
 #include <probot/control/pid_motor_controller.hpp>
 
-namespace probot::mechanism {
+namespace probot::command::examples {
   struct ISlider {
     virtual void setTargetLength(float length_units) = 0; // user units (e.g., cm)
     virtual float getTargetLength() const = 0;
@@ -10,19 +11,18 @@ namespace probot::mechanism {
     virtual void setLengthLimits(float min_units, float max_units) = 0;
     virtual float getCurrentLength() const = 0;
     virtual bool isAtTarget(float tolerance_units) const = 0;
-    virtual void update(uint32_t now_ms, uint32_t dt_ms) = 0;
     virtual ~ISlider() {}
   };
 
-  class Slider : public ISlider, public probot::control::IUpdatable {
+  class Slider : public probot::command::SubsystemBase, public ISlider {
   public:
     explicit Slider(probot::control::PidMotorController* controller)
-    : controller_(controller), ticks_per_unit_(1.0f), target_len_(0.0f),
+    : probot::command::SubsystemBase("Slider"),
+      controller_(controller), ticks_per_unit_(1.0f), target_len_(0.0f),
       min_len_(0.0f), max_len_(0.0f), has_limits_(false) {
     }
 
-    ~Slider() override {
-    }
+    ~Slider() override = default;
 
     void setTargetLength(float length_units) override {
       if (has_limits_){
@@ -59,7 +59,7 @@ namespace probot::mechanism {
       return fabsf(current - target_len_) <= tolerance_units;
     }
 
-    void update(uint32_t now_ms, uint32_t dt_ms) override {
+    void periodic(uint32_t now_ms, uint32_t dt_ms) override {
       (void)now_ms; (void)dt_ms;
       float ticks_setpoint = target_len_ * ticks_per_unit_;
       if (controller_) controller_->setPosition(ticks_setpoint);
@@ -73,4 +73,4 @@ namespace probot::mechanism {
     float                 max_len_;
     bool                  has_limits_;
   };
-} // namespace probot::mechanism 
+} // namespace probot::command::examples 

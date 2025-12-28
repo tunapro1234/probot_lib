@@ -1,15 +1,16 @@
 #pragma once
 #include <algorithm>
 #include <cmath>
+#include <probot/command/subsystem.hpp>
 #include <probot/control/geometry.hpp>
 #include <probot/control/kinematics/differential_drive_kinematics.hpp>
 #include <probot/control/odometry/differential_drive_odometry.hpp>
 #include <probot/devices/motors/imotor_controller.hpp>
-#include <probot/sensors/encoder.hpp>
+#include <probot/devices/sensors/encoder.hpp>
 
-namespace probot::chassis {
+namespace probot::command::examples {
 
-class TankDrive : public probot::control::IUpdatable {
+class TankDrive : public probot::command::SubsystemBase {
 public:
   enum class DriveMode {
     kPower,
@@ -28,7 +29,8 @@ public:
             probot::motor::IMotorController* right,
             probot::sensors::IEncoder* leftEncoder = nullptr,
             probot::sensors::IEncoder* rightEncoder = nullptr)
-  : left_(left),
+  : probot::command::SubsystemBase("TankDrive"),
+    left_(left),
     right_(right),
     left_encoder_(leftEncoder),
     right_encoder_(rightEncoder),
@@ -128,7 +130,7 @@ public:
   DriveMode mode() const { return mode_; }
   CommandStatus lastStatus() const { return last_status_; }
 
-  void update(uint32_t now_ms, uint32_t dt_ms) override {
+  void periodic(uint32_t now_ms, uint32_t dt_ms) override {
     if (left_) left_->update(now_ms, dt_ms);
     if (right_) right_->update(now_ms, dt_ms);
     updateOdometry();
@@ -219,4 +221,4 @@ private:
   float prev_right_pos_ = 0.0f;
 };
 
-} // namespace probot::chassis
+} // namespace probot::command::examples

@@ -1,6 +1,9 @@
+#define PROBOT_WIFI_AP_PASSWORD "ProBot1234"
+
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
-#include <probot/chassis/tank_drive.hpp>
+#include <probot/command/scheduler.hpp>
+#include <probot/command/examples/tank_drive.hpp>
 #include <probot/devices/motors/boardoza_vnh5019_motor_driver.hpp>
 
 // Tank şasi için iki adet VNH sürücünün pin eşlemesi (örnek değerler).
@@ -18,9 +21,8 @@ static constexpr int RIGHT_ENB = -1;
 
 static probot::motor::BoardozaVNH5019MotorDriver leftDriver(LEFT_INA, LEFT_INB, LEFT_PWM, LEFT_ENA, LEFT_ENB);
 static probot::motor::BoardozaVNH5019MotorDriver rightDriver(RIGHT_INA, RIGHT_INB, RIGHT_PWM, RIGHT_ENA, RIGHT_ENB);
-static probot::chassis::TankDrive            chassis(&leftDriver, &rightDriver);
+static probot::command::examples::TankDrive            chassis(&leftDriver, &rightDriver);
 
-PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
 void robotInit() {
   Serial.begin(115200);
@@ -34,10 +36,12 @@ void robotInit() {
   chassis.setWheelRadius(31.4f / (2.0f * 3.1415926535f)); // cm cinsinden yarıçap
   chassis.setTrackWidth(28.0f);                           // cm
 
+  probot::command::scheduler::attach(&chassis);
   Serial.println("[TankDriveDemo] robotInit: Tank şasi hazır");
 }
 
 void robotEnd() {
+  probot::command::scheduler::detach(&chassis);
   chassis.stop();
   Serial.println("[TankDriveDemo] robotEnd: Motorlar kapandı");
 }
@@ -52,9 +56,6 @@ void teleopLoop() {
   float leftAxis = js.getLeftY();
   float rightAxis = js.getRightY();
   chassis.drivePower(leftAxis, rightAxis);
-
-  uint32_t now = millis();
-  chassis.update(now, 20);
 
   Serial.printf("[TankDriveDemo] left=%.2f right=%.2f outL=%.2f outR=%.2f\n",
                 leftAxis, rightAxis,
@@ -97,7 +98,5 @@ void autonomousLoop() {
       chassis.stop();
       break;
   }
-
-  chassis.update(now, 20);
   delay(20);
 }

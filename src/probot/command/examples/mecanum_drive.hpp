@@ -1,15 +1,16 @@
 #pragma once
 #include <algorithm>
 #include <cmath>
+#include <probot/command/subsystem.hpp>
 #include <probot/control/geometry.hpp>
 #include <probot/control/kinematics/mecanum_drive_kinematics.hpp>
 #include <probot/control/odometry/mecanum_drive_odometry.hpp>
 #include <probot/devices/motors/imotor_controller.hpp>
-#include <probot/sensors/encoder.hpp>
+#include <probot/devices/sensors/encoder.hpp>
 
-namespace probot::chassis {
+namespace probot::command::examples {
 
-class MecanumDrive : public probot::control::IUpdatable {
+class MecanumDrive : public probot::command::SubsystemBase {
 public:
   enum class DriveMode {
     kPower,
@@ -32,7 +33,8 @@ public:
                probot::sensors::IEncoder* frontRightEncoder = nullptr,
                probot::sensors::IEncoder* rearLeftEncoder = nullptr,
                probot::sensors::IEncoder* rearRightEncoder = nullptr)
-  : fl_(frontLeft),
+  : probot::command::SubsystemBase("MecanumDrive"),
+    fl_(frontLeft),
     fr_(frontRight),
     rl_(rearLeft),
     rr_(rearRight),
@@ -154,7 +156,7 @@ public:
   DriveMode mode() const { return mode_; }
   CommandStatus lastStatus() const { return last_status_; }
 
-  void update(uint32_t now_ms, uint32_t dt_ms) override {
+  void periodic(uint32_t now_ms, uint32_t dt_ms) override {
     if (fl_) fl_->update(now_ms, dt_ms);
     if (fr_) fr_->update(now_ms, dt_ms);
     if (rl_) rl_->update(now_ms, dt_ms);
@@ -249,4 +251,4 @@ private:
   probot::control::odometry::MecanumDriveOdometry odometry_;
 };
 
-} // namespace probot::chassis
+} // namespace probot::command::examples

@@ -1,12 +1,13 @@
 #pragma once
 #include <algorithm>
 #include <math.h>
+#include <probot/command/subsystem.hpp>
 #include <probot/control/pid_motor_controller.hpp>
 #include <probot/control/limiters/slew_rate_limiter.hpp>
 
-namespace probot::mechanism {
+namespace probot::command::examples {
 
-  struct ITelescopicTube : public probot::control::IUpdatable {
+  struct ITelescopicTube {
     virtual void setTargetExtension(float units) = 0;
     virtual float getTargetExtension() const = 0;
     virtual void setStageConfiguration(int stage_count, float stage_length_units) = 0;
@@ -16,10 +17,11 @@ namespace probot::mechanism {
     virtual ~ITelescopicTube() {}
   };
 
-  class TelescopicTube : public ITelescopicTube {
+  class TelescopicTube : public probot::command::SubsystemBase, public ITelescopicTube {
   public:
     explicit TelescopicTube(probot::control::PidMotorController* controller)
-    : controller_(controller),
+    : probot::command::SubsystemBase("TelescopicTube"),
+      controller_(controller),
       ticks_per_unit_(1.0f),
       target_extension_(0.0f),
       stage_length_(0.0f),
@@ -30,8 +32,7 @@ namespace probot::mechanism {
       limiter_initialized_(false) {
     }
 
-    ~TelescopicTube() override {
-    }
+    ~TelescopicTube() override = default;
 
     void setTargetExtension(float units) override {
       if (has_stage_limits_){
@@ -75,7 +76,7 @@ namespace probot::mechanism {
       limiter_initialized_ = false;
     }
 
-    void update(uint32_t now_ms, uint32_t dt_ms) override {
+    void periodic(uint32_t now_ms, uint32_t dt_ms) override {
       (void)now_ms;
       if (!controller_) return;
 
@@ -116,4 +117,4 @@ namespace probot::mechanism {
     bool limiter_initialized_;
   };
 
-} // namespace probot::mechanism
+} // namespace probot::command::examples

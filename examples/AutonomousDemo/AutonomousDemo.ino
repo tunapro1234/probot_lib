@@ -1,6 +1,9 @@
+#define PROBOT_WIFI_AP_PASSWORD "ProBot1234"
+
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
-#include <probot/chassis/tank_drive.hpp>
+#include <probot/command/scheduler.hpp>
+#include <probot/command/examples/tank_drive.hpp>
 #include <probot/devices/motors/boardoza_vnh5019_motor_driver.hpp>
 
 // Otonom tank demo için iki adet VNH sürücüsü.
@@ -18,9 +21,8 @@ static constexpr int R_ENB = -1;
 
 static probot::motor::BoardozaVNH5019MotorDriver leftDriver(L_INA, L_INB, L_PWM, L_ENA, L_ENB);
 static probot::motor::BoardozaVNH5019MotorDriver rightDriver(R_INA, R_INB, R_PWM, R_ENA, R_ENB);
-static probot::chassis::TankDrive            chassis(&leftDriver, &rightDriver);
+static probot::command::examples::TankDrive            chassis(&leftDriver, &rightDriver);
 
-PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
 enum class AutoStep {
   kDriveForward,
@@ -45,10 +47,12 @@ void robotInit() {
   chassis.setWheelRadius(32.0f / (2.0f * 3.1415926535f));
   chassis.setTrackWidth(29.0f);
 
+  probot::command::scheduler::attach(&chassis);
   Serial.println("[AutonomousDemo] robotInit: Otonom örneği hazır");
 }
 
 void robotEnd() {
+  probot::command::scheduler::detach(&chassis);
   chassis.stop();
   Serial.println("[AutonomousDemo] robotEnd: Motorlar durdu");
 }
@@ -62,7 +66,6 @@ void teleopLoop() {
   float leftAxis = js.getLeftY();
   float rightAxis = js.getRightY();
   chassis.drivePower(leftAxis, rightAxis);
-  chassis.update(millis(), 20);
   delay(20);
 }
 
@@ -122,6 +125,5 @@ void autonomousLoop() {
       break;
   }
 
-  chassis.update(now, 20);
   delay(20);
 }

@@ -1,3 +1,5 @@
+#define PROBOT_WIFI_AP_PASSWORD "ProBot1234"
+
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
 #include <probot/devices/motors/boardoza_vnh5019_motor_driver.hpp>
@@ -11,7 +13,6 @@ static constexpr int PIN_ENB = -1;
 
 static probot::motor::BoardozaVNH5019MotorDriver motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
 
-PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
 void robotInit() {
   Serial.begin(115200);

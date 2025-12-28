@@ -1,6 +1,9 @@
+#define PROBOT_WIFI_AP_PASSWORD "ProBot1234"
+
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
-#include <probot/chassis/mecanum_drive.hpp>
+#include <probot/command/scheduler.hpp>
+#include <probot/command/examples/mecanum_drive.hpp>
 #include <probot/devices/motors/boardoza_vnh5019_motor_driver.hpp>
 
 // Mecanum sürüş için dört motorun pin atamaları.
@@ -18,9 +21,8 @@ static probot::motor::BoardozaVNH5019MotorDriver drvFR(PINS_FR.ina, PINS_FR.inb,
 static probot::motor::BoardozaVNH5019MotorDriver drvRL(PINS_RL.ina, PINS_RL.inb, PINS_RL.pwm, PINS_RL.ena, PINS_RL.enb);
 static probot::motor::BoardozaVNH5019MotorDriver drvRR(PINS_RR.ina, PINS_RR.inb, PINS_RR.pwm, PINS_RR.ena, PINS_RR.enb);
 
-static probot::chassis::MecanumDrive mecanum(&drvFL, &drvFR, &drvRL, &drvRR);
+static probot::command::examples::MecanumDrive mecanum(&drvFL, &drvFR, &drvRL, &drvRR);
 
-PROBOT_SET_DRIVER_STATION_PASSWORD("ProBot1234");
 
 void robotInit() {
   Serial.begin(115200);
@@ -36,10 +38,12 @@ void robotInit() {
   mecanum.setWheelBase(30.0f);
   mecanum.setTrackWidth(28.0f);
 
+  probot::command::scheduler::attach(&mecanum);
   Serial.println("[MecanumDriveDemo] robotInit: Mecanum sürüşe hazır");
 }
 
 void robotEnd() {
+  probot::command::scheduler::detach(&mecanum);
   mecanum.stop();
   Serial.println("[MecanumDriveDemo] robotEnd: Motorlar kapatıldı");
 }

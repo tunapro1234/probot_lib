@@ -1,5 +1,3 @@
-#ifndef PROBOT_ROBOT_STATE_HPP
-#define PROBOT_ROBOT_STATE_HPP
 #pragma once
 #include <stdint.h>
 
@@ -78,5 +76,9 @@ namespace probot::robot {
     mutable volatile uint32_t _cur;
     mutable volatile uint32_t _write_lock = 0;
   };
+
+  inline StateService& state(){
+    static StateService instance;
+    return instance;
+  }
 }
-#endif // PROBOT_ROBOT_STATE_HPP 

@@ -1,5 +1,3 @@
-#ifndef PROBOT_IO_JOYSTICK_MAPPINGS_HPP
-#define PROBOT_IO_JOYSTICK_MAPPINGS_HPP
 #pragma once
 #include <stddef.h>
 #include <string.h>
@@ -108,5 +106,3 @@ inline bool setActiveByName(const char* name){
 }
 
 } // namespace probot::io::joystick_mapping
-
-#endif // PROBOT_IO_JOYSTICK_MAPPINGS_HPP 

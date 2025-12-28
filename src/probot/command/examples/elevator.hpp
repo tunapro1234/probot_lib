@@ -1,10 +1,11 @@
 #pragma once
 #include <math.h>
+#include <probot/command/subsystem.hpp>
 #include <probot/control/pid_motor_controller.hpp>
 
-namespace probot::mechanism {
+namespace probot::command::examples {
 
-  struct IElevator : public probot::control::IUpdatable {
+  struct IElevator {
     virtual void setTargetHeight(float units) = 0;
     virtual float getTargetHeight() const = 0;
     virtual void setHeightLimits(float min_units, float max_units) = 0;
@@ -14,15 +15,15 @@ namespace probot::mechanism {
     virtual ~IElevator() {}
   };
 
-  class Elevator : public IElevator {
+  class Elevator : public probot::command::SubsystemBase, public IElevator {
   public:
     explicit Elevator(probot::control::PidMotorController* controller)
-    : controller_(controller), ticks_per_unit_(1.0f), target_height_(0.0f),
+    : probot::command::SubsystemBase("Elevator"),
+      controller_(controller), ticks_per_unit_(1.0f), target_height_(0.0f),
       min_height_(0.0f), max_height_(0.0f), has_limits_(false) {
     }
 
-    ~Elevator() override {
-    }
+    ~Elevator() override = default;
 
     void setTargetHeight(float units) override {
       if (has_limits_){
@@ -57,7 +58,7 @@ namespace probot::mechanism {
       return fabsf(getCurrentHeight() - target_height_) <= tolerance_units;
     }
 
-    void update(uint32_t now_ms, uint32_t dt_ms) override {
+    void periodic(uint32_t now_ms, uint32_t dt_ms) override {
       (void)now_ms; (void)dt_ms;
       if (!controller_) return;
       float target_ticks = target_height_ * ticks_per_unit_;
@@ -73,4 +74,4 @@ namespace probot::mechanism {
     bool              has_limits_;
   };
 
-} // namespace probot::mechanism
+} // namespace probot::command::examples

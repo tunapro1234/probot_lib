@@ -1,5 +1,3 @@
-#ifndef PROBOT_CORE_CONFIG_HPP
-#define PROBOT_CORE_CONFIG_HPP
 #pragma once
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
@@ -25,4 +23,3 @@ namespace probot {
   constexpr uint32_t INIT_KILL_TIMEOUT_MS = 3000;
   constexpr uint32_t END_KILL_TIMEOUT_MS  = 1000;
 }
-#endif // PROBOT_CORE_CONFIG_HPP 

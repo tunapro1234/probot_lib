@@ -4,7 +4,8 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
-#include <probot/robot/system.hpp>
+#include <probot/command/command.hpp>
+#include <probot/core/scheduler_registry.hpp>
 #include <probot/robot/state.hpp>
 
 #ifdef ESP32
@@ -12,22 +13,20 @@
 #include <esp_task_wdt.h>
 #endif
 
-namespace probot::control {
-  struct IUpdatable {
-    virtual void update(uint32_t now_ms, uint32_t dt_ms) = 0;
-    virtual ~IUpdatable() {}
-  };
-
+namespace probot::command::scheduler {
   namespace detail {
     enum class CmdType : uint8_t { Attach = 0, Detach = 1 };
+    enum class EntryKind : uint8_t { Command = 0, Subsystem = 1 };
     struct Cmd {
       CmdType type;
-      IUpdatable* obj;
+      EntryKind kind;
+      void* obj;
     };
 
     struct Slot {
       bool in_use;
-      IUpdatable* obj;
+      EntryKind kind;
+      void* obj;
       uint32_t next_due_ms;
       uint32_t last_call_ms;
     };
@@ -42,9 +41,11 @@ namespace probot::control {
 
     inline SchedulerState g_state{};
 
-    inline int find_slot(SchedulerState& s, IUpdatable* obj){
+    inline int find_slot(SchedulerState& s, EntryKind kind, void* obj){
       for (size_t i = 0; i < kMaxSlots; ++i){
-        if (s.slots[i].in_use && s.slots[i].obj == obj) return static_cast<int>(i);
+        if (s.slots[i].in_use && s.slots[i].kind == kind && s.slots[i].obj == obj) {
+          return static_cast<int>(i);
+        }
       }
       return -1;
     }
@@ -69,17 +70,31 @@ namespace probot::control {
     }
   }
 
-  inline bool attach(IUpdatable* obj){
+  inline bool attach(probot::command::ICommand* obj){
     auto& s = detail::g_state;
     if (!s.qCmd || !obj) return false;
-    detail::Cmd c{detail::CmdType::Attach, obj};
+    detail::Cmd c{detail::CmdType::Attach, detail::EntryKind::Command, obj};
     return xQueueSend(s.qCmd, &c, pdMS_TO_TICKS(10)) == pdTRUE;
   }
 
-  inline bool detach(IUpdatable* obj){
+  inline bool attach(probot::command::ISubsystem* obj){
     auto& s = detail::g_state;
     if (!s.qCmd || !obj) return false;
-    detail::Cmd c{detail::CmdType::Detach, obj};
+    detail::Cmd c{detail::CmdType::Attach, detail::EntryKind::Subsystem, obj};
+    return xQueueSend(s.qCmd, &c, pdMS_TO_TICKS(10)) == pdTRUE;
+  }
+
+  inline bool detach(probot::command::ICommand* obj){
+    auto& s = detail::g_state;
+    if (!s.qCmd || !obj) return false;
+    detail::Cmd c{detail::CmdType::Detach, detail::EntryKind::Command, obj};
+    return xQueueSend(s.qCmd, &c, pdMS_TO_TICKS(10)) == pdTRUE;
+  }
+
+  inline bool detach(probot::command::ISubsystem* obj){
+    auto& s = detail::g_state;
+    if (!s.qCmd || !obj) return false;
+    detail::Cmd c{detail::CmdType::Detach, detail::EntryKind::Subsystem, obj};
     return xQueueSend(s.qCmd, &c, pdMS_TO_TICKS(10)) == pdTRUE;
   }
 
@@ -92,7 +107,7 @@ namespace probot::control {
     return n;
   }
 
-  inline void schedulerTask(void*){
+  inline void task(void*){
 #ifndef PROBOT_SCHED_NOLOG
     Serial.printf("[CMD  ] start on core %d (prio=%u)\n", xPortGetCoreID(), (unsigned)uxTaskPriorityGet(NULL));
 #endif
@@ -101,7 +116,7 @@ namespace probot::control {
 #endif
     auto& s = detail::g_state;
     for (size_t i = 0; i < detail::kMaxSlots; ++i){
-      s.slots[i] = {false, nullptr, 0, 0};
+      s.slots[i] = {false, detail::EntryKind::Command, nullptr, 0, 0};
     }
 
     uint32_t now = millis();
@@ -110,10 +125,11 @@ namespace probot::control {
       detail::Cmd cmd;
       while (xQueueReceive(s.qCmd, &cmd, 0) == pdTRUE){
         if (cmd.type == detail::CmdType::Attach){
-          int idx = detail::find_slot(s, cmd.obj);
+          int idx = detail::find_slot(s, cmd.kind, cmd.obj);
           if (idx < 0) idx = detail::find_free_slot(s);
           if (idx >= 0){
             s.slots[idx].in_use = true;
+            s.slots[idx].kind = cmd.kind;
             s.slots[idx].obj = cmd.obj;
             uint32_t t = millis();
             s.slots[idx].last_call_ms = t;
@@ -127,9 +143,9 @@ namespace probot::control {
 #endif
           }
         } else {
-          int idx = detail::find_slot(s, cmd.obj);
+          int idx = detail::find_slot(s, cmd.kind, cmd.obj);
           if (idx >= 0){
-            s.slots[idx] = {false, nullptr, 0, 0};
+            s.slots[idx] = {false, detail::EntryKind::Command, nullptr, 0, 0};
 #ifndef PROBOT_SCHED_NOLOG
             Serial.printf("[CMD  ] detach ok (idx=%d)\n", idx);
 #endif
@@ -146,7 +162,21 @@ namespace probot::control {
       bool deadlineMiss = false;
       uint32_t maxOverrun = 0;
       auto snap = probot::robot::state().read();
-      bool allowUpdates = (snap.phase != probot::robot::Phase::NOT_INIT);
+      static probot::robot::Status lastStatus = snap.status;
+      static probot::robot::Phase lastPhase = snap.phase;
+      bool statusToStop = (lastStatus != probot::robot::Status::STOP && snap.status == probot::robot::Status::STOP);
+      bool autoToTeleop = (lastPhase == probot::robot::Phase::AUTONOMOUS && snap.phase == probot::robot::Phase::TELEOP);
+      if (statusToStop || autoToTeleop){
+        for (size_t i = 0; i < detail::kMaxSlots; ++i){
+          if (!s.slots[i].in_use || !s.slots[i].obj) continue;
+          if (s.slots[i].kind == detail::EntryKind::Command){
+            static_cast<probot::command::ICommand*>(s.slots[i].obj)->onSchedulerStop();
+          }
+        }
+      }
+      lastStatus = snap.status;
+      lastPhase = snap.phase;
+      bool allowUpdates = (snap.status != probot::robot::Status::STOP);
       for (size_t i = 0; i < detail::kMaxSlots; ++i){
         if (!s.slots[i].in_use) continue;
         if ((int32_t)(now - s.slots[i].next_due_ms) >= 0){
@@ -156,7 +186,13 @@ namespace probot::control {
             uint32_t overrun = dt - s.global_period_ms;
             if (overrun > maxOverrun) maxOverrun = overrun;
           }
-          if (allowUpdates){ s.slots[i].obj->update(now, dt); }
+          if (allowUpdates){
+            if (s.slots[i].kind == detail::EntryKind::Command){
+              static_cast<probot::command::ICommand*>(s.slots[i].obj)->periodic(now, dt);
+            } else {
+              static_cast<probot::command::ISubsystem*>(s.slots[i].obj)->periodic(now, dt);
+            }
+          }
           s.slots[i].last_call_ms = now;
           uint32_t due = s.slots[i].next_due_ms;
           while ((int32_t)(now - due) >= 0){
@@ -187,10 +223,11 @@ namespace probot::control {
       }
       if (xQueueReceive(s.qCmd, &cmd, waitTicks) == pdTRUE){
         if (cmd.type == detail::CmdType::Attach){
-          int idx = detail::find_slot(s, cmd.obj);
+          int idx = detail::find_slot(s, cmd.kind, cmd.obj);
           if (idx < 0) idx = detail::find_free_slot(s);
           if (idx >= 0){
             s.slots[idx].in_use = true;
+            s.slots[idx].kind = cmd.kind;
             s.slots[idx].obj = cmd.obj;
             uint32_t t = millis();
             s.slots[idx].last_call_ms = t;
@@ -204,9 +241,9 @@ namespace probot::control {
 #endif
           }
         } else {
-          int idx = detail::find_slot(s, cmd.obj);
+          int idx = detail::find_slot(s, cmd.kind, cmd.obj);
           if (idx >= 0){
-            s.slots[idx] = {false, nullptr, 0, 0};
+            s.slots[idx] = {false, detail::EntryKind::Command, nullptr, 0, 0};
 #ifndef PROBOT_SCHED_NOLOG
             Serial.printf("[CMD  ] detach ok (idx=%d)\n", idx);
 #endif
@@ -219,6 +256,15 @@ namespace probot::control {
       }
     }
   }
-} // namespace probot::control
 
-namespace control = probot::control;
+  namespace detail {
+    struct SchedulerRegistrar {
+      SchedulerRegistrar(){
+        probot::detail::g_scheduler_init = &probot::command::scheduler::init;
+        probot::detail::g_scheduler_task = &probot::command::scheduler::task;
+      }
+    };
+
+    inline SchedulerRegistrar g_scheduler_registrar{};
+  } // namespace detail
+} // namespace probot::command::scheduler

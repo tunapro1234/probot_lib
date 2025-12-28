@@ -1,13 +1,10 @@
 #pragma once
 #include <stdint.h>
-#include <probot/core/scheduler.hpp>
-
 namespace probot::command {
 
-struct ISubsystem : public probot::control::IUpdatable {
+struct ISubsystem {
   virtual const char* name() const { return "Subsystem"; }
   virtual void periodic(uint32_t now_ms, uint32_t dt_ms) = 0;
-  void update(uint32_t now_ms, uint32_t dt_ms) override { periodic(now_ms, dt_ms); }
   virtual ~ISubsystem() {}
 };
 

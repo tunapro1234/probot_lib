@@ -1,5 +1,3 @@
-#ifndef PROBOT_IO_GAMEPAD_HPP
-#define PROBOT_IO_GAMEPAD_HPP
 #pragma once
 #include <stdint.h>
 #include <Arduino.h>
@@ -71,4 +69,3 @@ namespace probot::io {
     mutable volatile uint32_t _timeout_ms;
   };
 }
-#endif // PROBOT_IO_GAMEPAD_HPP 

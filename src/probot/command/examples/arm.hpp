@@ -1,10 +1,11 @@
 #pragma once
 #include <math.h>
+#include <probot/command/subsystem.hpp>
 #include <probot/control/pid_motor_controller.hpp>
 
-namespace probot::mechanism {
+namespace probot::command::examples {
 
-  struct IArm : public probot::control::IUpdatable {
+  struct IArm {
     virtual void setTargetAngleDeg(float degrees) = 0;
     virtual float getTargetAngleDeg() const = 0;
     virtual void setAngleLimits(float min_deg, float max_deg) = 0;
@@ -14,15 +15,15 @@ namespace probot::mechanism {
     virtual ~IArm() {}
   };
 
-  class Arm : public IArm {
+  class Arm : public probot::command::SubsystemBase, public IArm {
   public:
     explicit Arm(probot::control::PidMotorController* controller)
-    : controller_(controller), ticks_per_degree_(1.0f), target_angle_(0.0f),
+    : probot::command::SubsystemBase("Arm"),
+      controller_(controller), ticks_per_degree_(1.0f), target_angle_(0.0f),
       min_angle_(-90.0f), max_angle_(90.0f), has_limits_(false) {
     }
 
-    ~Arm() override {
-    }
+    ~Arm() override = default;
 
     void setTargetAngleDeg(float degrees) override {
       if (has_limits_){
@@ -55,7 +56,7 @@ namespace probot::mechanism {
       return fabsf(getCurrentAngleDeg() - target_angle_) <= tolerance_deg;
     }
 
-    void update(uint32_t now_ms, uint32_t dt_ms) override {
+    void periodic(uint32_t now_ms, uint32_t dt_ms) override {
       (void)now_ms; (void)dt_ms;
       if (!controller_) return;
       float target_ticks = target_angle_ * ticks_per_degree_;
@@ -71,4 +72,4 @@ namespace probot::mechanism {
     bool              has_limits_;
   };
 
-} // namespace probot::mechanism
+} // namespace probot::command::examples

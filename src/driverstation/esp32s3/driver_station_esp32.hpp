@@ -8,13 +8,13 @@
 #include "index_html.h"
 
 #if defined(PROBOT_WITH_DS) && !defined(PROBOT_WIFI_AP_PASSWORD)
-#warning "DriverStation AP password not provided. Call PROBOT_SET_DRIVER_STATION_PASSWORD(\"yourpassword\") in your sketch (or define PROBOT_WIFI_AP_PASSWORD). If you already set it via the macro, you can ignore this warning."
+#error "DriverStation AP password not provided. Define PROBOT_WIFI_AP_PASSWORD (>=8 chars) before including probot.h."
 #endif
 #ifdef PROBOT_WIFI_AP_PASSWORD
 static_assert(sizeof(PROBOT_WIFI_AP_PASSWORD) - 1 >= 8, "PROBOT_WIFI_AP_PASSWORD must be at least 8 characters.");
 #endif
 
-namespace probot::platform::esp32 {
+namespace probot::driverstation::esp32 {
   class DriverStation {
   public:
     DriverStation(robot::StateService& rs, io::GamepadService& gs, const char* apPass = nullptr)

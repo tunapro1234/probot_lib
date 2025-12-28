@@ -1,9 +1,8 @@
 #pragma once
 #include <limits>
-#include <probot/core/scheduler.hpp>
-
+#include <stdint.h>
 namespace probot::motor {
-  struct IMotorController : public probot::control::IUpdatable {
+  struct IMotorController {
     virtual bool setPower(float power) = 0; // -1.0..1.0 normalized output
 
     // Direction inversion: if inverted, drivers should negate applied power internally
@@ -21,7 +20,7 @@ namespace probot::motor {
     virtual float getVelocity() const { return kUnsupported; }
     virtual float getPosition() const { return kUnsupported; }
 
-    void update(uint32_t now_ms, uint32_t dt_ms) override {
+    virtual void update(uint32_t now_ms, uint32_t dt_ms) {
       (void)now_ms;
       (void)dt_ms;
     }

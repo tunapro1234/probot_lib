@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <cmath>
 
-#include <probot/chassis/tank_drive.hpp>
-#include <probot/chassis/mecanum_drive.hpp>
+#include <probot/command/examples/tank_drive.hpp>
+#include <probot/command/examples/mecanum_drive.hpp>
 #include <probot/test/test_encoder.hpp>
 
 namespace {
@@ -32,7 +32,7 @@ namespace {
 
 TEST_CASE(tank_drive_power_clamp_and_invert){
   MotorStub left, right;
-  probot::chassis::TankDrive tank(&left, &right);
+  probot::command::examples::TankDrive tank(&left, &right);
   tank.drivePower(2.0f, -2.0f);
   EXPECT_NEAR(left.lastPower, 1.0f, 1e-5f);
   EXPECT_NEAR(right.lastPower, -1.0f, 1e-5f);
@@ -47,7 +47,7 @@ TEST_CASE(tank_drive_velocity_normalized){
   MotorStub left, right;
   left.velSupported = true;
   right.velSupported = true;
-  probot::chassis::TankDrive tank(&left, &right);
+  probot::command::examples::TankDrive tank(&left, &right);
   tank.setWheelRadius(1.0f);
   tank.setGearRatio(1.0f);
   tank.setMaxVelocity(2.0f);
@@ -61,18 +61,18 @@ TEST_CASE(tank_drive_velocity_normalized){
 
 TEST_CASE(tank_drive_velocity_status_unsupported){
   MotorStub left, right;
-  probot::chassis::TankDrive tank(&left, &right);
+  probot::command::examples::TankDrive tank(&left, &right);
 
   tank.driveVelocity(1.0f, 1.0f);
 
-  EXPECT_TRUE(tank.lastStatus() == probot::chassis::TankDrive::CommandStatus::kVelocityUnsupported);
+  EXPECT_TRUE(tank.lastStatus() == probot::command::examples::TankDrive::CommandStatus::kVelocityUnsupported);
 }
 
 TEST_CASE(tank_drive_odometry_updates_pose){
   MotorStub left, right;
   probot::test::TestEncoder encL;
   probot::test::TestEncoder encR;
-  probot::chassis::TankDrive tank(&left, &right, &encL, &encR);
+  probot::command::examples::TankDrive tank(&left, &right, &encL, &encR);
   tank.setWheelRadius(1.0f);
   tank.setGearRatio(1.0f);
   tank.setTrackWidth(2.0f);
@@ -80,11 +80,11 @@ TEST_CASE(tank_drive_odometry_updates_pose){
 
   encL.setTicks(0);
   encR.setTicks(0);
-  tank.update(0, 20);
+  tank.periodic(0, 20);
 
   encL.setTicks(10);
   encR.setTicks(10);
-  tank.update(20, 20);
+  tank.periodic(20, 20);
 
   EXPECT_NEAR(tank.pose().x, 2.0f * 3.1415926535f, 1e-4f);
   EXPECT_NEAR(tank.pose().y, 0.0f, 1e-4f);
@@ -92,7 +92,7 @@ TEST_CASE(tank_drive_odometry_updates_pose){
 
 TEST_CASE(mecanum_drive_power_normalizes_outputs){
   MotorStub fl, fr, rl, rr;
-  probot::chassis::MecanumDrive mech(&fl, &fr, &rl, &rr);
+  probot::command::examples::MecanumDrive mech(&fl, &fr, &rl, &rr);
   mech.setInverted(false, true, false, true);
 
   float vx = 0.8f, vy = 0.4f, omega = 0.3f;
@@ -122,7 +122,7 @@ TEST_CASE(mecanum_drive_velocity_uses_controller){
   rl.velSupported = true;
   rr.velSupported = true;
 
-  probot::chassis::MecanumDrive mech(&fl, &fr, &rl, &rr);
+  probot::command::examples::MecanumDrive mech(&fl, &fr, &rl, &rr);
   mech.setWheelRadius(1.0f);
   mech.setGearRatio(1.0f);
   mech.setMaxVelocity(2.0f);
@@ -139,9 +139,9 @@ TEST_CASE(mecanum_drive_velocity_uses_controller){
 
 TEST_CASE(mecanum_drive_velocity_status_unsupported){
   MotorStub fl, fr, rl, rr;
-  probot::chassis::MecanumDrive mech(&fl, &fr, &rl, &rr);
+  probot::command::examples::MecanumDrive mech(&fl, &fr, &rl, &rr);
 
   mech.driveVelocity(1.0f, 0.0f, 0.0f);
 
-  EXPECT_TRUE(mech.lastStatus() == probot::chassis::MecanumDrive::CommandStatus::kVelocityUnsupported);
+  EXPECT_TRUE(mech.lastStatus() == probot::command::examples::MecanumDrive::CommandStatus::kVelocityUnsupported);
 }
