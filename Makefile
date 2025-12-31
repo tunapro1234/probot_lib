@@ -12,7 +12,9 @@ VERSION_SYNC_SCRIPT := $(CURDIR)/tools/sync_version.py
 
 # Examples
 EXAMPLES_DIR   := $(CURDIR)/examples
-EXAMPLES_LIST  := $(filter-out __library_impl,$(notdir $(wildcard $(EXAMPLES_DIR)/*)))
+EXAMPLE_SKETCHES := $(shell find $(EXAMPLES_DIR) -maxdepth 2 -mindepth 1 -name "*.ino")
+EXAMPLES_LIST  := $(sort $(patsubst %/,%,$(patsubst $(EXAMPLES_DIR)/%,%,$(dir $(EXAMPLE_SKETCHES)))))
+EXAMPLES_LIST  := $(filter-out __library_impl __library_impl/%,$(EXAMPLES_LIST))
 DEFAULT_EXAMPLE := $(firstword $(EXAMPLES_LIST))
 EXAMPLE        ?= $(DEFAULT_EXAMPLE)
 BUILD_DIR_BASE := $(CURDIR)/.build
@@ -25,7 +27,7 @@ TEST_EXTRA_SOURCES :=
 EXTRA_FLAGS_COMMON := -DESP32S3 -DARDUINO_USB_MODE=1
 
 # Example-specific extra flags (function)
-example_flags = $(if $(filter LoopPeriodStress,$(1)),-DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1,)
+example_flags = $(if $(filter LoopPeriodStress,$(notdir $(1))),-DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1,)
 
 .PHONY: all build build-all _build_single upload clean boards libs serial list help test tests/control_tests
 

@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <math.h>
 #include <probot/command/subsystem.hpp>
-#include <probot/control/pid_motor_controller.hpp>
+#include <probot/control/pid_motor_wrapper.hpp>
 #include <probot/control/limiters/slew_rate_limiter.hpp>
 
 namespace probot::command::examples {
@@ -19,7 +19,7 @@ namespace probot::command::examples {
 
   class TelescopicTube : public probot::command::SubsystemBase, public ITelescopicTube {
   public:
-    explicit TelescopicTube(probot::control::PidMotorController* controller)
+    explicit TelescopicTube(probot::control::PidMotorWrapper* controller)
     : probot::command::SubsystemBase("TelescopicTube"),
       controller_(controller),
       ticks_per_unit_(1.0f),
@@ -105,7 +105,7 @@ namespace probot::command::examples {
       }
     }
 
-    probot::control::PidMotorController* controller_;
+    probot::control::PidMotorWrapper* controller_;
     float ticks_per_unit_;
     float target_extension_;
     float stage_length_;

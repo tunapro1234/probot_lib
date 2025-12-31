@@ -7,18 +7,18 @@
 #include <probot/command/examples/slider.hpp>
 #include <probot/command/examples/telescopic_tube.hpp>
 #include <probot/command/examples/turret.hpp>
-#include <probot/control/pid_motor_controller.hpp>
+#include <probot/control/pid_motor_wrapper.hpp>
 #include <probot/test/test_encoder.hpp>
 #include <probot/test/test_motor.hpp>
 
 namespace {
   struct PidHarness {
     probot::test::TestEncoder encoder;
-    probot::test::TestMotor driver;
-    probot::control::PidMotorController motor;
+    probot::test::TestMotor controller;
+    probot::control::PidMotorWrapper motor;
 
     PidHarness()
-    : motor(&encoder, &driver, 1.0f, 1.0f) {
+    : motor(&encoder, &controller, 1.0f, 1.0f) {
       motor.setTimeoutMs(0);
     }
   };

@@ -2,17 +2,17 @@
 
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
-#include <probot/devices/motors/boardoza_vnh5019_motor_driver.hpp>
+#include <probot/devices/motors/boardoza_vnh5019_motor_controller.hpp>
 #include <probot/devices/sensors/encoder.hpp>
 
-// Kullanılan Boardoza VNH sürücü pinleri (kendi kartınıza göre güncelleyin).
+// Kullanilan Boardoza VNH motor kontrolcusu pinleri (kendi kartiniza gore guncelleyin).
 static constexpr int PIN_INA = 9;
 static constexpr int PIN_INB = 10;
 static constexpr int PIN_PWM = 11;
 static constexpr int PIN_ENA = -1;
 static constexpr int PIN_ENB = -1;
 
-static probot::motor::BoardozaVNH5019MotorDriver motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
+static probot::motor::BoardozaVNH5019MotorController motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
 static const probot::control::PidConfig      kVelocityPid{.kp = 0.35f, .ki = 0.02f, .kd = 0.0f,
                                                           .kf = 0.0f, .out_min = -1.0f, .out_max = 1.0f};
 static probot::sensors::IEncoder* encoder = nullptr;

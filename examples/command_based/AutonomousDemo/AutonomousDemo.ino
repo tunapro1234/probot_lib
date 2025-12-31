@@ -4,9 +4,9 @@
 #include <probot/io/joystick_api.hpp>
 #include <probot/command/scheduler.hpp>
 #include <probot/command/examples/tank_drive.hpp>
-#include <probot/devices/motors/boardoza_vnh5019_motor_driver.hpp>
+#include <probot/devices/motors/boardoza_vnh5019_motor_controller.hpp>
 
-// Otonom tank demo için iki adet VNH sürücüsü.
+// Otonom tank demo icin iki adet VNH motor kontrolcusu.
 static constexpr int L_INA = 33;
 static constexpr int L_INB = 34;
 static constexpr int L_PWM = 35;
@@ -19,9 +19,9 @@ static constexpr int R_PWM = 38;
 static constexpr int R_ENA = -1;
 static constexpr int R_ENB = -1;
 
-static probot::motor::BoardozaVNH5019MotorDriver leftDriver(L_INA, L_INB, L_PWM, L_ENA, L_ENB);
-static probot::motor::BoardozaVNH5019MotorDriver rightDriver(R_INA, R_INB, R_PWM, R_ENA, R_ENB);
-static probot::command::examples::TankDrive            chassis(&leftDriver, &rightDriver);
+static probot::motor::BoardozaVNH5019MotorController leftMotor(L_INA, L_INB, L_PWM, L_ENA, L_ENB);
+static probot::motor::BoardozaVNH5019MotorController rightMotor(R_INA, R_INB, R_PWM, R_ENA, R_ENB);
+static probot::command::examples::TankDrive            chassis(&leftMotor, &rightMotor);
 
 
 enum class AutoStep {
@@ -39,10 +39,10 @@ void robotInit() {
   Serial.begin(115200);
   delay(100);
 
-  leftDriver.begin();
-  rightDriver.begin();
-  leftDriver.setBrakeMode(true);
-  rightDriver.setBrakeMode(true);
+  leftMotor.begin();
+  rightMotor.begin();
+  leftMotor.setBrakeMode(true);
+  rightMotor.setBrakeMode(true);
 
   chassis.setWheelRadius(32.0f / (2.0f * 3.1415926535f));
   chassis.setTrackWidth(29.0f);

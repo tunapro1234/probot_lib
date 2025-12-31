@@ -1,7 +1,7 @@
 #pragma once
 #include <math.h>
 #include <probot/command/subsystem.hpp>
-#include <probot/control/pid_motor_controller.hpp>
+#include <probot/control/pid_motor_wrapper.hpp>
 
 namespace probot::command::examples {
 
@@ -17,7 +17,7 @@ namespace probot::command::examples {
 
   class Arm : public probot::command::SubsystemBase, public IArm {
   public:
-    explicit Arm(probot::control::PidMotorController* controller)
+    explicit Arm(probot::control::PidMotorWrapper* controller)
     : probot::command::SubsystemBase("Arm"),
       controller_(controller), ticks_per_degree_(1.0f), target_angle_(0.0f),
       min_angle_(-90.0f), max_angle_(90.0f), has_limits_(false) {
@@ -64,7 +64,7 @@ namespace probot::command::examples {
     }
 
   private:
-    probot::control::PidMotorController* controller_;
+    probot::control::PidMotorWrapper* controller_;
     float             ticks_per_degree_;
     float             target_angle_;
     float             min_angle_;

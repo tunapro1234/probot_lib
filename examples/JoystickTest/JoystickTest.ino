@@ -2,7 +2,7 @@
 
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
-#include <probot/devices/motors/boardoza_vnh5019_motor_driver.hpp>
+#include <probot/devices/motors/boardoza_vnh5019_motor_controller.hpp>
 
 // Pin atamalarını kendi kartınıza göre güncelleyin.
 static constexpr int PIN_INA = 47;
@@ -12,14 +12,14 @@ static constexpr int PIN_ENA = -1; // EN pinleri 3V3'e bağlıysa -1 bırakmak y
 static constexpr int PIN_ENB = -1;
 
 // Tüm örneklerde aynı temel motor-stub setini kullanıyoruz.
-static probot::motor::BoardozaVNH5019MotorDriver motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
+static probot::motor::BoardozaVNH5019MotorController motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
 
 
 void robotInit() {
   Serial.begin(115200);
   delay(100);
 
-  // Kart ve sürücüyü hazırla.
+  // Kart ve motor kontrolcusunu hazirla.
   motor.begin();
   motor.setBrakeMode(true);         // boşta tam fren uygula
   motor.setPower(0.0f);

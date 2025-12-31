@@ -5,7 +5,7 @@ namespace probot::motor {
   struct IMotorController {
     virtual bool setPower(float power) = 0; // -1.0..1.0 normalized output
 
-    // Direction inversion: if inverted, drivers should negate applied power internally
+    // Direction inversion: if inverted, controllers should negate applied power internally
     virtual void setInverted(bool inverted) = 0;
     virtual bool getInverted() const = 0;
 

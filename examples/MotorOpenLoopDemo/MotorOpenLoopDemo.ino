@@ -2,16 +2,16 @@
 
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
-#include <probot/devices/motors/boardoza_vnh5019_motor_driver.hpp>
+#include <probot/devices/motors/boardoza_vnh5019_motor_controller.hpp>
 
-// Boardoza VNH sürücüsünü kullanırken kendi pinlerinizi mutlaka kontrol edin.
+// Boardoza VNH motor kontrolcusunu kullanirken kendi pinlerinizi mutlaka kontrol edin.
 static constexpr int PIN_INA = 39;
 static constexpr int PIN_INB = 40;
 static constexpr int PIN_PWM = 41;
 static constexpr int PIN_ENA = -1;
 static constexpr int PIN_ENB = -1;
 
-static probot::motor::BoardozaVNH5019MotorDriver motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
+static probot::motor::BoardozaVNH5019MotorController motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
 
 
 void robotInit() {
@@ -19,19 +19,19 @@ void robotInit() {
   delay(100);
 
   motor.begin();
-  motor.setBrakeMode(false);  // sürücü serbest bırakıldı, coast modunda
+  motor.setBrakeMode(false);  // kontrolcu serbest birakildi, coast modunda
   motor.setInverted(false);
 
-  Serial.println("[MotorDriverDemo] robotInit: IMotorController arayüzünü test etmek için hazır");
+  Serial.println("[MotorOpenLoopDemo] robotInit: IMotorController arayuzunu test etmek icin hazir");
 }
 
 void robotEnd() {
   motor.setPower(0.0f);
-  Serial.println("[MotorDriverDemo] robotEnd: Motor durduruldu");
+  Serial.println("[MotorOpenLoopDemo] robotEnd: Motor durduruldu");
 }
 
 void teleopInit() {
-  Serial.println("[MotorDriverDemo] teleopInit:"
+  Serial.println("[MotorOpenLoopDemo] teleopInit:"
                  " sol eksen gücü, sağ tetik ise yön tersleme yapar");
 }
 
@@ -46,14 +46,14 @@ void teleopLoop() {
 
   motor.setPower(power);
 
-  Serial.printf("[MotorDriverDemo] power=%.2f invert=%d motorOut=%.2f\n",
+  Serial.printf("[MotorOpenLoopDemo] power=%.2f invert=%d motorOut=%.2f\n",
                 power, invert ? 1 : 0, motor.getPower());
 
   delay(40);
 }
 
 void autonomousInit() {
-  Serial.println("[MotorDriverDemo] autonomousInit: Motoru yavaşça durduruyoruz");
+  Serial.println("[MotorOpenLoopDemo] autonomousInit: Motoru yavasca durduruyoruz");
 }
 
 void autonomousLoop() {

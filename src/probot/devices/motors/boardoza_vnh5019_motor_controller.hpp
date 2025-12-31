@@ -9,9 +9,9 @@
 
 namespace probot::motor {
 
-class BoardozaVNH5019MotorDriver : public IMotorController {
+class BoardozaVNH5019MotorController : public IMotorController {
 public:
-  BoardozaVNH5019MotorDriver(int inaPin,
+  BoardozaVNH5019MotorController(int inaPin,
                              int inbPin,
                              int pwmPin,
                              int enaPin = -1,
@@ -102,7 +102,7 @@ private:
   float last_output_ = 0.0f;
 };
 
-inline BoardozaVNH5019MotorDriver::BoardozaVNH5019MotorDriver(int inaPin,
+inline BoardozaVNH5019MotorController::BoardozaVNH5019MotorController(int inaPin,
                                                              int inbPin,
                                                              int pwmPin,
                                                              int enaPin,
@@ -117,35 +117,35 @@ inline BoardozaVNH5019MotorDriver::BoardozaVNH5019MotorDriver(int inaPin,
   velocity_pid_(velocity_cfg_),
   position_pid_(position_cfg_) {}
 
-inline probot::control::PidConfig BoardozaVNH5019MotorDriver::defaultPidConfig(){
+inline probot::control::PidConfig BoardozaVNH5019MotorController::defaultPidConfig(){
   return {0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f};
 }
 
-inline float BoardozaVNH5019MotorDriver::clampUnit(float v){
+inline float BoardozaVNH5019MotorController::clampUnit(float v){
   if (v > 1.0f) return 1.0f;
   if (v < -1.0f) return -1.0f;
   return v;
 }
 
-inline float BoardozaVNH5019MotorDriver::clamp01(float v){
+inline float BoardozaVNH5019MotorController::clamp01(float v){
   if (v < 0.0f) return 0.0f;
   if (v > 1.0f) return 1.0f;
   return v;
 }
 
-inline float BoardozaVNH5019MotorDriver::deadband(){
+inline float BoardozaVNH5019MotorController::deadband(){
   return 1e-3f;
 }
 
-inline uint8_t BoardozaVNH5019MotorDriver::pwmResolutionBits(){
+inline uint8_t BoardozaVNH5019MotorController::pwmResolutionBits(){
   return 10;
 }
 
-inline uint32_t BoardozaVNH5019MotorDriver::pwmFrequencyHz(){
+inline uint32_t BoardozaVNH5019MotorController::pwmFrequencyHz(){
   return 20000;
 }
 
-inline void BoardozaVNH5019MotorDriver::attachEncoder(probot::sensors::IEncoder* encoder,
+inline void BoardozaVNH5019MotorController::attachEncoder(probot::sensors::IEncoder* encoder,
                                                       float vel_ticks_per_s_to_units,
                                                       float pos_ticks_to_units){
   encoder_ = encoder;
@@ -153,19 +153,19 @@ inline void BoardozaVNH5019MotorDriver::attachEncoder(probot::sensors::IEncoder*
   pos_ticks_to_units_ = pos_ticks_to_units;
 }
 
-inline void BoardozaVNH5019MotorDriver::setVelocityPidConfig(const probot::control::PidConfig& cfg){
+inline void BoardozaVNH5019MotorController::setVelocityPidConfig(const probot::control::PidConfig& cfg){
   velocity_cfg_ = cfg;
   velocity_pid_.setConfig(cfg);
   velocity_pid_.reset();
 }
 
-inline void BoardozaVNH5019MotorDriver::setPositionPidConfig(const probot::control::PidConfig& cfg){
+inline void BoardozaVNH5019MotorController::setPositionPidConfig(const probot::control::PidConfig& cfg){
   position_cfg_ = cfg;
   position_pid_.setConfig(cfg);
   position_pid_.reset();
 }
 
-inline void BoardozaVNH5019MotorDriver::configurePins(){
+inline void BoardozaVNH5019MotorController::configurePins(){
   pinMode(ina_pin_, OUTPUT);
   pinMode(inb_pin_, OUTPUT);
   pinMode(pwm_pin_, OUTPUT);
@@ -179,7 +179,7 @@ inline void BoardozaVNH5019MotorDriver::configurePins(){
   }
 }
 
-inline void BoardozaVNH5019MotorDriver::begin(){
+inline void BoardozaVNH5019MotorController::begin(){
   if (initialized_) return;
 
   configurePins();
@@ -196,17 +196,17 @@ inline void BoardozaVNH5019MotorDriver::begin(){
   initialized_ = true;
 }
 
-inline void BoardozaVNH5019MotorDriver::ensureInitialized(){
+inline void BoardozaVNH5019MotorController::ensureInitialized(){
   if (!initialized_) begin();
 }
 
-inline void BoardozaVNH5019MotorDriver::setBrakeMode(bool enabled){
+inline void BoardozaVNH5019MotorController::setBrakeMode(bool enabled){
   brake_mode_ = enabled;
   if (!initialized_) return;
   applyStop();
 }
 
-inline void BoardozaVNH5019MotorDriver::setBrakeStrength(float dutyFraction){
+inline void BoardozaVNH5019MotorController::setBrakeStrength(float dutyFraction){
   brake_strength_ = clamp01(dutyFraction);
   if (!initialized_) return;
   if (brake_mode_){
@@ -214,7 +214,7 @@ inline void BoardozaVNH5019MotorDriver::setBrakeStrength(float dutyFraction){
   }
 }
 
-inline bool BoardozaVNH5019MotorDriver::applyPowerRaw(float power){
+inline bool BoardozaVNH5019MotorController::applyPowerRaw(float power){
   ensureInitialized();
   if (!initialized_) return false;
 
@@ -232,7 +232,7 @@ inline bool BoardozaVNH5019MotorDriver::applyPowerRaw(float power){
   return true;
 }
 
-inline bool BoardozaVNH5019MotorDriver::setPower(float power){
+inline bool BoardozaVNH5019MotorController::setPower(float power){
   float clamped = clampUnit(power);
   active_mode_ = probot::control::ControlType::kPercent;
   target_power_.store(clamped);
@@ -245,11 +245,11 @@ inline bool BoardozaVNH5019MotorDriver::setPower(float power){
   return ok;
 }
 
-inline float BoardozaVNH5019MotorDriver::getPower() const {
+inline float BoardozaVNH5019MotorController::getPower() const {
   return last_cmd_;
 }
 
-inline bool BoardozaVNH5019MotorDriver::setVelocity(float units_per_s){
+inline bool BoardozaVNH5019MotorController::setVelocity(float units_per_s){
   if (!encoder_) return false;
   target_velocity_.store(units_per_s);
   bool mode_changed = active_mode_ != probot::control::ControlType::kVelocity;
@@ -261,7 +261,7 @@ inline bool BoardozaVNH5019MotorDriver::setVelocity(float units_per_s){
   return true;
 }
 
-inline bool BoardozaVNH5019MotorDriver::setPosition(float units){
+inline bool BoardozaVNH5019MotorController::setPosition(float units){
   if (!encoder_) return false;
   target_position_.store(units);
   bool mode_changed = active_mode_ != probot::control::ControlType::kPosition;
@@ -273,7 +273,7 @@ inline bool BoardozaVNH5019MotorDriver::setPosition(float units){
   return true;
 }
 
-inline void BoardozaVNH5019MotorDriver::update(uint32_t now_ms, uint32_t dt_ms){
+inline void BoardozaVNH5019MotorController::update(uint32_t now_ms, uint32_t dt_ms){
   ensureInitialized();
   if (!initialized_) return;
 
@@ -327,13 +327,13 @@ inline void BoardozaVNH5019MotorDriver::update(uint32_t now_ms, uint32_t dt_ms){
   last_output_ = last_cmd_;
 }
 
-inline float BoardozaVNH5019MotorDriver::lastSetpoint() const {
+inline float BoardozaVNH5019MotorController::lastSetpoint() const {
   if (active_mode_ == probot::control::ControlType::kVelocity) return target_velocity_.load();
   if (active_mode_ == probot::control::ControlType::kPosition) return target_position_.load();
   return target_power_.load();
 }
 
-inline bool BoardozaVNH5019MotorDriver::isAtTarget(float tolerance) const {
+inline bool BoardozaVNH5019MotorController::isAtTarget(float tolerance) const {
   if (active_mode_ == probot::control::ControlType::kVelocity){
     return std::fabs(target_velocity_.load() - last_measurement_) <= tolerance;
   }
@@ -343,7 +343,7 @@ inline bool BoardozaVNH5019MotorDriver::isAtTarget(float tolerance) const {
   return false;
 }
 
-inline void BoardozaVNH5019MotorDriver::applyStop(){
+inline void BoardozaVNH5019MotorController::applyStop(){
   if (!initialized_){
     configurePins();
   }
@@ -359,12 +359,12 @@ inline void BoardozaVNH5019MotorDriver::applyStop(){
   }
 }
 
-inline void BoardozaVNH5019MotorDriver::applyDirection(bool forward){
+inline void BoardozaVNH5019MotorController::applyDirection(bool forward){
   digitalWrite(ina_pin_, forward ? HIGH : LOW);
   digitalWrite(inb_pin_, forward ? LOW : HIGH);
 }
 
-inline void BoardozaVNH5019MotorDriver::writeDuty(float magnitude){
+inline void BoardozaVNH5019MotorController::writeDuty(float magnitude){
   float mag = clamp01(magnitude);
   uint32_t duty = static_cast<uint32_t>(std::round(mag * static_cast<float>(pwm_max_value_)));
   if (duty > pwm_max_value_) duty = pwm_max_value_;

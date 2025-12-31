@@ -1,13 +1,13 @@
 #pragma once
-#include <probot/control/pid_motor_controller.hpp>
+#include <probot/control/pid_motor_wrapper.hpp>
 
 namespace probot::control {
-  class PidMotorControllerGroup : public motor::IMotorController {
+  class PidMotorWrapperGroup : public motor::IMotorController {
   public:
-    PidMotorControllerGroup(PidMotorController* a, PidMotorController* b)
+    PidMotorWrapperGroup(PidMotorWrapper* a, PidMotorWrapper* b)
     : a_(a), b_(b), inverted_(false) {}
 
-    ~PidMotorControllerGroup() override = default;
+    ~PidMotorWrapperGroup() override = default;
 
     void setVelocityPidConfig(const probot::control::PidConfig& cfg){
       if (a_) a_->setVelocityPidConfig(cfg);
@@ -120,8 +120,8 @@ namespace probot::control {
     }
 
   private:
-    PidMotorController* a_;
-    PidMotorController* b_;
+    PidMotorWrapper* a_;
+    PidMotorWrapper* b_;
     bool inverted_;
   };
 } // namespace probot::control

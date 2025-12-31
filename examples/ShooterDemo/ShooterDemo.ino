@@ -2,7 +2,7 @@
 
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
-#include <probot/devices/motors/boardoza_vnh5019_motor_driver.hpp>
+#include <probot/devices/motors/boardoza_vnh5019_motor_controller.hpp>
 
 // Shooter tekeri için Boardoza VNH pin konfigürasyonu.
 static constexpr int PIN_INA = 15;
@@ -11,7 +11,7 @@ static constexpr int PIN_PWM = 17;
 static constexpr int PIN_ENA = -1;
 static constexpr int PIN_ENB = -1;
 
-static probot::motor::BoardozaVNH5019MotorDriver motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
+static probot::motor::BoardozaVNH5019MotorController motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
 
 
 void robotInit() {

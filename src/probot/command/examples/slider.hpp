@@ -1,7 +1,7 @@
 #pragma once
 #include <math.h>
 #include <probot/command/subsystem.hpp>
-#include <probot/control/pid_motor_controller.hpp>
+#include <probot/control/pid_motor_wrapper.hpp>
 
 namespace probot::command::examples {
   struct ISlider {
@@ -16,7 +16,7 @@ namespace probot::command::examples {
 
   class Slider : public probot::command::SubsystemBase, public ISlider {
   public:
-    explicit Slider(probot::control::PidMotorController* controller)
+    explicit Slider(probot::control::PidMotorWrapper* controller)
     : probot::command::SubsystemBase("Slider"),
       controller_(controller), ticks_per_unit_(1.0f), target_len_(0.0f),
       min_len_(0.0f), max_len_(0.0f), has_limits_(false) {
@@ -66,7 +66,7 @@ namespace probot::command::examples {
     }
 
   private:
-    probot::control::PidMotorController* controller_;
+    probot::control::PidMotorWrapper* controller_;
     float                 ticks_per_unit_;
     float                 target_len_;
     float                 min_len_;

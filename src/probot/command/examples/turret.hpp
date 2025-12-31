@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <math.h>
 #include <probot/command/subsystem.hpp>
-#include <probot/control/pid_motor_controller.hpp>
+#include <probot/control/pid_motor_wrapper.hpp>
 #include <probot/control/limiters/slew_rate_limiter.hpp>
 
 namespace probot::command::examples {
@@ -19,7 +19,7 @@ namespace probot::command::examples {
 
   class Turret : public probot::command::SubsystemBase, public ITurret {
   public:
-    explicit Turret(probot::control::PidMotorController* controller)
+    explicit Turret(probot::control::PidMotorWrapper* controller)
     : probot::command::SubsystemBase("Turret"),
       controller_(controller),
       ticks_per_degree_(1.0f),
@@ -108,7 +108,7 @@ namespace probot::command::examples {
       }
     }
 
-    probot::control::PidMotorController* controller_;
+    probot::control::PidMotorWrapper* controller_;
     float ticks_per_degree_;
     float target_angle_;
     float min_angle_;

@@ -1,7 +1,7 @@
 #pragma once
 #include <math.h>
 #include <probot/command/subsystem.hpp>
-#include <probot/control/pid_motor_controller.hpp>
+#include <probot/control/pid_motor_wrapper.hpp>
 
 namespace probot::command::examples {
 
@@ -17,7 +17,7 @@ namespace probot::command::examples {
 
   class Elevator : public probot::command::SubsystemBase, public IElevator {
   public:
-    explicit Elevator(probot::control::PidMotorController* controller)
+    explicit Elevator(probot::control::PidMotorWrapper* controller)
     : probot::command::SubsystemBase("Elevator"),
       controller_(controller), ticks_per_unit_(1.0f), target_height_(0.0f),
       min_height_(0.0f), max_height_(0.0f), has_limits_(false) {
@@ -66,7 +66,7 @@ namespace probot::command::examples {
     }
 
   private:
-    probot::control::PidMotorController* controller_;
+    probot::control::PidMotorWrapper* controller_;
     float             ticks_per_unit_;
     float             target_height_;
     float             min_height_;

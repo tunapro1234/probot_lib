@@ -4,9 +4,9 @@
 #include <probot/io/joystick_api.hpp>
 #include <probot/command/scheduler.hpp>
 #include <probot/command/examples/tank_drive.hpp>
-#include <probot/devices/motors/boardoza_vnh5019_motor_driver.hpp>
+#include <probot/devices/motors/boardoza_vnh5019_motor_controller.hpp>
 
-// Tank şasi için iki adet VNH sürücünün pin eşlemesi (örnek değerler).
+// Tank sasi icin iki adet VNH motor kontrolcusunun pin eslemesi (ornek degerler).
 static constexpr int LEFT_INA = 1;
 static constexpr int LEFT_INB = 2;
 static constexpr int LEFT_PWM = 3;
@@ -19,19 +19,19 @@ static constexpr int RIGHT_PWM = 6;
 static constexpr int RIGHT_ENA = -1;
 static constexpr int RIGHT_ENB = -1;
 
-static probot::motor::BoardozaVNH5019MotorDriver leftDriver(LEFT_INA, LEFT_INB, LEFT_PWM, LEFT_ENA, LEFT_ENB);
-static probot::motor::BoardozaVNH5019MotorDriver rightDriver(RIGHT_INA, RIGHT_INB, RIGHT_PWM, RIGHT_ENA, RIGHT_ENB);
-static probot::command::examples::TankDrive            chassis(&leftDriver, &rightDriver);
+static probot::motor::BoardozaVNH5019MotorController leftMotor(LEFT_INA, LEFT_INB, LEFT_PWM, LEFT_ENA, LEFT_ENB);
+static probot::motor::BoardozaVNH5019MotorController rightMotor(RIGHT_INA, RIGHT_INB, RIGHT_PWM, RIGHT_ENA, RIGHT_ENB);
+static probot::command::examples::TankDrive            chassis(&leftMotor, &rightMotor);
 
 
 void robotInit() {
   Serial.begin(115200);
   delay(100);
 
-  leftDriver.begin();
-  rightDriver.begin();
-  leftDriver.setBrakeMode(true);
-  rightDriver.setBrakeMode(true);
+  leftMotor.begin();
+  rightMotor.begin();
+  leftMotor.setBrakeMode(true);
+  rightMotor.setBrakeMode(true);
 
   chassis.setWheelRadius(31.4f / (2.0f * 3.1415926535f)); // cm cinsinden yarıçap
   chassis.setTrackWidth(28.0f);                           // cm
@@ -59,7 +59,7 @@ void teleopLoop() {
 
   Serial.printf("[TankDriveDemo] left=%.2f right=%.2f outL=%.2f outR=%.2f\n",
                 leftAxis, rightAxis,
-                leftDriver.getPower(), rightDriver.getPower());
+                leftMotor.getPower(), rightMotor.getPower());
 
   delay(20);
 }

@@ -10,14 +10,15 @@
 #include <probot/devices/sensors/encoder.hpp>
 
 namespace probot::control {
-  class PidMotorController : public motor::IMotorController {
+  // Wraps a motor controller with encoder-based PID control.
+  class PidMotorWrapper : public motor::IMotorController {
   public:
-    PidMotorController(sensors::IEncoder* encoder,
-                       motor::IMotorController* driver,
+    PidMotorWrapper(sensors::IEncoder* encoder,
+                       motor::IMotorController* controller,
                        float vel_ticks_per_s_to_units = 1.0f,
                        float pos_ticks_to_units = 1.0f)
     : encoder_(encoder),
-      driver_(driver),
+      controller_(controller),
       vel_ticks_to_units_(vel_ticks_per_s_to_units),
       pos_ticks_to_units_(pos_ticks_to_units),
       velocity_cfg_(defaultPidConfig()),
@@ -34,9 +35,9 @@ namespace probot::control {
     {
     }
 
-    ~PidMotorController(){
-      if (driver_) {
-        driver_->setPower(0.0f);
+    ~PidMotorWrapper(){
+      if (controller_) {
+        controller_->setPower(0.0f);
       }
     }
 
@@ -56,12 +57,12 @@ namespace probot::control {
     void setTimeoutMs(uint32_t ms){ timeout_ms_ = ms; }
 
     bool setPower(float power) override {
-      if (!driver_) return false;
+      if (!controller_) return false;
       float clamped = std::clamp(power, -1.0f, 1.0f);
       active_mode_ = ControlType::kPercent;
       target_power_.store(clamped);
       last_ref_ms_.store(millis());
-      bool ok = driver_->setPower(clamped);
+      bool ok = controller_->setPower(clamped);
       if (ok) {
         last_output_ = inverted_ ? -clamped : clamped;
       }
@@ -94,15 +95,15 @@ namespace probot::control {
 
     void setInverted(bool inverted) override {
       inverted_ = inverted;
-      if (driver_) driver_->setInverted(inverted);
+      if (controller_) controller_->setInverted(inverted);
     }
     bool getInverted() const override { return inverted_; }
 
     void update(uint32_t now_ms, uint32_t dt_ms) override {
-      if (!encoder_ || !driver_) return;
+      if (!encoder_ || !controller_) return;
 
       if (timeout_ms_ > 0 && (now_ms - last_ref_ms_.load()) > timeout_ms_){
-        driver_->setPower(0.0f);
+        controller_->setPower(0.0f);
         last_output_ = 0.0f;
         return;
       }
@@ -110,7 +111,7 @@ namespace probot::control {
       if (active_mode_ == ControlType::kPercent){
         float target_val = target_power_.load();
         float applied = inverted_ ? -target_val : target_val;
-        driver_->setPower(target_val);
+        controller_->setPower(target_val);
         last_measurement_ = target_val;
         last_output_ = applied;
         return;
@@ -143,7 +144,7 @@ namespace probot::control {
       float cmd = pid_out + ff;
       cmd = std::clamp(cmd, cfg.out_min, cfg.out_max);
 
-      driver_->setPower(cmd);
+      controller_->setPower(cmd);
       last_measurement_ = meas;
       last_output_ = inverted_ ? -cmd : cmd;
     }
@@ -172,7 +173,7 @@ namespace probot::control {
     }
 
     sensors::IEncoder* encoder_;
-    motor::IMotorController* driver_;
+    motor::IMotorController* controller_;
 
     float vel_ticks_to_units_;
     float pos_ticks_to_units_;

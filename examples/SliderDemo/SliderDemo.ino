@@ -2,16 +2,16 @@
 
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
-#include <probot/devices/motors/boardoza_vnh5019_motor_driver.hpp>
+#include <probot/devices/motors/boardoza_vnh5019_motor_controller.hpp>
 
-// Slider mekanizması için kullanılan VNH sürücü pinleri.
+// Slider mekanizmasi icin kullanilan VNH motor kontrolcusu pinleri.
 static constexpr int PIN_INA = 12;
 static constexpr int PIN_INB = 13;
 static constexpr int PIN_PWM = 14;
 static constexpr int PIN_ENA = -1;
 static constexpr int PIN_ENB = -1;
 
-static probot::motor::BoardozaVNH5019MotorDriver motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
+static probot::motor::BoardozaVNH5019MotorController motor(PIN_INA, PIN_INB, PIN_PWM, PIN_ENA, PIN_ENB);
 
 
 void robotInit() {
