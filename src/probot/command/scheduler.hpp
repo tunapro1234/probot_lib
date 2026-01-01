@@ -539,8 +539,10 @@ private:
       // Process queue requests
       processRequests();
 
-      // Run subsystems
-      runSubsystems(now, dt);
+      if (allow_updates) {
+        // Run subsystems
+        runSubsystems(now, dt);
+      }
 
       // Run commands
       runCommands(now, allow_updates);

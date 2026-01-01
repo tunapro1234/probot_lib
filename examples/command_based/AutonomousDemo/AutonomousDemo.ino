@@ -104,6 +104,7 @@ static DriveForwardCmd driveToGoal(&chassis, 0.5f, 2000);
 
 // SequentialCommandGroup ile otonom sekans
 static SequentialCommandGroup autoSequence("AutoSequence");
+static bool g_auto_built = false;
 
 void robotInit() {
   Serial.begin(115200);
@@ -118,7 +119,10 @@ void robotInit() {
   chassis.setTrackWidth(29.0f);
 
   // Otonom sekansini olustur: Ileri -> Bekle -> Don -> Ileri
-  autoSequence.addCommands(&driveForward1, &pause1, &turn90, &driveToGoal);
+  if (!g_auto_built) {
+    autoSequence.addCommands(&driveForward1, &pause1, &turn90, &driveToGoal);
+    g_auto_built = true;
+  }
 
   // Subsystem'i kaydet
   Scheduler::instance().registerSubsystem(&chassis);
