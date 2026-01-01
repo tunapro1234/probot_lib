@@ -8,6 +8,12 @@
 #include <probot/core/scheduler_registry.hpp>
 #include <probot/robot/state.hpp>
 
+#ifndef PROBOT_COMMAND_WARNING_SHOWN
+#define PROBOT_COMMAND_WARNING_SHOWN
+#pragma message("WARNING: Command-based system tests are not complete; use with caution.")
+#pragma message("UYARI: Command-based sistem testleri tamamlanmadi; kullanirken dikkatli olun.")
+#endif
+
 #ifdef ESP32
 #include <esp_idf_version.h>
 #include <esp_task_wdt.h>
@@ -139,6 +145,12 @@ public:
   void init() {
     if (!queue_) {
       queue_ = xQueueCreate(kQueueSize, sizeof(Request));
+    }
+    static bool warned = false;
+    if (!warned) {
+      warned = true;
+      Serial.println("[WARN] Command-based system tests are not complete; use with caution.");
+      Serial.println("[UYARI] Command-based sistem testleri tamamlanmadi; kullanirken dikkatli olun.");
     }
   }
 

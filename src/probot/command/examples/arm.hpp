@@ -5,6 +5,8 @@
 
 namespace probot::command::examples {
 
+  // NOTE: This mechanism example is disabled (not tested yet).
+#if 0
   struct IArm {
     virtual void setTargetAngleDeg(float degrees) = 0;
     virtual float getTargetAngleDeg() const = 0;
@@ -71,5 +73,6 @@ namespace probot::command::examples {
     float             max_angle_;
     bool              has_limits_;
   };
+#endif
 
 } // namespace probot::command::examples

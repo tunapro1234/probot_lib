@@ -1,3 +1,5 @@
+// NOTE: Mechanism examples are disabled (not tested yet).
+#if 0
 #include "test_harness.hpp"
 
 #include <cmath>
@@ -95,3 +97,4 @@ TEST_CASE(telescopic_stage_limits){
   tube.periodic(0, 0);
   EXPECT_NEAR(harness.motor.lastSetpoint(), 120.0f * 80.0f, 1e-5f);
 }
+#endif

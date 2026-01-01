@@ -34,8 +34,9 @@ void robotInit() {
   leftMotor.setBrakeMode(true);
   rightMotor.setBrakeMode(true);
 
-  chassis.setWheelRadius(31.4f / (2.0f * 3.1415926535f)); // cm cinsinden yaricap
-  chassis.setTrackWidth(28.0f);                           // cm
+  // NOTE: Closed-loop/odometry helpers are disabled (not tested yet).
+  // chassis.setWheelRadius(31.4f / (2.0f * 3.1415926535f)); // cm cinsinden yaricap
+  // chassis.setTrackWidth(28.0f);                           // cm
 
   // Yeni API: Subsystem'i scheduler'a kaydet
   Scheduler::instance().registerSubsystem(&chassis);

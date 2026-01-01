@@ -5,6 +5,8 @@
 
 namespace probot::command::examples {
 
+  // NOTE: This mechanism example is disabled (not tested yet).
+#if 0
   struct IElevator {
     virtual void setTargetHeight(float units) = 0;
     virtual float getTargetHeight() const = 0;
@@ -73,5 +75,6 @@ namespace probot::command::examples {
     float             max_height_;
     bool              has_limits_;
   };
+#endif
 
 } // namespace probot::command::examples

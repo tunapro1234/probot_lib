@@ -115,8 +115,9 @@ void robotInit() {
   leftMotor.setBrakeMode(true);
   rightMotor.setBrakeMode(true);
 
-  chassis.setWheelRadius(32.0f / (2.0f * 3.1415926535f));
-  chassis.setTrackWidth(29.0f);
+  // NOTE: Closed-loop/odometry helpers are disabled (not tested yet).
+  // chassis.setWheelRadius(32.0f / (2.0f * 3.1415926535f));
+  // chassis.setTrackWidth(29.0f);
 
   // Otonom sekansini olustur: Ileri -> Bekle -> Don -> Ileri
   if (!g_auto_built) {

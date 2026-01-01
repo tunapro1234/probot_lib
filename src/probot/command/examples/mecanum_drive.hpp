@@ -4,12 +4,16 @@
 #include <probot/command/subsystem.hpp>
 #include <probot/control/geometry.hpp>
 #include <probot/control/kinematics/mecanum_drive_kinematics.hpp>
-#include <probot/control/odometry/mecanum_drive_odometry.hpp>
 #include <probot/devices/motors/imotor_controller.hpp>
+#if 0
+#include <probot/control/odometry/mecanum_drive_odometry.hpp>
 #include <probot/devices/sensors/encoder.hpp>
+#endif
 
 namespace probot::command::examples {
 
+// NOTE: Closed-loop + odometry helpers are disabled (not tested yet).
+#if 0
 class MecanumDrive : public probot::command::SubsystemBase {
 public:
   enum class DriveMode {
@@ -249,6 +253,72 @@ private:
 
   probot::control::kinematics::MecanumDriveKinematics kinematics_;
   probot::control::odometry::MecanumDriveOdometry odometry_;
+};
+#endif
+
+class MecanumDrive : public probot::command::SubsystemBase {
+public:
+  MecanumDrive(probot::motor::IMotorController* frontLeft,
+               probot::motor::IMotorController* frontRight,
+               probot::motor::IMotorController* rearLeft,
+               probot::motor::IMotorController* rearRight)
+  : probot::command::SubsystemBase("MecanumDrive"),
+    fl_(frontLeft),
+    fr_(frontRight),
+    rl_(rearLeft),
+    rr_(rearRight),
+    kinematics_(wheel_base_, track_width_) {}
+
+  void setInverted(bool frontLeft, bool frontRight, bool rearLeft, bool rearRight){
+    if (fl_) fl_->setInverted(frontLeft);
+    if (fr_) fr_->setInverted(frontRight);
+    if (rl_) rl_->setInverted(rearLeft);
+    if (rr_) rr_->setInverted(rearRight);
+  }
+
+  void setTrackWidth(float width_units){
+    track_width_ = width_units > 0.0f ? width_units : 1.0f;
+    kinematics_ = probot::control::kinematics::MecanumDriveKinematics(wheel_base_, track_width_);
+  }
+
+  void setWheelBase(float base_units){
+    wheel_base_ = base_units > 0.0f ? base_units : 1.0f;
+    kinematics_ = probot::control::kinematics::MecanumDriveKinematics(wheel_base_, track_width_);
+  }
+
+  void drivePower(float vx, float vy, float omega){
+    probot::control::ChassisSpeeds speeds(vx, vy, omega);
+    auto wheel = kinematics_.toWheelSpeeds(speeds);
+    float maxMag = std::max({std::fabs(wheel.frontLeft), std::fabs(wheel.frontRight),
+                             std::fabs(wheel.rearLeft), std::fabs(wheel.rearRight), 1.0f});
+    wheel.frontLeft /= maxMag;
+    wheel.frontRight /= maxMag;
+    wheel.rearLeft /= maxMag;
+    wheel.rearRight /= maxMag;
+    if (fl_) fl_->setPower(wheel.frontLeft);
+    if (fr_) fr_->setPower(wheel.frontRight);
+    if (rl_) rl_->setPower(wheel.rearLeft);
+    if (rr_) rr_->setPower(wheel.rearRight);
+  }
+
+  void stop(){ drivePower(0.0f, 0.0f, 0.0f); }
+
+  void periodic(uint32_t now_ms, uint32_t dt_ms) override {
+    if (fl_) fl_->update(now_ms, dt_ms);
+    if (fr_) fr_->update(now_ms, dt_ms);
+    if (rl_) rl_->update(now_ms, dt_ms);
+    if (rr_) rr_->update(now_ms, dt_ms);
+  }
+
+private:
+  probot::motor::IMotorController* fl_;
+  probot::motor::IMotorController* fr_;
+  probot::motor::IMotorController* rl_;
+  probot::motor::IMotorController* rr_;
+
+  float track_width_ = 1.0f;
+  float wheel_base_ = 1.0f;
+  probot::control::kinematics::MecanumDriveKinematics kinematics_;
 };
 
 } // namespace probot::command::examples

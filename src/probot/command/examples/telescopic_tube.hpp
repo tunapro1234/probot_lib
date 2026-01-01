@@ -7,6 +7,8 @@
 
 namespace probot::command::examples {
 
+  // NOTE: This mechanism example is disabled (not tested yet).
+#if 0
   struct ITelescopicTube {
     virtual void setTargetExtension(float units) = 0;
     virtual float getTargetExtension() const = 0;
@@ -116,5 +118,6 @@ namespace probot::command::examples {
     probot::control::limiters::SlewRateLimiter slew_limiter_;
     bool limiter_initialized_;
   };
+#endif
 
 } // namespace probot::command::examples

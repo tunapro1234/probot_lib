@@ -2,14 +2,18 @@
 #include <algorithm>
 #include <cmath>
 #include <probot/command/subsystem.hpp>
+#include <probot/devices/motors/imotor_controller.hpp>
+#if 0
 #include <probot/control/geometry.hpp>
 #include <probot/control/kinematics/differential_drive_kinematics.hpp>
 #include <probot/control/odometry/differential_drive_odometry.hpp>
-#include <probot/devices/motors/imotor_controller.hpp>
 #include <probot/devices/sensors/encoder.hpp>
+#endif
 
 namespace probot::command::examples {
 
+// NOTE: Closed-loop + odometry helpers are disabled (not tested yet).
+#if 0
 class TankDrive : public probot::command::SubsystemBase {
 public:
   enum class DriveMode {
@@ -219,6 +223,45 @@ private:
   bool odom_initialized_ = false;
   float prev_left_pos_ = 0.0f;
   float prev_right_pos_ = 0.0f;
+};
+#endif
+
+class TankDrive : public probot::command::SubsystemBase {
+public:
+  TankDrive(probot::motor::IMotorController* left,
+            probot::motor::IMotorController* right)
+  : probot::command::SubsystemBase("TankDrive"),
+    left_(left),
+    right_(right) {}
+
+  void setInverted(bool left, bool right){
+    if (left_) left_->setInverted(left);
+    if (right_) right_->setInverted(right);
+  }
+
+  void drivePower(float left, float right){
+    float l = clampUnit(left);
+    float r = clampUnit(right);
+    if (left_) left_->setPower(l);
+    if (right_) right_->setPower(r);
+  }
+
+  void stop(){ drivePower(0.0f, 0.0f); }
+
+  void periodic(uint32_t now_ms, uint32_t dt_ms) override {
+    if (left_) left_->update(now_ms, dt_ms);
+    if (right_) right_->update(now_ms, dt_ms);
+  }
+
+private:
+  static float clampUnit(float value){
+    if (value > 1.0f) return 1.0f;
+    if (value < -1.0f) return -1.0f;
+    return value;
+  }
+
+  probot::motor::IMotorController* left_;
+  probot::motor::IMotorController* right_;
 };
 
 } // namespace probot::command::examples

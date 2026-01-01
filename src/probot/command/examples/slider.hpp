@@ -4,6 +4,8 @@
 #include <probot/control/pid_motor_wrapper.hpp>
 
 namespace probot::command::examples {
+  // NOTE: This mechanism example is disabled (not tested yet).
+#if 0
   struct ISlider {
     virtual void setTargetLength(float length_units) = 0; // user units (e.g., cm)
     virtual float getTargetLength() const = 0;
@@ -73,4 +75,5 @@ namespace probot::command::examples {
     float                 max_len_;
     bool                  has_limits_;
   };
+#endif
 } // namespace probot::command::examples 

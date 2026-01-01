@@ -7,6 +7,8 @@
 
 namespace probot::command::examples {
 
+  // NOTE: This mechanism example is disabled (not tested yet).
+#if 0
   struct ITurret {
     virtual void setTargetAngleDeg(float degrees) = 0;
     virtual float getTargetAngleDeg() const = 0;
@@ -119,5 +121,6 @@ namespace probot::command::examples {
     probot::control::limiters::SlewRateLimiter slew_limiter_;
     bool limiter_initialized_;
   };
+#endif
 
 } // namespace probot::command::examples
