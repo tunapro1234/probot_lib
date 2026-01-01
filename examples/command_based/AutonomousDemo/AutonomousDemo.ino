@@ -2,7 +2,7 @@
 
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
-#include <probot/command/scheduler.hpp>
+#include <probot/command.hpp>  // Includes scheduler, command, subsystem, command_group
 #include <probot/command/examples/tank_drive.hpp>
 #include <probot/devices/motors/boardoza_vnh5019_motor_controller.hpp>
 
@@ -23,17 +23,87 @@ static probot::motor::BoardozaVNH5019MotorController leftMotor(L_INA, L_INB, L_P
 static probot::motor::BoardozaVNH5019MotorController rightMotor(R_INA, R_INB, R_PWM, R_ENA, R_ENB);
 static probot::command::examples::TankDrive            chassis(&leftMotor, &rightMotor);
 
+using Scheduler = probot::command::Scheduler;
+using namespace probot::command;
 
-enum class AutoStep {
-  kDriveForward,
-  kPause,
-  kTurn,
-  kDriveToGoal,
-  kFinished
+// ============================================================================
+// Ornek Command'lar - WPILib tarzi command-based otonom
+// ============================================================================
+
+// Belirli sure ileri git
+class DriveForwardCmd : public CommandBase {
+public:
+  DriveForwardCmd(probot::command::examples::TankDrive* drive, float power, uint32_t duration_ms)
+    : CommandBase("DriveForward"), drive_(drive), power_(power), duration_ms_(duration_ms) {
+    addRequirement(drive);
+  }
+
+  void initialize() override {
+    start_time_ = millis();
+    Serial.printf("[Cmd] DriveForward basladi (%.2f, %lums)\n", power_, (unsigned long)duration_ms_);
+  }
+
+  void execute(uint32_t, uint32_t) override {
+    drive_->drivePower(power_, power_);
+  }
+
+  void end(bool interrupted) override {
+    drive_->stop();
+    Serial.printf("[Cmd] DriveForward bitti (interrupted=%d)\n", interrupted);
+  }
+
+  bool isFinished() const override {
+    return (millis() - start_time_) >= duration_ms_;
+  }
+
+private:
+  probot::command::examples::TankDrive* drive_;
+  float power_;
+  uint32_t duration_ms_;
+  uint32_t start_time_ = 0;
 };
 
-static AutoStep g_step = AutoStep::kDriveForward;
-static uint32_t g_stepStart = 0;
+// Belirli sure don
+class TurnCmd : public CommandBase {
+public:
+  TurnCmd(probot::command::examples::TankDrive* drive, float power, uint32_t duration_ms)
+    : CommandBase("Turn"), drive_(drive), power_(power), duration_ms_(duration_ms) {
+    addRequirement(drive);
+  }
+
+  void initialize() override {
+    start_time_ = millis();
+    Serial.printf("[Cmd] Turn basladi (%.2f, %lums)\n", power_, (unsigned long)duration_ms_);
+  }
+
+  void execute(uint32_t, uint32_t) override {
+    drive_->drivePower(power_, -power_);
+  }
+
+  void end(bool interrupted) override {
+    drive_->stop();
+    Serial.printf("[Cmd] Turn bitti (interrupted=%d)\n", interrupted);
+  }
+
+  bool isFinished() const override {
+    return (millis() - start_time_) >= duration_ms_;
+  }
+
+private:
+  probot::command::examples::TankDrive* drive_;
+  float power_;
+  uint32_t duration_ms_;
+  uint32_t start_time_ = 0;
+};
+
+// Global command instances
+static DriveForwardCmd driveForward1(&chassis, 0.5f, 2500);
+static WaitCommand     pause1(800);
+static TurnCmd         turn90(&chassis, 0.4f, 2200);
+static DriveForwardCmd driveToGoal(&chassis, 0.5f, 2000);
+
+// SequentialCommandGroup ile otonom sekans
+static SequentialCommandGroup autoSequence("AutoSequence");
 
 void robotInit() {
   Serial.begin(115200);
@@ -47,18 +117,22 @@ void robotInit() {
   chassis.setWheelRadius(32.0f / (2.0f * 3.1415926535f));
   chassis.setTrackWidth(29.0f);
 
-  probot::command::scheduler::attach(&chassis);
-  Serial.println("[AutonomousDemo] robotInit: Otonom örneği hazır");
+  // Otonom sekansini olustur: Ileri -> Bekle -> Don -> Ileri
+  autoSequence.addCommands(&driveForward1, &pause1, &turn90, &driveToGoal);
+
+  // Subsystem'i kaydet
+  Scheduler::instance().registerSubsystem(&chassis);
+  Serial.println("[AutonomousDemo] robotInit: Otonom ornegi hazir");
 }
 
 void robotEnd() {
-  probot::command::scheduler::detach(&chassis);
+  Scheduler::instance().unregisterSubsystem(&chassis);
   chassis.stop();
   Serial.println("[AutonomousDemo] robotEnd: Motorlar durdu");
 }
 
 void teleopInit() {
-  Serial.println("[AutonomousDemo] teleopInit: Bu örnekte teleop, tank sürüşü sağlar");
+  Serial.println("[AutonomousDemo] teleopInit: Bu ornekte teleop, tank surusu saglar");
 }
 
 void teleopLoop() {
@@ -70,60 +144,15 @@ void teleopLoop() {
 }
 
 void autonomousInit() {
-  Serial.println("[AutonomousDemo] autonomousInit: İleri -> Bekle -> Dön -> İleri");
-  g_step = AutoStep::kDriveForward;
-  g_stepStart = millis();
-  chassis.drivePower(0.5f, 0.5f);
+  Serial.println("[AutonomousDemo] autonomousInit: SequentialCommandGroup ile otonom");
+  Serial.println("  Sekans: Ileri(2.5s) -> Bekle(0.8s) -> Don(2.2s) -> Ileri(2s)");
+
+  // Otonom command'i schedule et
+  Scheduler::instance().schedule(&autoSequence);
 }
 
 void autonomousLoop() {
-  uint32_t now = millis();
-
-  switch (g_step) {
-    case AutoStep::kDriveForward:
-      chassis.drivePower(0.5f, 0.5f);
-      if (now - g_stepStart > 2500) {
-        g_step = AutoStep::kPause;
-        g_stepStart = now;
-        chassis.stop();
-        Serial.println("[AutonomousDemo] Duraklama");
-      }
-      break;
-
-    case AutoStep::kPause:
-      chassis.stop();
-      if (now - g_stepStart > 800) {
-        g_step = AutoStep::kTurn;
-        g_stepStart = now;
-        chassis.drivePower(0.4f, -0.4f);
-        Serial.println("[AutonomousDemo] 90 derece dönüş başlıyor");
-      }
-      break;
-
-    case AutoStep::kTurn:
-      chassis.drivePower(0.4f, -0.4f);
-      if (now - g_stepStart > 2200) {
-        g_step = AutoStep::kDriveToGoal;
-        g_stepStart = now;
-        chassis.drivePower(0.5f, 0.5f);
-        Serial.println("[AutonomousDemo] Hedefe son itiş");
-      }
-      break;
-
-    case AutoStep::kDriveToGoal:
-      chassis.drivePower(0.5f, 0.5f);
-      if (now - g_stepStart > 2000) {
-        g_step = AutoStep::kFinished;
-        chassis.stop();
-        Serial.println("[AutonomousDemo] Otonom tamamlandı");
-      }
-      break;
-
-    case AutoStep::kFinished:
-    default:
-      chassis.stop();
-      break;
-  }
-
+  // Command-based sistemde autonomousLoop bos kalabilir
+  // Tum is scheduler tarafindan yapiliyor
   delay(20);
 }

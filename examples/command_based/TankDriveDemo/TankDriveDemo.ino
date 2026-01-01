@@ -2,7 +2,7 @@
 
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
-#include <probot/command/scheduler.hpp>
+#include <probot/command.hpp>  // Includes scheduler, command, subsystem, command_group
 #include <probot/command/examples/tank_drive.hpp>
 #include <probot/devices/motors/boardoza_vnh5019_motor_controller.hpp>
 
@@ -23,6 +23,7 @@ static probot::motor::BoardozaVNH5019MotorController leftMotor(LEFT_INA, LEFT_IN
 static probot::motor::BoardozaVNH5019MotorController rightMotor(RIGHT_INA, RIGHT_INB, RIGHT_PWM, RIGHT_ENA, RIGHT_ENB);
 static probot::command::examples::TankDrive            chassis(&leftMotor, &rightMotor);
 
+using Scheduler = probot::command::Scheduler;
 
 void robotInit() {
   Serial.begin(115200);
@@ -33,21 +34,22 @@ void robotInit() {
   leftMotor.setBrakeMode(true);
   rightMotor.setBrakeMode(true);
 
-  chassis.setWheelRadius(31.4f / (2.0f * 3.1415926535f)); // cm cinsinden yarıçap
+  chassis.setWheelRadius(31.4f / (2.0f * 3.1415926535f)); // cm cinsinden yaricap
   chassis.setTrackWidth(28.0f);                           // cm
 
-  probot::command::scheduler::attach(&chassis);
-  Serial.println("[TankDriveDemo] robotInit: Tank şasi hazır");
+  // Yeni API: Subsystem'i scheduler'a kaydet
+  Scheduler::instance().registerSubsystem(&chassis);
+  Serial.println("[TankDriveDemo] robotInit: Tank sasi hazir");
 }
 
 void robotEnd() {
-  probot::command::scheduler::detach(&chassis);
+  Scheduler::instance().unregisterSubsystem(&chassis);
   chassis.stop();
-  Serial.println("[TankDriveDemo] robotEnd: Motorlar kapandı");
+  Serial.println("[TankDriveDemo] robotEnd: Motorlar kapandi");
 }
 
 void teleopInit() {
-  Serial.println("[TankDriveDemo] teleopInit: Sol/Sağ joystick ile tank sürüşü");
+  Serial.println("[TankDriveDemo] teleopInit: Sol/Sag joystick ile tank surusu");
 }
 
 void teleopLoop() {
@@ -65,7 +67,7 @@ void teleopLoop() {
 }
 
 void autonomousInit() {
-  Serial.println("[TankDriveDemo] autonomousInit: 3 adımda ilerleme testi");
+  Serial.println("[TankDriveDemo] autonomousInit: 3 adimda ilerleme testi");
 }
 
 void autonomousLoop() {

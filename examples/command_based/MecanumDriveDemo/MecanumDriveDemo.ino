@@ -2,11 +2,11 @@
 
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>
-#include <probot/command/scheduler.hpp>
+#include <probot/command.hpp>  // Includes scheduler, command, subsystem, command_group
 #include <probot/command/examples/mecanum_drive.hpp>
 #include <probot/devices/motors/boardoza_vnh5019_motor_controller.hpp>
 
-// Mecanum sürüş için dört motorun pin atamaları.
+// Mecanum surus icin dort motorun pin atamalari.
 struct MotorPins {
   int ina, inb, pwm, ena, enb;
 };
@@ -23,6 +23,7 @@ static probot::motor::BoardozaVNH5019MotorController drvRR(PINS_RR.ina, PINS_RR.
 
 static probot::command::examples::MecanumDrive mecanum(&drvFL, &drvFR, &drvRL, &drvRR);
 
+using Scheduler = probot::command::Scheduler;
 
 void robotInit() {
   Serial.begin(115200);
@@ -34,23 +35,24 @@ void robotInit() {
   drvRL.setBrakeMode(true);
   drvRR.setBrakeMode(true);
 
-  mecanum.setInverted(false, true, false, true); // sağ taraf ters kabloluysa düzelt
+  mecanum.setInverted(false, true, false, true); // sag taraf ters kabloluysa duzelt
   mecanum.setWheelBase(30.0f);
   mecanum.setTrackWidth(28.0f);
 
-  probot::command::scheduler::attach(&mecanum);
-  Serial.println("[MecanumDriveDemo] robotInit: Mecanum sürüşe hazır");
+  // Yeni API: Subsystem'i scheduler'a kaydet
+  Scheduler::instance().registerSubsystem(&mecanum);
+  Serial.println("[MecanumDriveDemo] robotInit: Mecanum suruse hazir");
 }
 
 void robotEnd() {
-  probot::command::scheduler::detach(&mecanum);
+  Scheduler::instance().unregisterSubsystem(&mecanum);
   mecanum.stop();
-  Serial.println("[MecanumDriveDemo] robotEnd: Motorlar kapatıldı");
+  Serial.println("[MecanumDriveDemo] robotEnd: Motorlar kapatildi");
 }
 
 void teleopInit() {
   Serial.println("[MecanumDriveDemo] teleopInit:"
-                 " sol çubuk Y ileri-geri, X yan, sağ X dönüş");
+                 " sol cubuk Y ileri-geri, X yan, sag X donus");
 }
 
 void teleopLoop() {
@@ -58,7 +60,7 @@ void teleopLoop() {
 
   float vx = js.getLeftY();    // ileri geri
   float vy = js.getLeftX();    // yan hareket
-  float omega = js.getRightX();// dönüş
+  float omega = js.getRightX();// donus
 
   mecanum.drivePower(vx, vy, omega);
 
@@ -82,7 +84,7 @@ void autonomousLoop() {
   if (elapsed < 2000) {
     vx = 0.6f; // ileri
   } else if (elapsed < 4000) {
-    vy = 0.6f; // sağa kay
+    vy = 0.6f; // saga kay
   } else if (elapsed < 6000) {
     vx = -0.6f; // geri
   } else if (elapsed < 8000) {
