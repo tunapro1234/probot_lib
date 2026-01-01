@@ -19,9 +19,9 @@ struct ICommand {
   virtual bool isFinished() const = 0;
   virtual void reset() {}  // Reset command state for re-scheduling
 
-  // Scheduler tarafindan cagrilir
-  virtual void periodic(uint32_t now_ms, uint32_t dt_ms) = 0;
-  virtual void onSchedulerStop() { end(true); }
+  // Convenience wrapper for manual/legacy usage - NOT called by scheduler
+  // Scheduler uses state machine (initialize/execute/end/isFinished)
+  virtual void periodic(uint32_t, uint32_t) {}
 
   // Subsystem requirements
   virtual bool addRequirement(ISubsystem* subsystem) { (void)subsystem; return false; }
@@ -68,8 +68,6 @@ public:
 
   bool isInitialized() const { return initialized_; }
   bool isCompleted() const { return finished_; }
-
-  void onSchedulerStop() override { cancel(); }
 
   // Requirement yonetimi
   bool addRequirement(ISubsystem* subsystem) override {

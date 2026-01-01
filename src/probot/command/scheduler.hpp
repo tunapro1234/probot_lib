@@ -135,6 +135,13 @@ public:
   bool detach(ISubsystem* sub) { return unregisterSubsystem(sub); }
   bool detach(ICommand* cmd) { return cancel(cmd); }
 
+  // Manual init for non-runtime usage
+  void init() {
+    if (!queue_) {
+      queue_ = xQueueCreate(kQueueSize, sizeof(Request));
+    }
+  }
+
 private:
   // -------------------------------------------------------------------------
   // Internal Types
@@ -198,12 +205,6 @@ private:
   // -------------------------------------------------------------------------
   // Internal Methods
   // -------------------------------------------------------------------------
-
-  void init() {
-    if (!queue_) {
-      queue_ = xQueueCreate(kQueueSize, sizeof(Request));
-    }
-  }
 
   // Find slot for a command
   int findCommandSlot(ICommand* cmd) const {
@@ -481,10 +482,9 @@ private:
                            phase == probot::robot::Phase::TELEOP);
 
     if (to_stop || auto_to_teleop) {
-      // Cancel all commands on transition
+      // Cancel all commands on transition (cancelCommand handles end() call)
       for (size_t i = 0; i < kMaxCommands; ++i) {
         if (commands_[i].state != CommandState::kNone && commands_[i].cmd) {
-          commands_[i].cmd->onSchedulerStop();
           cancelCommand(static_cast<int>(i), true);
         }
       }
@@ -518,6 +518,16 @@ private:
     for (;;) {
       uint32_t now = millis();
       uint32_t dt = now - last_run;
+
+      // Deadline miss detection (2ms tolerance)
+      if (dt > period_ms_ + 2) {
+        probot::robot::state().setDeadlineMiss(now, true);
+#ifndef PROBOT_SCHED_NOLOG
+        Serial.printf("[SCHED] DEADLINE MISS! period=%lums, actual=%lums, overrun=+%lums\n",
+                      (unsigned long)period_ms_, (unsigned long)dt,
+                      (unsigned long)(dt - period_ms_));
+#endif
+      }
 
       // Read robot state
       auto snap = probot::robot::state().read();
@@ -578,7 +588,7 @@ private:
 // ============================================================================
 
 namespace scheduler {
-  inline void init(uint8_t = 8) { Scheduler::instance(); }
+  inline void init(uint8_t = 8) { Scheduler::instance().init(); }
   inline bool attach(ISubsystem* sub) { return Scheduler::instance().registerSubsystem(sub); }
   inline bool attach(ICommand* cmd) { return Scheduler::instance().schedule(cmd); }
   inline bool detach(ISubsystem* sub) { return Scheduler::instance().unregisterSubsystem(sub); }

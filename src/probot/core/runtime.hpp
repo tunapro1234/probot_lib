@@ -219,7 +219,7 @@ namespace probot {
 
     wdt_init_no_idle(3, true);
 
-#if PROBOT_WITH_DS && defined(ESP32)
+#ifdef ESP32
     probot::driverstation::start_driver_station();
 #endif
 

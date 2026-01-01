@@ -166,7 +166,11 @@ public:
   }
 
   void end(bool interrupted) override {
-    if (interrupted) {
+    // kAny ve kRace durumlarinda veya interrupted olunca kalan komutlari temizle
+    bool should_cleanup = interrupted ||
+                          end_condition_ == EndCondition::kAny ||
+                          end_condition_ == EndCondition::kRace;
+    if (should_cleanup) {
       for (size_t i = 0; i < command_count_; ++i) {
         if (!finished_[i] && commands_[i]) {
           commands_[i]->end(true);

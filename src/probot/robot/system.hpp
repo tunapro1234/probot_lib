@@ -22,7 +22,6 @@ namespace probot::driverstation {
   namespace detail {
 #ifdef ESP32
     inline probot::driverstation::esp32::DriverStation* g_driver_station = nullptr;
-    inline const char* g_driver_station_password = nullptr;
 #endif
   } // namespace detail
 
@@ -34,17 +33,9 @@ namespace probot::driverstation {
   #endif
   }
 
-  inline void set_driver_station_password(const char* password){
-  #ifdef ESP32
-    detail::g_driver_station_password = password;
-  #else
-    (void)password;
-  #endif
-  }
-
   inline void start_driver_station(){
   #ifdef ESP32
-    static probot::driverstation::esp32::DriverStation ds(probot::robot::state(), probot::io::gamepad(), detail::g_driver_station_password);
+    static probot::driverstation::esp32::DriverStation ds(probot::robot::state(), probot::io::gamepad());
     detail::g_driver_station = &ds;
     ds.begin();
     static TaskHandle_t h = nullptr;
@@ -52,6 +43,3 @@ namespace probot::driverstation {
   #endif
   }
 }
-
-// DriverStation password must be provided at compile time.
-// Example (place before including probot.h): #define PROBOT_WIFI_AP_PASSWORD "StrongPass123"

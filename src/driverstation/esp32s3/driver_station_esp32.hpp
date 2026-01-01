@@ -7,29 +7,19 @@
 #include <probot/io/gamepad.hpp>
 #include "index_html.h"
 
-#if defined(PROBOT_WITH_DS) && !defined(PROBOT_WIFI_AP_PASSWORD)
+#ifndef PROBOT_WIFI_AP_PASSWORD
 #error "DriverStation AP password not provided. Define PROBOT_WIFI_AP_PASSWORD (>=8 chars) before including probot.h."
 #endif
-#ifdef PROBOT_WIFI_AP_PASSWORD
 static_assert(sizeof(PROBOT_WIFI_AP_PASSWORD) - 1 >= 8, "PROBOT_WIFI_AP_PASSWORD must be at least 8 characters.");
-#endif
 
 namespace probot::driverstation::esp32 {
   class DriverStation {
   public:
-    DriverStation(robot::StateService& rs, io::GamepadService& gs, const char* apPass = nullptr)
-    : _rs(rs), _gs(gs), _server(80), _apPass(apPass) {}
+    DriverStation(robot::StateService& rs, io::GamepadService& gs)
+    : _rs(rs), _gs(gs), _server(80) {}
 
     void begin(){
-      const char* pw = nullptr;
-#ifdef PROBOT_WIFI_AP_PASSWORD
-      pw = PROBOT_WIFI_AP_PASSWORD;
-#endif
-      if (!pw) pw = _apPass;
-      if (!pw || strlen(pw) < 8){
-        Serial.println("[DS   ] AP password not set or too short; DriverStation AP disabled");
-        return;
-      }
+      const char* pw = PROBOT_WIFI_AP_PASSWORD;
       String ssid = generateSSID();
       ap_ssid_ = ssid;
       WiFi.mode(WIFI_AP);
@@ -165,7 +155,6 @@ namespace probot::driverstation::esp32 {
     robot::StateService& _rs;
     io::GamepadService&  _gs;
     WebServer            _server;
-    const char*          _apPass;
     bool                 _owner_set=false;
     IPAddress            _owner;
     uint32_t             _owner_last_ms=0;
