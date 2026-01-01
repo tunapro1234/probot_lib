@@ -39,7 +39,7 @@ namespace probot::driverstation::esp32 {
       Serial.print("[DS   ] WiFi SSID: ");
       Serial.println(ssid);
       Serial.print("[DS   ] Password:  ");
-      Serial.println(pw);
+      Serial.println("********");
       Serial.print("[DS   ] IP Address: ");
       Serial.println(WiFi.softAPIP());
       Serial.println("[DS   ] ========================================");

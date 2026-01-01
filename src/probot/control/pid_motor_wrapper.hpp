@@ -76,17 +76,19 @@ namespace probot::control {
 
     bool setVelocity(float units_per_s) override {
       target_velocity_.store(units_per_s);
+      bool mode_changed = active_mode_ != ControlType::kVelocity;
       active_mode_ = ControlType::kVelocity;
       last_ref_ms_.store(millis());
-      velocity_pid_.reset();
+      if (mode_changed) velocity_pid_.reset();
       return true;
     }
 
     bool setPosition(float units) override {
       target_position_.store(units);
+      bool mode_changed = active_mode_ != ControlType::kPosition;
       active_mode_ = ControlType::kPosition;
       last_ref_ms_.store(millis());
-      position_pid_.reset();
+      if (mode_changed) position_pid_.reset();
       return true;
     }
 
@@ -111,7 +113,7 @@ namespace probot::control {
       if (active_mode_ == ControlType::kPercent){
         float target_val = target_power_.load();
         float applied = inverted_ ? -target_val : target_val;
-        controller_->setPower(target_val);
+        controller_->setPower(applied);
         last_measurement_ = target_val;
         last_output_ = applied;
         return;

@@ -94,8 +94,11 @@ void teleopLoop() {
   delay(20);
 }
 
+static uint32_t g_auto_start = 0;
+
 void autonomousInit() {
   Serial.println("[IMotorControllerDemo] autonomousInit: 2 saniyelik hız profili");
+  g_auto_start = millis();
   if (g_has_encoder) {
     motor.setVelocity(80.0f);
   } else {
@@ -104,9 +107,8 @@ void autonomousInit() {
 }
 
 void autonomousLoop() {
-  static uint32_t start = millis();
   motor.update(millis(), 20);
-  if (millis() - start > 2000) {
+  if (millis() - g_auto_start > 2000) {
     if (g_has_encoder) {
       motor.setVelocity(0.0f);
     } else {

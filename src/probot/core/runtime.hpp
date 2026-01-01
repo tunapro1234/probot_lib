@@ -38,12 +38,12 @@ namespace probot {
     inline void autonomousWorker(void*){
       __atomic_store_n(&g_state.auto_start_ms, millis(), __ATOMIC_SEQ_CST);
       ::autonomousInit();
-      for(;;){ ::autonomousLoop(); vTaskDelay(pdMS_TO_TICKS(1)); }
+      for(;;){ ::autonomousLoop(); vTaskDelay(pdMS_TO_TICKS(20)); }
     }
 
     inline void teleopWorker(void*){
       ::teleopInit();
-      for(;;){ ::teleopLoop(); vTaskDelay(pdMS_TO_TICKS(1)); }
+      for(;;){ ::teleopLoop(); vTaskDelay(pdMS_TO_TICKS(20)); }
     }
 
     inline void robotInitWorker(void*){
@@ -231,17 +231,6 @@ namespace probot {
     xTaskCreatePinnedToCore([](void*){ detail::userLoopTask(); }, "user", STACK_USER, NULL, PRIO_USER, &s.hUser, CORE_CTRL);
   }
 
-  inline void userTask(void*){
-    robotInit();
-    teleopInit();
-
-    for(;;){
-      teleopLoop();
-      vTaskDelay(pdMS_TO_TICKS(10));
-    }
-
-    robotEnd();
-  }
 } // namespace probot
 
 #if defined(ARDUINO)
