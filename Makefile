@@ -12,7 +12,7 @@ VERSION_SYNC_SCRIPT := $(CURDIR)/tools/sync_version.py
 
 # Examples
 EXAMPLES_DIR   := $(CURDIR)/examples
-EXAMPLE_SKETCHES := $(shell find $(EXAMPLES_DIR) -maxdepth 2 -mindepth 1 -name "*.ino")
+EXAMPLE_SKETCHES := $(shell find $(EXAMPLES_DIR) -maxdepth 3 -mindepth 1 -name "*.ino")
 EXAMPLES_LIST  := $(sort $(patsubst %/,%,$(patsubst $(EXAMPLES_DIR)/%,%,$(dir $(EXAMPLE_SKETCHES)))))
 EXAMPLES_LIST  := $(filter-out __library_impl __library_impl/%,$(EXAMPLES_LIST))
 DEFAULT_EXAMPLE := $(firstword $(EXAMPLES_LIST))

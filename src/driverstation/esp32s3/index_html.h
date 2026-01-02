@@ -701,6 +701,11 @@ const char MAIN_page[] PROGMEM = R"=====(
     </section>
   </div>
   <div class="column column-secondary">
+    <section class="stack-card" id="telemetry-panel">
+      <h2>Telemetry</h2>
+      <pre id="telemetryOutput" style="height:150px;overflow-y:auto;background:rgba(0,32,77,0.05);padding:12px;border-radius:12px;font-size:0.9rem;"></pre>
+      <button onclick="clearTelemetry()" style="margin-top:12px;padding:10px 20px;font-size:0.9rem;">Clear</button>
+    </section>
     <section class="stack-card telemetry" id="logs">
       <h2>System Logs</h2>
       <select id="joystickSelect" onchange="changeSelectedGamepad()">
@@ -709,11 +714,6 @@ const char MAIN_page[] PROGMEM = R"=====(
       <pre id="joystickStatus">No gamepad selected.</pre>
       <pre id="axisData">No axis data...</pre>
       <pre id="buttonData">No button data...</pre>
-    </section>
-    <section class="stack-card" id="telemetry-panel">
-      <h2>Telemetry</h2>
-      <pre id="telemetryOutput" style="height:150px;overflow-y:auto;background:rgba(0,32,77,0.05);padding:12px;border-radius:12px;font-size:0.9rem;"></pre>
-      <button onclick="clearTelemetry()" style="margin-top:12px;padding:10px 20px;font-size:0.9rem;">Clear</button>
     </section>
   </div>
 </main>
