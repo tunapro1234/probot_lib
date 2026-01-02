@@ -286,8 +286,19 @@ private:
   }
 
   // Try to schedule a command (conflict resolution)
+  // WPILib behavior: reject commands that don't run when disabled
   void tryScheduleCommand(ICommand* cmd) {
     if (!cmd) return;
+
+    // WPILib: Don't schedule if robot is disabled and command doesn't run when disabled
+    auto snap = probot::robot::state().read();
+    bool is_disabled = (snap.status == probot::robot::Status::STOP);
+    if (is_disabled && !cmd->runsWhenDisabled()) {
+#ifndef PROBOT_SCHED_NOLOG
+      Serial.printf("[SCHED] rejected (disabled): %s\n", cmd->name());
+#endif
+      return;
+    }
 
     // Already scheduled?
     if (findCommandSlot(cmd) >= 0) {
@@ -433,13 +444,15 @@ private:
   }
 
   // Run all scheduled commands
-  void runCommands(uint32_t now, bool allow_updates) {
+  // WPILib behavior: commands without runsWhenDisabled() are CANCELLED when disabled
+  void runCommands(uint32_t now, bool is_enabled) {
     for (size_t i = 0; i < kMaxCommands; ++i) {
       auto& slot = commands_[i];
       if (slot.state == CommandState::kNone || !slot.cmd) continue;
 
-      // Check runsWhenDisabled
-      if (!allow_updates && !slot.cmd->runsWhenDisabled()) {
+      // WPILib: Cancel commands that don't run when disabled
+      if (!is_enabled && !slot.cmd->runsWhenDisabled()) {
+        cancelCommand(static_cast<int>(i), true);
         continue;
       }
 
@@ -543,7 +556,7 @@ private:
 
       // Read robot state
       auto snap = probot::robot::state().read();
-      bool allow_updates = (snap.status != probot::robot::Status::STOP);
+      bool is_enabled = (snap.status != probot::robot::Status::STOP);
 
       // Handle state transitions
       handleTransitions(snap.status, snap.phase);
@@ -551,16 +564,15 @@ private:
       // Process queue requests
       processRequests();
 
-      if (allow_updates) {
-        // Run subsystems
-        runSubsystems(now, dt);
-      }
+      // WPILib behavior: Subsystem periodic() ALWAYS runs (even when disabled)
+      // This allows sensor reading, odometry updates, etc. during disabled
+      runSubsystems(now, dt);
 
-      // Run commands
-      runCommands(now, allow_updates);
+      // Run commands (disabled commands are cancelled inside runCommands)
+      runCommands(now, is_enabled);
 
-      // Schedule default commands for idle subsystems
-      if (allow_updates) {
+      // Schedule default commands only when enabled
+      if (is_enabled) {
         scheduleDefaultCommands();
       }
 

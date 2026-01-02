@@ -710,6 +710,11 @@ const char MAIN_page[] PROGMEM = R"=====(
       <pre id="axisData">No axis data...</pre>
       <pre id="buttonData">No button data...</pre>
     </section>
+    <section class="stack-card" id="telemetry-panel">
+      <h2>Telemetry</h2>
+      <pre id="telemetryOutput" style="height:150px;overflow-y:auto;background:rgba(0,32,77,0.05);padding:12px;border-radius:12px;font-size:0.9rem;"></pre>
+      <button onclick="clearTelemetry()" style="margin-top:12px;padding:10px 20px;font-size:0.9rem;">Clear</button>
+    </section>
   </div>
 </main>
   <script>
@@ -989,6 +994,23 @@ function stopAutoTimer(){
         stopAutoTimer();
       }
     });
+
+    // Telemetry polling
+    async function pollTelemetry(){
+      try{
+        const r=await fetch('/telemetry');
+        if(r.ok){
+          const text=await r.text();
+          const el=document.getElementById('telemetryOutput');
+          if(el && text) el.textContent=text;
+        }
+      }catch(e){}
+    }
+    function clearTelemetry(){
+      const el=document.getElementById('telemetryOutput');
+      if(el) el.textContent='';
+    }
+    setInterval(pollTelemetry,50);
 </script>
 </body>
 </html>

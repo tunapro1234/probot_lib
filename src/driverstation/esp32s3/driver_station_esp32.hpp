@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #include <probot/robot/state.hpp>
 #include <probot/io/gamepad.hpp>
+#include <probot/telemetry/telemetry.hpp>
 #include "index_html.h"
 
 #ifndef PROBOT_WIFI_AP_PASSWORD
@@ -38,6 +39,7 @@ namespace probot::driverstation::esp32 {
       _server.on("/updateController", HTTP_POST, [this](){ if (!enforceOwner()) return; handleUpdateController(); });
       _server.on("/robotControl", HTTP_GET, [this](){ if (!enforceOwner()) return; handleRobotControl(); });
       _server.on("/getBattery", HTTP_GET, [this](){ handleGetBattery(); });
+      _server.on("/telemetry", HTTP_GET, [this](){ if (!enforceOwner()) return; handleTelemetry(); });
       _server.begin();
     }
 
@@ -151,6 +153,9 @@ namespace probot::driverstation::esp32 {
       _server.send(200, "text/plain", "OK");
     }
 
+    void handleTelemetry(){
+      _server.send(200, "text/plain", probot::telemetry::getBuffer());
+    }
 
     robot::StateService& _rs;
     io::GamepadService&  _gs;

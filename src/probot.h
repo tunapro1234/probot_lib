@@ -12,6 +12,7 @@
 #include <probot/devices/leds/builtin.hpp>
 #include <probot/robot/state.hpp>
 #include <probot/robot/system.hpp>
+#include <probot/telemetry/telemetry.hpp>
 
 // Optional modules (explicit include):
 // - <probot/command.hpp> (command + subsystem)
