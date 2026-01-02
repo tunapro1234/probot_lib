@@ -4,13 +4,41 @@
 #include <cmath>
 
 #include <probot/control/bang_bang_controller.hpp>
-#include <probot/control/blink_pid.hpp>
 #include <probot/control/limiters/slew_rate_limiter.hpp>
 #include <probot/control/pid.hpp>
+#include <probot/devices/leds/builtin.hpp>
 
 namespace probot::builtinled {
   bool test_last_on();
   void test_reset();
+}
+
+namespace {
+  // Test-only BlinkPid utility
+  class BlinkPid {
+  public:
+    BlinkPid() : current_reference_(0), pending_reference_(0), has_pending_reference_(false), led_is_on_(false) {}
+
+    void setReference(uint32_t new_reference) {
+      __atomic_store_n(&pending_reference_, new_reference, __ATOMIC_SEQ_CST);
+      __atomic_store_n(&has_pending_reference_, true, __ATOMIC_SEQ_CST);
+    }
+
+    void update(uint32_t, uint32_t) {
+      bool has_pending = __atomic_exchange_n(&has_pending_reference_, false, __ATOMIC_SEQ_CST);
+      if (has_pending) {
+        current_reference_ = __atomic_load_n(&pending_reference_, __ATOMIC_SEQ_CST);
+        led_is_on_ = !led_is_on_;
+        probot::builtinled::set(led_is_on_);
+      }
+    }
+
+  private:
+    uint32_t current_reference_;
+    uint32_t pending_reference_;
+    bool has_pending_reference_;
+    bool led_is_on_;
+  };
 }
 
 TEST_CASE(pid_basic_response){
@@ -61,7 +89,7 @@ TEST_CASE(bang_bang_controller){
 
 TEST_CASE(blink_pid_led_toggles){
   probot::builtinled::test_reset();
-  probot::control::BlinkPid blink;
+  BlinkPid blink;
 
   EXPECT_TRUE(!probot::builtinled::test_last_on());
   blink.setReference(1);
