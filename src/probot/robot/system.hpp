@@ -1,29 +1,45 @@
-#ifndef PROBOT_ROBOT_SYSTEM_HPP
-#define PROBOT_ROBOT_SYSTEM_HPP
 #pragma once
 #include <probot/robot/state.hpp>
 #include <probot/io/gamepad.hpp>
 
-namespace probot::robot {
-  StateService& state();
-}
+#ifdef ESP32
+#include <driverstation/esp32s3/driver_station_esp32.hpp>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#endif
+
 namespace probot::io {
-  GamepadService& gamepad();
+  namespace detail {
+    inline GamepadService g_gamepad_singleton;
+  }
+
+  inline GamepadService& gamepad(){
+    return detail::g_gamepad_singleton;
+  }
 }
 
-namespace probot::platform {
-  void start_driver_station();
-  void driver_station_task(void*);
-  void set_driver_station_password(const char* password);
+namespace probot::driverstation {
+  namespace detail {
+#ifdef ESP32
+    inline probot::driverstation::esp32::DriverStation* g_driver_station = nullptr;
+#endif
+  } // namespace detail
+
+  inline void driver_station_task(void*){
+  #ifdef ESP32
+    for(;;){ if (detail::g_driver_station) detail::g_driver_station->handleClient(); vTaskDelay(pdMS_TO_TICKS(1)); }
+  #else
+    (void)0;
+  #endif
+  }
+
+  inline void start_driver_station(){
+  #ifdef ESP32
+    static probot::driverstation::esp32::DriverStation ds(probot::robot::state(), probot::io::gamepad());
+    detail::g_driver_station = &ds;
+    ds.begin();
+    static TaskHandle_t h = nullptr;
+    xTaskCreatePinnedToCore(driver_station_task, "ds_http", 4096, NULL, 1, &h, 0);
+  #endif
+  }
 }
-
-// Helper macro for sketches: place at global scope in your .ino before setup
-// Example: PROBOT_SET_DRIVER_STATION_PASSWORD("StrongPass123")
-#define _PROBOT_CONCAT_INNER(a,b) a##b
-#define _PROBOT_CONCAT(a,b) _PROBOT_CONCAT_INNER(a,b)
-#define PROBOT_SET_DRIVER_STATION_PASSWORD(PW_LITERAL) \
-static_assert((sizeof(PW_LITERAL) - 1) >= 8, "DriverStation password must be at least 8 characters"); \
-const char* PROBOT__DS_PASSWORD_REQUIRED = PW_LITERAL; \
-namespace { struct _ProbotDsPwSetter { _ProbotDsPwSetter(){ probot::platform::set_driver_station_password(PW_LITERAL); } }; static _ProbotDsPwSetter _PROBOT_CONCAT(_probot_ds_pw_setter_instance_, __LINE__); }
-
-#endif // PROBOT_ROBOT_SYSTEM_HPP 

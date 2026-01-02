@@ -1,8 +1,8 @@
 #pragma once
-#include <probot/devices/motors/imotor_driver.hpp>
+#include <probot/devices/motors/imotor_controller.hpp>
 
 namespace probot::test {
-  class TestMotor : public probot::motor::IMotorDriver {
+  class TestMotor : public probot::motor::IMotorController {
   public:
     bool setPower(float power) override {
       if (power < -1.0f) power = -1.0f; else if (power > 1.0f) power = 1.0f;
@@ -10,6 +10,8 @@ namespace probot::test {
       last_cmd_ = inverted_ ? -power : power;
       return true;
     }
+
+    float getPower() const override { return last_cmd_; }
 
     void setInverted(bool inverted) override { inverted_ = inverted; }
     bool getInverted() const override { return inverted_; }

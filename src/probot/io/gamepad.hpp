@@ -1,7 +1,6 @@
-#ifndef PROBOT_IO_GAMEPAD_HPP
-#define PROBOT_IO_GAMEPAD_HPP
 #pragma once
 #include <stdint.h>
+#include <Arduino.h>
 
 namespace probot::io {
   struct GamepadSnapshot {
@@ -21,7 +20,13 @@ namespace probot::io {
 
   class GamepadService : public IGamepadSource {
   public:
-    GamepadService(){ _cur=0; GamepadSnapshot z{}; _buf[0]=z; _buf[1]=z; }
+    GamepadService(){
+      _cur = 0;
+      GamepadSnapshot z{};
+      _buf[0] = z;
+      _buf[1] = z;
+      _timeout_ms = 300;
+    }
 
     void write(uint32_t now_ms, const float* axes, uint32_t nAxis, const bool* buttons, uint32_t nButton){
       uint32_t cur = __atomic_load_n(&_cur, __ATOMIC_SEQ_CST);
@@ -38,14 +43,29 @@ namespace probot::io {
       __atomic_store_n(&_cur, w, __ATOMIC_SEQ_CST);
     }
 
+    void setTimeoutMs(uint32_t timeout_ms){
+      __atomic_store_n(&_timeout_ms, timeout_ms, __ATOMIC_SEQ_CST);
+    }
+
     GamepadSnapshot read() const override {
       uint32_t idx = __atomic_load_n(&_cur, __ATOMIC_SEQ_CST);
-      return _buf[idx];
+      GamepadSnapshot s = _buf[idx];
+      uint32_t timeout_ms = __atomic_load_n(&_timeout_ms, __ATOMIC_SEQ_CST);
+      if (timeout_ms > 0){
+        uint32_t now_ms = millis();
+        if ((uint32_t)(now_ms - s.ms) > timeout_ms){
+          GamepadSnapshot z{};
+          z.ms = now_ms;
+          z.seq = s.seq;
+          return z;
+        }
+      }
+      return s;
     }
 
   private:
     mutable GamepadSnapshot _buf[2];
     mutable volatile uint32_t _cur;
+    mutable volatile uint32_t _timeout_ms;
   };
 }
-#endif // PROBOT_IO_GAMEPAD_HPP 

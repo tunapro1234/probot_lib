@@ -6,10 +6,10 @@ namespace probot::control::kinematics {
   class DifferentialDriveKinematics {
   public:
     explicit DifferentialDriveKinematics(float trackWidth)
-    : trackWidth_(trackWidth) {}
+    : trackWidth_(trackWidth > 0.0f ? trackWidth : 1.0f) {}
 
     float trackWidth() const { return trackWidth_; }
-    void setTrackWidth(float w){ trackWidth_ = w; }
+    void setTrackWidth(float w){ trackWidth_ = w > 0.0f ? w : 1.0f; }
 
     inline std::pair<float,float> toWheelSpeeds(const probot::control::ChassisSpeeds& speeds) const {
       float left = speeds.vx - speeds.omega * (trackWidth_ * 0.5f);

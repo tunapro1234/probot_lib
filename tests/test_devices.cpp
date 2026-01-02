@@ -1,13 +1,13 @@
 #include "test_harness.hpp"
 
-#include <probot/devices/motors/motor_group.hpp>
+#include <probot/devices/motors/motor_controller_group.hpp>
 #include <probot/test/test_motor.hpp>
 
-#include <probot/devices/motors/boardoza_vnh_motor_driver.hpp>
+#include <probot/devices/motors/boardoza_vnh5019_motor_controller.hpp>
 #include <type_traits>
 
 namespace {
-  struct MotorStub : probot::motor::IMotorDriver {
+  struct MotorStub : probot::motor::IMotorController {
     float lastPower = 0.0f;
     float lastCommand = 0.0f;
     bool inverted = false;
@@ -19,7 +19,7 @@ namespace {
 
 TEST_CASE(motor_group_power_and_invert){
   MotorStub a, b;
-  probot::motor::MotorGroup group(&a, &b);
+  probot::motor::MotorControllerGroup group(&a, &b);
   EXPECT_TRUE(group.setPower(0.3f));
   EXPECT_NEAR(a.lastPower, 0.3f, 1e-5f);
   EXPECT_NEAR(b.lastPower, 0.3f, 1e-5f);
@@ -30,7 +30,7 @@ TEST_CASE(motor_group_power_and_invert){
   EXPECT_NEAR(a.lastCommand, 0.4f, 1e-5f);
 }
 
-TEST_CASE(null_motor_behaves_like_driver){
+TEST_CASE(null_motor_behaves_like_controller){
   probot::motor::NullMotor motor;
   EXPECT_TRUE(motor.setPower(0.5f));
   EXPECT_NEAR(motor.appliedPower(), 0.5f, 1e-5f);
@@ -40,5 +40,5 @@ TEST_CASE(null_motor_behaves_like_driver){
   EXPECT_NEAR(motor.appliedPower(), -0.2f, 1e-5f);
 }
 
-static_assert(std::is_base_of<probot::motor::IMotorDriver, probot::motor::BoardozaVNHMotorDriver>::value,
-              "BoardozaVNHMotorDriver must implement IMotorDriver");
+static_assert(std::is_base_of<probot::motor::IMotorController, probot::motor::BoardozaVNH5019MotorController>::value,
+              "BoardozaVNH5019MotorController must implement IMotorController");

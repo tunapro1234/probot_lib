@@ -5,7 +5,7 @@
 - Boardoza motor kontrolcüsü desteğini entegre et (donanım ekibinden gelecek PWM/CAN detayları bekleniyor).
 - ESP32-S3 için donanımsal quadrature encoder sürücüsü ekle (temel örnek: PCNT + 1024 CPR tekerlek).
 - IMotorController arayüzünü PIDF + feedforward slotları ve isteğe bağlı motion profile zamanlaması (trapez/S-eğrisi) ile genişlet.
-- NFR örneklerinde kullanılan NullMotorController yer tutucularını gerçek IMotorController uygulamalarıyla değiştir.
+- NFR örneklerinde kullanılan NullIMotorController yer tutucularını gerçek IMotorController uygulamalarıyla değiştir.
 - Her aktarma için motor motion profile ve feedforward ön ayarlarını yapılandıracak şasi seviyesinde yardımcı fonksiyonlar sun.
 - MPU6050 entegrasyonunu sağlamlaştır (kalibrasyon akışı, hata yönetimi) ve ilerideki MPU9050/BNO varyantlarına hazırlık yap.
 - Robotlar hazır olduğunda joystick hattını donanım üzerinde 10 ms örnekleme + 20 ms kontrol döngüsü ile doğrula.
@@ -24,7 +24,7 @@
 - Integrate Boardoza motor controller support (PWM/CAN specifics pending from hardware team).
 - Add hardware quadrature encoder driver implementation for ESP32-S3 (baseline example: PCNT + 1024 CPR wheel).
 - Extend IMotorController to PIDF + feedforward slots and optional motion profile scheduling (trapezoid/S-curve).
-- Swap placeholder NullMotorController usages with real IMotorController implementations in NFR examples.
+- Swap placeholder NullIMotorController usages with real IMotorController implementations in NFR examples.
 - Expose chassis-level helpers to configure motor motion profiles and feedforward presets per drivetrain.
 - Harden MPU6050 integration (calibration flow, failure handling) and prepare for future MPU9050/BNO variants.
 - Validate joystick pipeline at 10 ms sampling + 20 ms control loop on hardware once robots are available.

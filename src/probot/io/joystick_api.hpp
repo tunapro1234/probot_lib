@@ -1,5 +1,3 @@
-#ifndef PROBOT_IO_JOYSTICK_API_HPP
-#define PROBOT_IO_JOYSTICK_API_HPP
 #pragma once
 #include <cmath>
 #include <probot/io/gamepad.hpp>
@@ -10,6 +8,7 @@ namespace probot::io::joystick_api {
 struct Options {
   float deadzone = 0.08f;
   bool  invertY  = true;
+  bool  useMappingInvert = true;
 };
 
 class Joystick {
@@ -48,13 +47,16 @@ public:
       if (v > -0.5f && v <  0.0f)  return 270;  // Left
       return -1;
     }
-    // Try standard buttons 12..15 if available
-    if (s.buttonCount > 15) {
-      if (s.buttons[m.DPadUp])    return 0;
-      if (s.buttons[m.DPadRight]) return 90;
-      if (s.buttons[m.DPadDown])  return 180;
-      if (s.buttons[m.DPadLeft])  return 270;
-    } else if (s.buttonCount > 7) {
+    auto inRange = [&](int idx){ return idx >= 0 && (uint32_t)idx < s.buttonCount; };
+    bool mappingAvailable = inRange(m.DPadUp) || inRange(m.DPadRight) || inRange(m.DPadDown) || inRange(m.DPadLeft);
+    if (mappingAvailable) {
+      if (inRange(m.DPadUp)    && s.buttons[m.DPadUp])    return 0;
+      if (inRange(m.DPadRight) && s.buttons[m.DPadRight]) return 90;
+      if (inRange(m.DPadDown)  && s.buttons[m.DPadDown])  return 180;
+      if (inRange(m.DPadLeft)  && s.buttons[m.DPadLeft])  return 270;
+      return -1;
+    }
+    if (s.buttonCount > 7) {
       // Legacy fallback 4..7
       if (s.buttons[4]) return 0;
       if (s.buttons[7]) return 90;
@@ -66,9 +68,19 @@ public:
 
   // High-level axes using mapping
   inline float getLeftX()  const { return dz(getRawAxis(joystick_mapping::getActive().leftX)); }
-  inline float getLeftY()  const { float y = getRawAxis(joystick_mapping::getActive().leftY); return dz(_opts.invertY ? -y : y); }
+  inline float getLeftY()  const {
+    const auto& m = joystick_mapping::getActive();
+    float y = getRawAxis(m.leftY);
+    bool invert = _opts.invertY || (_opts.useMappingInvert && m.invertLeftY);
+    return dz(invert ? -y : y);
+  }
   inline float getRightX() const { return dz(getRawAxis(joystick_mapping::getActive().rightX)); }
-  inline float getRightY() const { float y = getRawAxis(joystick_mapping::getActive().rightY); return dz(_opts.invertY ? -y : y); }
+  inline float getRightY() const {
+    const auto& m = joystick_mapping::getActive();
+    float y = getRawAxis(m.rightY);
+    bool invert = _opts.invertY || (_opts.useMappingInvert && m.invertRightY);
+    return dz(invert ? -y : y);
+  }
 
   inline float getLeftTriggerAxis()  const { return getRawButton(joystick_mapping::getActive().LT) ? 1.0f : 0.0f; }
   inline float getRightTriggerAxis() const { return getRawButton(joystick_mapping::getActive().RT) ? 1.0f : 0.0f; }
@@ -111,5 +123,3 @@ inline Joystick makeDefault(const Options& opts = {}) {
 }
 
 } // namespace probot::io::joystick_api
-
-#endif // PROBOT_IO_JOYSTICK_API_HPP 

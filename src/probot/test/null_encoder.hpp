@@ -1,5 +1,5 @@
 #pragma once
-#include <probot/sensors/encoder.hpp>
+#include <probot/devices/sensors/encoder.hpp>
 
 namespace probot::test {
   class NullEncoder : public probot::sensors::IEncoder {

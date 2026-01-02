@@ -12,22 +12,22 @@ VERSION_SYNC_SCRIPT := $(CURDIR)/tools/sync_version.py
 
 # Examples
 EXAMPLES_DIR   := $(CURDIR)/examples
-EXAMPLES_LIST  := $(filter-out __library_impl,$(notdir $(wildcard $(EXAMPLES_DIR)/*)))
+EXAMPLE_SKETCHES := $(shell find $(EXAMPLES_DIR) -maxdepth 3 -mindepth 1 -name "*.ino")
+EXAMPLES_LIST  := $(sort $(patsubst %/,%,$(patsubst $(EXAMPLES_DIR)/%,%,$(dir $(EXAMPLE_SKETCHES)))))
+EXAMPLES_LIST  := $(filter-out __library_impl __library_impl/%,$(EXAMPLES_LIST))
 DEFAULT_EXAMPLE := $(firstword $(EXAMPLES_LIST))
 EXAMPLE        ?= $(DEFAULT_EXAMPLE)
 BUILD_DIR_BASE := $(CURDIR)/.build
 
 TEST_STUB_DIR := $(CURDIR)/tests/stubs
 TEST_SOURCES := $(filter %.cpp,$(wildcard $(CURDIR)/tests/*.cpp))
-TEST_EXTRA_SOURCES := \
-	$(CURDIR)/src/probot/logging/logger.cpp \
-	$(CURDIR)/src/probot/logging/telemetry_profiles.cpp
+TEST_EXTRA_SOURCES :=
 
 # Common flags
-EXTRA_FLAGS_COMMON := -DESP32S3 -DARDUINO_USB_MODE=1 -DARDUINO_USB_CDC_ON_BOOT=1
+EXTRA_FLAGS_COMMON := -DESP32S3 -DARDUINO_USB_MODE=1
 
 # Example-specific extra flags (function)
-example_flags = $(if $(filter LoopPeriodStress,$(1)),-DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1,)
+example_flags = $(if $(filter LoopPeriodStress,$(notdir $(1))),-DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1,)
 
 .PHONY: all build build-all _build_single upload clean boards libs serial list help test tests/control_tests
 
@@ -90,7 +90,7 @@ version-sync:
 	$(PYTHON) $(VERSION_SYNC_SCRIPT)
 
 tests/control_tests: $(TEST_SOURCES)
-	g++ -std=c++17 -Wall -Wextra -pedantic -I src -I $(TEST_STUB_DIR) -DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1 -DPROBOT_LOGGER_NO_SCHED_ATTACH=1 -o $@ $(TEST_SOURCES) $(TEST_EXTRA_SOURCES)
+	g++ -std=c++17 -Wall -Wextra -pedantic -I src -I $(TEST_STUB_DIR) -DPROBOT_CLM_NOLOG=1 -DPROBOT_SCHED_NOLOG=1 -DPROBOT_LOGGER_NO_SCHED_ATTACH=1 -DPROBOT_BUILTINLED_EXTERNAL=1 -o $@ $(TEST_SOURCES) $(TEST_EXTRA_SOURCES)
 
 test: build tests/control_tests
 	./tests/control_tests

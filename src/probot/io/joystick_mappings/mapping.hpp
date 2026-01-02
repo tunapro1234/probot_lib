@@ -1,5 +1,3 @@
-#ifndef PROBOT_IO_JOYSTICK_MAPPINGS_HPP
-#define PROBOT_IO_JOYSTICK_MAPPINGS_HPP
 #pragma once
 #include <stddef.h>
 #include <string.h>
@@ -87,17 +85,18 @@ inline const MappingProfile* findByName(const char* name){
   return &mapping_logitech_f310();
 }
 
-inline const MappingProfile& getActive(){
+inline const MappingProfile*& activeMapping(){
   static const MappingProfile* active = &mapping_logitech_f310();
-  return *active;
+  return active;
+}
+
+inline const MappingProfile& getActive(){
+  return *activeMapping();
 }
 
 inline void setActive(const MappingProfile* m){
   if (!m) return; (void)*m; // ensure not null
-  static const MappingProfile** slot = nullptr;
-  static const MappingProfile* init = &mapping_logitech_f310();
-  if (!slot){ slot = &init; }
-  *slot = m;
+  activeMapping() = m;
 }
 
 inline bool setActiveByName(const char* name){
@@ -107,5 +106,3 @@ inline bool setActiveByName(const char* name){
 }
 
 } // namespace probot::io::joystick_mapping
-
-#endif // PROBOT_IO_JOYSTICK_MAPPINGS_HPP 
