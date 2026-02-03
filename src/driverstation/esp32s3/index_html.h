@@ -840,8 +840,11 @@ function stopAutoTimer(){
         if(autoPeriodEl && typeof data.autoPeriodSeconds === 'number'){
           autoPeriodEl.value = data.autoPeriodSeconds;
         }
-        if(autoEnableEl && typeof data.autonomousEnabled === 'boolean'){
-          autoEnableEl.checked = data.autonomousEnabled;
+        if(autoEnableEl){
+          if(typeof data.autonomousEnabled === 'boolean'){
+            autoEnableEl.checked = data.autonomousEnabled;
+          }
+          autoEnableEl.disabled = (data.phase === 2 || data.phase === 3);
         }
 
         const remainingMs = (typeof data.autoRemainingMs === 'number') ? data.autoRemainingMs : null;
@@ -1054,9 +1057,21 @@ function stopAutoTimer(){
       updateAutoDisplay();
     });
 
-    document.getElementById('enableAutonomous').addEventListener('change',e=>{
+    document.getElementById('enableAutonomous').addEventListener('change', async e=>{
       if(!e.target.checked){
-        stopAutoTimer();
+        if(controlState === "running"){
+          try{
+            const r = await fetch('/robotControl?cmd=cancelAuto');
+            if(!r.ok) throw new Error("Cancel auto failed");
+          }catch(err){
+            console.error(err);
+            return;
+          }
+          stopAutoTimer();
+          setPhaseDisplay('teleop');
+        }else{
+          stopAutoTimer();
+        }
       }
     });
 
@@ -1076,6 +1091,7 @@ function stopAutoTimer(){
       if(el) el.textContent='';
     }
     setInterval(pollTelemetry,50);
+    setInterval(syncState, 1000);
 </script>
 </body>
 </html>

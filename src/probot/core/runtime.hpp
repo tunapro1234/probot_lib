@@ -207,6 +207,12 @@ namespace probot {
           }
         }
 
+        if (s.status == Status::START && s.phase == Phase::AUTONOMOUS && !s.autonomousEnabled){
+          stopAutonomous();
+          probot::robot::state().setPhase(now, Phase::TELEOP);
+          startTeleop();
+        }
+
         if (now - lastLed >= 500){
           lastLed = now;
           updateLed();

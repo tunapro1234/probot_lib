@@ -164,6 +164,8 @@ namespace probot::driverstation::esp32 {
         _rs.setAutonomous(millis(), enAuto);
         if (autoLen > 0) _rs.setAutoPeriodSeconds(millis(), autoLen);
         _rs.setStatus(millis(), robot::Status::START);
+      } else if (cmd == "cancelAuto"){
+        _rs.setAutonomous(millis(), false);
       } else if (cmd == "stop"){
         _rs.setStatus(millis(), robot::Status::STOP);
       }
