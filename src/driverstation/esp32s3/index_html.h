@@ -837,14 +837,17 @@ function stopAutoTimer(){
         const autoPeriodEl = document.getElementById('autoPeriod');
         const autoEnableEl = document.getElementById('enableAutonomous');
 
-        if(autoPeriodEl && typeof data.autoPeriodSeconds === 'number'){
+        const isAutonomous = (data.phase === 2);
+        const isTeleop = (data.phase === 3);
+        const isRunning = (isAutonomous || isTeleop);
+        if(autoPeriodEl && typeof data.autoPeriodSeconds === 'number' && isRunning){
           autoPeriodEl.value = data.autoPeriodSeconds;
         }
         if(autoEnableEl){
-          if(typeof data.autonomousEnabled === 'boolean'){
+          if(typeof data.autonomousEnabled === 'boolean' && (isAutonomous || isTeleop)){
             autoEnableEl.checked = data.autonomousEnabled;
           }
-          autoEnableEl.disabled = (data.phase === 2 || data.phase === 3);
+          autoEnableEl.disabled = isTeleop;
         }
 
         const remainingMs = (typeof data.autoRemainingMs === 'number') ? data.autoRemainingMs : null;
@@ -856,7 +859,11 @@ function stopAutoTimer(){
           btn.style.background = "var(--start)";
           btn.style.color = "var(--ice)";
           stopAutoTimer();
-          autoRemaining = parseFloat(autoPeriodEl ? autoPeriodEl.value : 0) || 0;
+          if(autoEnableEl && autoEnableEl.checked){
+            autoRemaining = parseFloat(autoPeriodEl ? autoPeriodEl.value : 0) || 0;
+          }else{
+            autoRemaining = 0;
+          }
           updateAutoDisplay();
           setPhaseDisplay('init');
         }else if(data.phase === 2){
@@ -864,14 +871,19 @@ function stopAutoTimer(){
           btn.textContent = "Stop";
           btn.style.background = "var(--stop)";
           btn.style.color = "var(--ice)";
-          stopAutoTimer();
-          if(remainingSec > 0){
-            startAutoTimer(remainingSec);
+          if(data.autonomousEnabled === false){
+            stopAutoTimer();
+            setPhaseDisplay('teleop');
           }else{
-            autoModeEnabled = true;
-            autoRemaining = 0;
-            updateAutoDisplay();
-            setPhaseDisplay('auto');
+            stopAutoTimer();
+            if(remainingSec > 0){
+              startAutoTimer(remainingSec);
+            }else{
+              autoModeEnabled = true;
+              autoRemaining = 0;
+              updateAutoDisplay();
+              setPhaseDisplay('auto');
+            }
           }
         }else if(data.phase === 3){
           controlState = "running";

@@ -138,7 +138,8 @@ namespace probot::driverstation::esp32 {
       auto s = _rs.read();
       uint32_t now_ms = millis();
       uint32_t remaining_ms = 0;
-      if (s.phase == probot::robot::Phase::AUTONOMOUS && s.autoStartMs != 0 && s.autoPeriodSeconds > 0) {
+      if (s.phase == probot::robot::Phase::AUTONOMOUS && s.autonomousEnabled &&
+          s.autoStartMs != 0 && s.autoPeriodSeconds > 0) {
         uint32_t total_ms = static_cast<uint32_t>(s.autoPeriodSeconds) * 1000u;
         uint32_t elapsed = now_ms - s.autoStartMs;
         remaining_ms = (elapsed >= total_ms) ? 0u : (total_ms - elapsed);
