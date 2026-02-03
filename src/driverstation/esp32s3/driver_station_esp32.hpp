@@ -12,6 +12,11 @@
 #error "DriverStation AP password not provided. Define PROBOT_WIFI_AP_PASSWORD (>=8 chars) before including probot.h."
 #endif
 static_assert(sizeof(PROBOT_WIFI_AP_PASSWORD) - 1 >= 8, "PROBOT_WIFI_AP_PASSWORD must be at least 8 characters.");
+#ifndef PROBOT_WIFI_AP_CHANNEL
+#define PROBOT_WIFI_AP_CHANNEL 1
+#endif
+static_assert(PROBOT_WIFI_AP_CHANNEL >= 1 && PROBOT_WIFI_AP_CHANNEL <= 11,
+              "PROBOT_WIFI_AP_CHANNEL must be between 1 and 11.");
 
 namespace probot::driverstation::esp32 {
   class DriverStation {
@@ -24,13 +29,15 @@ namespace probot::driverstation::esp32 {
       String ssid = generateSSID();
       ap_ssid_ = ssid;
       WiFi.mode(WIFI_AP);
-      WiFi.softAP(ssid.c_str(), pw);
+      WiFi.softAP(ssid.c_str(), pw, PROBOT_WIFI_AP_CHANNEL);
 
       Serial.println("[DS   ] ========================================");
       Serial.print("[DS   ] WiFi SSID: ");
       Serial.println(ssid);
       Serial.print("[DS   ] Password:  ");
       Serial.println("********");
+      Serial.print("[DS   ] Channel:   ");
+      Serial.println(PROBOT_WIFI_AP_CHANNEL);
       Serial.print("[DS   ] IP Address: ");
       Serial.println(WiFi.softAPIP());
       Serial.println("[DS   ] ========================================");
