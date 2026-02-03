@@ -45,6 +45,7 @@ namespace probot::driverstation::esp32 {
       _server.on("/", HTTP_GET, [this](){ if (!enforceOwner()) return; handleRoot(); });
       _server.on("/updateController", HTTP_POST, [this](){ if (!enforceOwner()) return; handleUpdateController(); });
       _server.on("/robotControl", HTTP_GET, [this](){ if (!enforceOwner()) return; handleRobotControl(); });
+      _server.on("/getState", HTTP_GET, [this](){ if (!enforceOwner()) return; handleGetState(); });
       _server.on("/getBattery", HTTP_GET, [this](){ handleGetBattery(); });
       _server.on("/telemetry", HTTP_GET, [this](){ if (!enforceOwner()) return; handleTelemetry(); });
       _server.begin();
@@ -131,6 +132,25 @@ namespace probot::driverstation::esp32 {
       auto s = _rs.read();
       char buf[16]; dtostrf(s.batteryVoltage, 0, 1, buf);
       _server.send(200, "text/plain", buf);
+    }
+
+    void handleGetState(){
+      auto s = _rs.read();
+      uint32_t now_ms = millis();
+      uint32_t remaining_ms = 0;
+      if (s.phase == probot::robot::Phase::AUTONOMOUS && s.autoStartMs != 0 && s.autoPeriodSeconds > 0) {
+        uint32_t total_ms = static_cast<uint32_t>(s.autoPeriodSeconds) * 1000u;
+        uint32_t elapsed = now_ms - s.autoStartMs;
+        remaining_ms = (elapsed >= total_ms) ? 0u : (total_ms - elapsed);
+      }
+      char buf[128];
+      snprintf(buf, sizeof(buf),
+               "{\"phase\":%u,\"autonomousEnabled\":%s,\"autoPeriodSeconds\":%d,\"autoRemainingMs\":%u}",
+               static_cast<unsigned>(s.phase),
+               s.autonomousEnabled ? "true" : "false",
+               (int)s.autoPeriodSeconds,
+               (unsigned)remaining_ms);
+      _server.send(200, "application/json", buf);
     }
 
     void handleRobotControl(){

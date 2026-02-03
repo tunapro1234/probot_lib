@@ -13,6 +13,7 @@ namespace probot::robot {
     float    batteryVoltage;
     bool     autonomousEnabled;
     int32_t  autoPeriodSeconds;
+    uint32_t autoStartMs;
     int32_t  clientCount;
     bool     deadlineMiss;
   };
@@ -23,7 +24,7 @@ namespace probot::robot {
       _cur = 0;
       StateSnapshot s{};
       s.ms=0; s.seq=0; s.status=Status::STOP; s.phase=Phase::NOT_INIT; s.batteryVoltage=0.0f;
-      s.autonomousEnabled=false; s.autoPeriodSeconds=30; s.clientCount=0; s.deadlineMiss=false;
+      s.autonomousEnabled=false; s.autoPeriodSeconds=30; s.autoStartMs=0; s.clientCount=0; s.deadlineMiss=false;
       _buf[0] = s; _buf[1] = s;
     }
 
@@ -32,6 +33,7 @@ namespace probot::robot {
     void setBatteryVoltage(uint32_t now_ms, float v){ writeField(now_ms, [&](StateSnapshot& w){ w.batteryVoltage = v; }); }
     void setAutonomous(uint32_t now_ms, bool en){ writeField(now_ms, [&](StateSnapshot& w){ w.autonomousEnabled = en; }); }
     void setAutoPeriodSeconds(uint32_t now_ms, int32_t s){ writeField(now_ms, [&](StateSnapshot& w){ w.autoPeriodSeconds = s; }); }
+    void setAutoStartMs(uint32_t now_ms, uint32_t ms){ writeField(now_ms, [&](StateSnapshot& w){ w.autoStartMs = ms; }); }
     void setClientCount(uint32_t now_ms, int32_t c){ writeField(now_ms, [&](StateSnapshot& w){ w.clientCount = c; }); }
     void setDeadlineMiss(uint32_t now_ms, bool v){ writeField(now_ms, [&](StateSnapshot& w){ w.deadlineMiss = v; }); }
 
@@ -43,6 +45,7 @@ namespace probot::robot {
     // Convenience getters
     bool     autonomousEnabled() const { return _buf[__atomic_load_n(&_cur, __ATOMIC_SEQ_CST)].autonomousEnabled; }
     int32_t  autoPeriodSeconds() const { return _buf[__atomic_load_n(&_cur, __ATOMIC_SEQ_CST)].autoPeriodSeconds; }
+    uint32_t autoStartMs() const       { return _buf[__atomic_load_n(&_cur, __ATOMIC_SEQ_CST)].autoStartMs; }
     Status   status() const            { return _buf[__atomic_load_n(&_cur, __ATOMIC_SEQ_CST)].status; }
     Phase    phase() const             { return _buf[__atomic_load_n(&_cur, __ATOMIC_SEQ_CST)].phase; }
 

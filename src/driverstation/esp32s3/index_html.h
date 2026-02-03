@@ -826,6 +826,70 @@ function stopAutoTimer(){
   updateAutoDisplay();
 }
 
+    async function syncState(){
+      try{
+        const r = await fetch('/getState');
+        if(!r.ok) return;
+        const data = await r.json();
+        const btn = document.getElementById('robotButton');
+        if(!btn) return;
+
+        const autoPeriodEl = document.getElementById('autoPeriod');
+        const autoEnableEl = document.getElementById('enableAutonomous');
+
+        if(autoPeriodEl && typeof data.autoPeriodSeconds === 'number'){
+          autoPeriodEl.value = data.autoPeriodSeconds;
+        }
+        if(autoEnableEl && typeof data.autonomousEnabled === 'boolean'){
+          autoEnableEl.checked = data.autonomousEnabled;
+        }
+
+        const remainingMs = (typeof data.autoRemainingMs === 'number') ? data.autoRemainingMs : null;
+        const remainingSec = remainingMs !== null ? Math.max(0, remainingMs) / 1000 : (parseFloat(autoPeriodEl ? autoPeriodEl.value : 0) || 0);
+
+        if(data.phase === 1){
+          controlState = "armed";
+          btn.textContent = "Start";
+          btn.style.background = "var(--start)";
+          btn.style.color = "var(--ice)";
+          stopAutoTimer();
+          autoRemaining = parseFloat(autoPeriodEl ? autoPeriodEl.value : 0) || 0;
+          updateAutoDisplay();
+          setPhaseDisplay('init');
+        }else if(data.phase === 2){
+          controlState = "running";
+          btn.textContent = "Stop";
+          btn.style.background = "var(--stop)";
+          btn.style.color = "var(--ice)";
+          stopAutoTimer();
+          if(remainingSec > 0){
+            startAutoTimer(remainingSec);
+          }else{
+            autoModeEnabled = true;
+            autoRemaining = 0;
+            updateAutoDisplay();
+            setPhaseDisplay('auto');
+          }
+        }else if(data.phase === 3){
+          controlState = "running";
+          btn.textContent = "Stop";
+          btn.style.background = "var(--stop)";
+          btn.style.color = "var(--ice)";
+          stopAutoTimer();
+          setPhaseDisplay('teleop');
+        }else{
+          controlState = "idle";
+          btn.textContent = "Init";
+          btn.style.background = "var(--navy)";
+          btn.style.color = "var(--ice)";
+          stopAutoTimer();
+          setPhaseDisplay('stopped');
+        }
+      }catch(e){
+        console.error('syncState failed:', e);
+      }
+    }
+
     async function handleRobotButton(){
       let cmd="";
       const enableAuto=document.getElementById('enableAutonomous').checked;
@@ -977,6 +1041,7 @@ function stopAutoTimer(){
       updateAutoDisplay();
       setPhaseDisplay('standby');
       requestAnimationFrame(gamepadLoop);
+      syncState();
     });
 
     document.getElementById('autoPeriod').addEventListener('input',e=>{
