@@ -12,6 +12,19 @@
 #error "DriverStation AP password not provided. Define PROBOT_WIFI_AP_PASSWORD (>=8 chars) before including probot.h."
 #endif
 static_assert(sizeof(PROBOT_WIFI_AP_PASSWORD) - 1 >= 8, "PROBOT_WIFI_AP_PASSWORD must be at least 8 characters.");
+#ifdef PROBOT_WIFI_AP_SSID
+static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 >= 1, "PROBOT_WIFI_AP_SSID must be at least 1 character.");
+#ifdef PROBOT_WIFI_AP_SSID_NO_MAC_SUFFIX
+static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 32, "PROBOT_WIFI_AP_SSID must be 32 characters or fewer.");
+#else
+static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 25, "PROBOT_WIFI_AP_SSID must be 25 characters or fewer when MAC suffix is enabled.");
+#endif
+#endif
+#ifndef PROBOT_WIFI_AP_CHANNEL
+#define PROBOT_WIFI_AP_CHANNEL 1
+#endif
+static_assert(PROBOT_WIFI_AP_CHANNEL >= 1 && PROBOT_WIFI_AP_CHANNEL <= 11,
+              "PROBOT_WIFI_AP_CHANNEL must be between 1 and 11.");
 
 namespace probot::driverstation::esp32 {
   class DriverStation {
@@ -21,16 +34,28 @@ namespace probot::driverstation::esp32 {
 
     void begin(){
       const char* pw = PROBOT_WIFI_AP_PASSWORD;
-      String ssid = generateSSID();
+      String ssid;
+#ifdef PROBOT_WIFI_AP_SSID
+      ssid = String(PROBOT_WIFI_AP_SSID);
+#ifndef PROBOT_WIFI_AP_SSID_NO_MAC_SUFFIX
+      char suffix[8];
+      snprintf(suffix, sizeof(suffix), "-%06X", (unsigned int)(ESP.getEfuseMac() & 0xFFFFFF));
+      ssid += suffix;
+#endif
+#else
+      ssid = generateSSID();
+#endif
       ap_ssid_ = ssid;
       WiFi.mode(WIFI_AP);
-      WiFi.softAP(ssid.c_str(), pw);
+      WiFi.softAP(ssid.c_str(), pw, PROBOT_WIFI_AP_CHANNEL);
 
       Serial.println("[DS   ] ========================================");
       Serial.print("[DS   ] WiFi SSID: ");
       Serial.println(ssid);
       Serial.print("[DS   ] Password:  ");
       Serial.println("********");
+      Serial.print("[DS   ] Channel:   ");
+      Serial.println(PROBOT_WIFI_AP_CHANNEL);
       Serial.print("[DS   ] IP Address: ");
       Serial.println(WiFi.softAPIP());
       Serial.println("[DS   ] ========================================");
@@ -38,6 +63,7 @@ namespace probot::driverstation::esp32 {
       _server.on("/", HTTP_GET, [this](){ if (!enforceOwner()) return; handleRoot(); });
       _server.on("/updateController", HTTP_POST, [this](){ if (!enforceOwner()) return; handleUpdateController(); });
       _server.on("/robotControl", HTTP_GET, [this](){ if (!enforceOwner()) return; handleRobotControl(); });
+      _server.on("/getState", HTTP_GET, [this](){ if (!enforceOwner()) return; handleGetState(); });
       _server.on("/getBattery", HTTP_GET, [this](){ handleGetBattery(); });
       _server.on("/telemetry", HTTP_GET, [this](){ if (!enforceOwner()) return; handleTelemetry(); });
       _server.begin();
@@ -126,6 +152,26 @@ namespace probot::driverstation::esp32 {
       _server.send(200, "text/plain", buf);
     }
 
+    void handleGetState(){
+      auto s = _rs.read();
+      uint32_t now_ms = millis();
+      uint32_t remaining_ms = 0;
+      if (s.phase == probot::robot::Phase::AUTONOMOUS && s.autonomousEnabled &&
+          s.autoStartMs != 0 && s.autoPeriodSeconds > 0) {
+        uint32_t total_ms = static_cast<uint32_t>(s.autoPeriodSeconds) * 1000u;
+        uint32_t elapsed = now_ms - s.autoStartMs;
+        remaining_ms = (elapsed >= total_ms) ? 0u : (total_ms - elapsed);
+      }
+      char buf[128];
+      snprintf(buf, sizeof(buf),
+               "{\"phase\":%u,\"autonomousEnabled\":%s,\"autoPeriodSeconds\":%d,\"autoRemainingMs\":%u}",
+               static_cast<unsigned>(s.phase),
+               s.autonomousEnabled ? "true" : "false",
+               (int)s.autoPeriodSeconds,
+               (unsigned)remaining_ms);
+      _server.send(200, "application/json", buf);
+    }
+
     void handleRobotControl(){
       String cmd = _server.arg("cmd");
       bool enAuto = _server.arg("auto").toInt() != 0;
@@ -137,6 +183,8 @@ namespace probot::driverstation::esp32 {
         _rs.setAutonomous(millis(), enAuto);
         if (autoLen > 0) _rs.setAutoPeriodSeconds(millis(), autoLen);
         _rs.setStatus(millis(), robot::Status::START);
+      } else if (cmd == "cancelAuto"){
+        _rs.setAutonomous(millis(), false);
       } else if (cmd == "stop"){
         _rs.setStatus(millis(), robot::Status::STOP);
       }

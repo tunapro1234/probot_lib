@@ -36,7 +36,9 @@ namespace probot {
     inline RuntimeState g_state{};
 
     inline void autonomousWorker(void*){
-      __atomic_store_n(&g_state.auto_start_ms, millis(), __ATOMIC_SEQ_CST);
+      uint32_t now = millis();
+      __atomic_store_n(&g_state.auto_start_ms, now, __ATOMIC_SEQ_CST);
+      probot::robot::state().setAutoStartMs(now, now);
       ::autonomousInit();
       for(;;){ ::autonomousLoop(); vTaskDelay(pdMS_TO_TICKS(20)); }
     }
@@ -64,6 +66,7 @@ namespace probot {
       auto& s = g_state;
       if (s.hAuto){ vTaskDelete(s.hAuto); s.hAuto = nullptr; }
       __atomic_store_n(&s.auto_start_ms, 0u, __ATOMIC_SEQ_CST);
+      probot::robot::state().setAutoStartMs(millis(), 0u);
     }
 
     inline void stopTeleop(){
@@ -177,6 +180,7 @@ namespace probot {
             if (s.autonomousEnabled){
               autoLen = s.autoPeriodSeconds;
               __atomic_store_n(&detail::g_state.auto_start_ms, 0u, __ATOMIC_SEQ_CST);
+              probot::robot::state().setAutoStartMs(now, 0u);
               probot::robot::state().setPhase(now, Phase::AUTONOMOUS);
               startAutonomous();
             } else {
@@ -201,6 +205,12 @@ namespace probot {
             probot::robot::state().setPhase(now, Phase::TELEOP);
             startTeleop();
           }
+        }
+
+        if (s.status == Status::START && s.phase == Phase::AUTONOMOUS && !s.autonomousEnabled){
+          stopAutonomous();
+          probot::robot::state().setPhase(now, Phase::TELEOP);
+          startTeleop();
         }
 
         if (now - lastLed >= 500){

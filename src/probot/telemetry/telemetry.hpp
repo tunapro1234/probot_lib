@@ -11,6 +11,7 @@ namespace detail {
 
   struct TelemetryBuffer {
     char data[BUFFER_SIZE];
+    volatile uint16_t head = 0;
     volatile uint16_t len = 0;
     volatile uint32_t seq = 0;
   };
@@ -18,22 +19,40 @@ namespace detail {
   inline TelemetryBuffer g_buffer{};
 }
 
-inline void print(const char* msg) {
+inline void writeBytes(const char* msg, size_t msgLen) {
   auto& buf = detail::g_buffer;
-  size_t msgLen = strlen(msg);
-  size_t space = detail::BUFFER_SIZE - 1 - buf.len;
+  if (msgLen == 0) return;
 
-  if (msgLen > space) {
-    // Buffer dolu, baştan yaz
+  if (msgLen >= detail::BUFFER_SIZE) {
+    msg += (msgLen - detail::BUFFER_SIZE);
+    msgLen = detail::BUFFER_SIZE;
+    buf.head = 0;
     buf.len = 0;
-    space = detail::BUFFER_SIZE - 1;
   }
 
-  size_t toWrite = (msgLen < space) ? msgLen : space;
-  memcpy(buf.data + buf.len, msg, toWrite);
-  uint16_t oldLen = buf.len; buf.len = static_cast<uint16_t>(oldLen + toWrite);
-  buf.data[buf.len] = '\0';
+  uint16_t head = buf.head;
+  size_t first = detail::BUFFER_SIZE - head;
+  if (first > msgLen) first = msgLen;
+  memcpy(buf.data + head, msg, first);
+  size_t remaining = msgLen - first;
+  if (remaining) {
+    memcpy(buf.data, msg + first, remaining);
+  }
+  head = static_cast<uint16_t>((head + msgLen) % detail::BUFFER_SIZE);
+  buf.head = head;
+
+  uint16_t newLen = buf.len;
+  if (newLen + msgLen >= detail::BUFFER_SIZE) {
+    newLen = detail::BUFFER_SIZE;
+  } else {
+    newLen = static_cast<uint16_t>(newLen + msgLen);
+  }
+  buf.len = newLen;
   uint32_t s = buf.seq; buf.seq = s + 1;
+}
+
+inline void print(const char* msg) {
+  writeBytes(msg, strlen(msg));
 }
 
 inline void println(const char* msg = "") {
@@ -52,14 +71,31 @@ inline void printf(const char* fmt, ...) {
 
 inline void clear() {
   auto& buf = detail::g_buffer;
+  buf.head = 0;
   buf.len = 0;
-  buf.data[0] = '\0';
   uint32_t s = buf.seq; buf.seq = s + 1;
 }
 
 // Internal: DS tarafından çağrılır
 inline const char* getBuffer() {
-  return detail::g_buffer.data;
+  auto& buf = detail::g_buffer;
+  static char out[detail::BUFFER_SIZE + 1];
+  uint16_t len = buf.len;
+  if (len == 0) {
+    out[0] = '\0';
+    return out;
+  }
+  uint16_t head = buf.head;
+  uint16_t tail = static_cast<uint16_t>((head + detail::BUFFER_SIZE - len) % detail::BUFFER_SIZE);
+  size_t first = detail::BUFFER_SIZE - tail;
+  if (first > len) first = len;
+  memcpy(out, buf.data + tail, first);
+  size_t remaining = len - first;
+  if (remaining) {
+    memcpy(out + first, buf.data, remaining);
+  }
+  out[len] = '\0';
+  return out;
 }
 
 inline uint16_t getLength() {

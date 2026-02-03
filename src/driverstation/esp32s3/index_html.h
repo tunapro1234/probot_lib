@@ -705,6 +705,7 @@ const char MAIN_page[] PROGMEM = R"=====(
       <h2>Telemetry</h2>
       <pre id="telemetryOutput" style="height:150px;overflow-y:auto;background:rgba(0,32,77,0.05);padding:12px;border-radius:12px;font-size:0.9rem;"></pre>
       <button onclick="clearTelemetry()" style="margin-top:12px;padding:10px 20px;font-size:0.9rem;">Clear</button>
+      <button id="autoScrollToggle" onclick="toggleAutoScroll()" style="margin-top:8px;padding:10px 20px;font-size:0.9rem;">Auto-scroll: ON</button>
     </section>
     <section class="stack-card telemetry" id="logs">
       <h2>System Logs</h2>
@@ -720,6 +721,7 @@ const char MAIN_page[] PROGMEM = R"=====(
   <script>
     let controlState="idle";
     let autoModeEnabled=false;
+    let autoScroll=true;
     let selectedGamepadIndex=-1;
     let gamepads={};
     let gamepadDetected=false;
@@ -825,6 +827,85 @@ function stopAutoTimer(){
   autoModeEnabled=false;
   updateAutoDisplay();
 }
+
+    async function syncState(){
+      try{
+        const r = await fetch('/getState');
+        if(!r.ok) return;
+        const data = await r.json();
+        const btn = document.getElementById('robotButton');
+        if(!btn) return;
+
+        const autoPeriodEl = document.getElementById('autoPeriod');
+        const autoEnableEl = document.getElementById('enableAutonomous');
+
+        const isAutonomous = (data.phase === 2);
+        const isTeleop = (data.phase === 3);
+        const isRunning = (isAutonomous || isTeleop);
+        if(autoPeriodEl && typeof data.autoPeriodSeconds === 'number' && isRunning){
+          autoPeriodEl.value = data.autoPeriodSeconds;
+        }
+        if(autoEnableEl){
+          if(typeof data.autonomousEnabled === 'boolean' && (isAutonomous || isTeleop)){
+            autoEnableEl.checked = data.autonomousEnabled;
+          }
+          autoEnableEl.disabled = isTeleop;
+        }
+
+        const remainingMs = (typeof data.autoRemainingMs === 'number') ? data.autoRemainingMs : null;
+        const remainingSec = remainingMs !== null ? Math.max(0, remainingMs) / 1000 : (parseFloat(autoPeriodEl ? autoPeriodEl.value : 0) || 0);
+
+        if(data.phase === 1){
+          controlState = "armed";
+          btn.textContent = "Start";
+          btn.style.background = "var(--start)";
+          btn.style.color = "var(--ice)";
+          stopAutoTimer();
+          if(autoEnableEl && autoEnableEl.checked){
+            autoRemaining = parseFloat(autoPeriodEl ? autoPeriodEl.value : 0) || 0;
+          }else{
+            autoRemaining = 0;
+          }
+          updateAutoDisplay();
+          setPhaseDisplay('init');
+        }else if(data.phase === 2){
+          controlState = "running";
+          btn.textContent = "Stop";
+          btn.style.background = "var(--stop)";
+          btn.style.color = "var(--ice)";
+          if(data.autonomousEnabled === false){
+            stopAutoTimer();
+            setPhaseDisplay('teleop');
+          }else{
+            stopAutoTimer();
+            if(remainingSec > 0){
+              startAutoTimer(remainingSec);
+            }else{
+              autoModeEnabled = true;
+              autoRemaining = 0;
+              updateAutoDisplay();
+              setPhaseDisplay('auto');
+            }
+          }
+        }else if(data.phase === 3){
+          controlState = "running";
+          btn.textContent = "Stop";
+          btn.style.background = "var(--stop)";
+          btn.style.color = "var(--ice)";
+          stopAutoTimer();
+          setPhaseDisplay('teleop');
+        }else{
+          controlState = "idle";
+          btn.textContent = "Init";
+          btn.style.background = "var(--navy)";
+          btn.style.color = "var(--ice)";
+          stopAutoTimer();
+          setPhaseDisplay('stopped');
+        }
+      }catch(e){
+        console.error('syncState failed:', e);
+      }
+    }
 
     async function handleRobotButton(){
       let cmd="";
@@ -973,10 +1054,12 @@ function stopAutoTimer(){
     window.addEventListener('load',()=>{
       ensureJoyButtons(DEFAULT_BUTTON_COUNT);
       updateJoyVisuals(null);
+      updateAutoScrollButton();
       autoRemaining=parseFloat(document.getElementById('autoPeriod').value)||0;
       updateAutoDisplay();
       setPhaseDisplay('standby');
       requestAnimationFrame(gamepadLoop);
+      syncState();
     });
 
     document.getElementById('autoPeriod').addEventListener('input',e=>{
@@ -989,9 +1072,21 @@ function stopAutoTimer(){
       updateAutoDisplay();
     });
 
-    document.getElementById('enableAutonomous').addEventListener('change',e=>{
+    document.getElementById('enableAutonomous').addEventListener('change', async e=>{
       if(!e.target.checked){
-        stopAutoTimer();
+        if(controlState === "running"){
+          try{
+            const r = await fetch('/robotControl?cmd=cancelAuto');
+            if(!r.ok) throw new Error("Cancel auto failed");
+          }catch(err){
+            console.error(err);
+            return;
+          }
+          stopAutoTimer();
+          setPhaseDisplay('teleop');
+        }else{
+          stopAutoTimer();
+        }
       }
     });
 
@@ -1002,7 +1097,12 @@ function stopAutoTimer(){
         if(r.ok){
           const text=await r.text();
           const el=document.getElementById('telemetryOutput');
-          if(el && text) el.textContent=text;
+          if(el && text){
+            el.textContent=text;
+            if(autoScroll){
+              el.scrollTop = el.scrollHeight;
+            }
+          }
         }
       }catch(e){}
     }
@@ -1010,7 +1110,21 @@ function stopAutoTimer(){
       const el=document.getElementById('telemetryOutput');
       if(el) el.textContent='';
     }
+    function updateAutoScrollButton(){
+      const btn=document.getElementById('autoScrollToggle');
+      if(!btn) return;
+      btn.textContent = autoScroll ? 'Auto-scroll: ON' : 'Auto-scroll: OFF';
+    }
+    function toggleAutoScroll(){
+      autoScroll = !autoScroll;
+      updateAutoScrollButton();
+      if(autoScroll){
+        const el=document.getElementById('telemetryOutput');
+        if(el) el.scrollTop = el.scrollHeight;
+      }
+    }
     setInterval(pollTelemetry,50);
+    setInterval(syncState, 1000);
 </script>
 </body>
 </html>
