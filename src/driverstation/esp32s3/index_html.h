@@ -705,6 +705,7 @@ const char MAIN_page[] PROGMEM = R"=====(
       <h2>Telemetry</h2>
       <pre id="telemetryOutput" style="height:150px;overflow-y:auto;background:rgba(0,32,77,0.05);padding:12px;border-radius:12px;font-size:0.9rem;"></pre>
       <button onclick="clearTelemetry()" style="margin-top:12px;padding:10px 20px;font-size:0.9rem;">Clear</button>
+      <button id="autoScrollToggle" onclick="toggleAutoScroll()" style="margin-top:8px;padding:10px 20px;font-size:0.9rem;">Auto-scroll: ON</button>
     </section>
     <section class="stack-card telemetry" id="logs">
       <h2>System Logs</h2>
@@ -720,6 +721,7 @@ const char MAIN_page[] PROGMEM = R"=====(
   <script>
     let controlState="idle";
     let autoModeEnabled=false;
+    let autoScroll=true;
     let selectedGamepadIndex=-1;
     let gamepads={};
     let gamepadDetected=false;
@@ -1052,6 +1054,7 @@ function stopAutoTimer(){
     window.addEventListener('load',()=>{
       ensureJoyButtons(DEFAULT_BUTTON_COUNT);
       updateJoyVisuals(null);
+      updateAutoScrollButton();
       autoRemaining=parseFloat(document.getElementById('autoPeriod').value)||0;
       updateAutoDisplay();
       setPhaseDisplay('standby');
@@ -1094,13 +1097,31 @@ function stopAutoTimer(){
         if(r.ok){
           const text=await r.text();
           const el=document.getElementById('telemetryOutput');
-          if(el && text) el.textContent=text;
+          if(el && text){
+            el.textContent=text;
+            if(autoScroll){
+              el.scrollTop = el.scrollHeight;
+            }
+          }
         }
       }catch(e){}
     }
     function clearTelemetry(){
       const el=document.getElementById('telemetryOutput');
       if(el) el.textContent='';
+    }
+    function updateAutoScrollButton(){
+      const btn=document.getElementById('autoScrollToggle');
+      if(!btn) return;
+      btn.textContent = autoScroll ? 'Auto-scroll: ON' : 'Auto-scroll: OFF';
+    }
+    function toggleAutoScroll(){
+      autoScroll = !autoScroll;
+      updateAutoScrollButton();
+      if(autoScroll){
+        const el=document.getElementById('telemetryOutput');
+        if(el) el.scrollTop = el.scrollHeight;
+      }
     }
     setInterval(pollTelemetry,50);
     setInterval(syncState, 1000);
