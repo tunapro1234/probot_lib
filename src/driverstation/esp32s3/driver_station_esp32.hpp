@@ -1,6 +1,7 @@
 #pragma once
 #ifdef ESP32
 #include <WiFi.h>
+#include <esp_wifi.h>
 #include <WebServer.h>
 #include <Arduino.h>
 #include <probot/robot/state.hpp>
@@ -45,6 +46,8 @@ namespace probot::driverstation::esp32 {
       ap_ssid_ = ssid;
       WiFi.mode(WIFI_AP);
       WiFi.softAP(ssid.c_str(), pw, PROBOT_WIFI_AP_CHANNEL);
+      esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20);
+      esp_wifi_set_ps(WIFI_PS_NONE);
 
       Serial.println("[DS   ] ========================================");
       Serial.print("[DS   ] WiFi SSID: ");
