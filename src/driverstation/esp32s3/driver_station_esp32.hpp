@@ -12,16 +12,17 @@
 #error "DriverStation AP password not provided. Define PROBOT_WIFI_AP_PASSWORD (>=8 chars) before including probot.h."
 #endif
 static_assert(sizeof(PROBOT_WIFI_AP_PASSWORD) - 1 >= 8, "PROBOT_WIFI_AP_PASSWORD must be at least 8 characters.");
-#ifdef PROBOT_WIFI_AP_SSID
+#ifndef PROBOT_WIFI_AP_SSID
+#error "WiFi AP SSID not provided. Define PROBOT_WIFI_AP_SSID before including probot.h."
+#endif
 static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 >= 1, "PROBOT_WIFI_AP_SSID must be at least 1 character.");
 #ifdef PROBOT_WIFI_AP_SSID_NO_MAC_SUFFIX
 static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 32, "PROBOT_WIFI_AP_SSID must be 32 characters or fewer.");
 #else
 static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 25, "PROBOT_WIFI_AP_SSID must be 25 characters or fewer when MAC suffix is enabled.");
 #endif
-#endif
 #ifndef PROBOT_WIFI_AP_CHANNEL
-#define PROBOT_WIFI_AP_CHANNEL 1
+#error "WiFi AP channel not provided. Define PROBOT_WIFI_AP_CHANNEL (1-11) before including probot.h."
 #endif
 static_assert(PROBOT_WIFI_AP_CHANNEL >= 1 && PROBOT_WIFI_AP_CHANNEL <= 11,
               "PROBOT_WIFI_AP_CHANNEL must be between 1 and 11.");
@@ -34,16 +35,11 @@ namespace probot::driverstation::esp32 {
 
     void begin(){
       const char* pw = PROBOT_WIFI_AP_PASSWORD;
-      String ssid;
-#ifdef PROBOT_WIFI_AP_SSID
-      ssid = String(PROBOT_WIFI_AP_SSID);
+      String ssid = String(PROBOT_WIFI_AP_SSID);
 #ifndef PROBOT_WIFI_AP_SSID_NO_MAC_SUFFIX
       char suffix[8];
       snprintf(suffix, sizeof(suffix), "-%06X", (unsigned int)(ESP.getEfuseMac() & 0xFFFFFF));
       ssid += suffix;
-#endif
-#else
-      ssid = generateSSID();
 #endif
       ap_ssid_ = ssid;
       WiFi.mode(WIFI_AP);
