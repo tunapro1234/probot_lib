@@ -1,12 +1,14 @@
 #pragma once
 #ifdef ESP32
 #include <WiFi.h>
+#include <esp_wifi.h>
 #include <WebServer.h>
 #include <Arduino.h>
 #include <probot/robot/state.hpp>
 #include <probot/io/gamepad.hpp>
 #include <probot/telemetry/telemetry.hpp>
 #include "index_html.h"
+#include "ws_joystick.hpp"
 
 #ifndef PROBOT_WIFI_AP_PASSWORD
 #error "DriverStation AP password not provided. Define PROBOT_WIFI_AP_PASSWORD (>=8 chars) before including probot.h."
@@ -31,7 +33,7 @@ namespace probot::driverstation::esp32 {
   class DriverStation {
   public:
     DriverStation(robot::StateService& rs, io::GamepadService& gs)
-    : _rs(rs), _gs(gs), _server(80) {}
+    : _rs(rs), _gs(gs), _ws(gs), _server(80) {}
 
     void begin(){
       const char* pw = PROBOT_WIFI_AP_PASSWORD;
@@ -44,6 +46,8 @@ namespace probot::driverstation::esp32 {
       ap_ssid_ = ssid;
       WiFi.mode(WIFI_AP);
       WiFi.softAP(ssid.c_str(), pw, PROBOT_WIFI_AP_CHANNEL);
+      esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20);
+      esp_wifi_set_ps(WIFI_PS_NONE);
 
       Serial.println("[DS   ] ========================================");
       Serial.print("[DS   ] WiFi SSID: ");
@@ -63,6 +67,7 @@ namespace probot::driverstation::esp32 {
       _server.on("/getBattery", HTTP_GET, [this](){ handleGetBattery(); });
       _server.on("/telemetry", HTTP_GET, [this](){ if (!enforceOwner()) return; handleTelemetry(); });
       _server.begin();
+      _ws.begin(81);
     }
 
     void handleClient(){
@@ -203,6 +208,7 @@ namespace probot::driverstation::esp32 {
 
     robot::StateService& _rs;
     io::GamepadService&  _gs;
+    WsJoystick           _ws;
     WebServer            _server;
     bool                 _owner_set=false;
     IPAddress            _owner;
