@@ -21,7 +21,7 @@ static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 25, "PROBOT_WIFI_AP_SSID must b
 #endif
 #endif
 #ifndef PROBOT_WIFI_AP_CHANNEL
-#define PROBOT_WIFI_AP_CHANNEL 1
+#error "WiFi AP channel not provided. Define PROBOT_WIFI_AP_CHANNEL (1-11) before including probot.h."
 #endif
 static_assert(PROBOT_WIFI_AP_CHANNEL >= 1 && PROBOT_WIFI_AP_CHANNEL <= 11,
               "PROBOT_WIFI_AP_CHANNEL must be between 1 and 11.");
