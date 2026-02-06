@@ -996,13 +996,62 @@ function stopAutoTimer(){
     let gamepadSending=false;
     let lastGamepadSend=0;
     const GAMEPAD_SEND_INTERVAL=20; // 50Hz max
+
+    // WebSocket joystick channel
+    let wsJoystick=null;
+    let wsConnected=false;
+    let wsReconnectTimer=null;
+
+    function connectWebSocket(){
+      if(wsJoystick && wsJoystick.readyState<=1) return;
+      try{
+        wsJoystick=new WebSocket(`ws://${location.hostname}:81/joystick`);
+        wsJoystick.binaryType='arraybuffer';
+        wsJoystick.onopen=()=>{wsConnected=true;console.log('[WS] Connected');};
+        wsJoystick.onclose=()=>{wsConnected=false;console.log('[WS] Closed');scheduleReconnect();};
+        wsJoystick.onerror=()=>{wsConnected=false;};
+      }catch(e){wsConnected=false;scheduleReconnect();}
+    }
+    function scheduleReconnect(){
+      if(wsReconnectTimer) return;
+      wsReconnectTimer=setTimeout(()=>{wsReconnectTimer=null;connectWebSocket();},2000);
+    }
+    function packJoystickBinary(gp){
+      const nA=gp.axes.length;
+      const nB=gp.buttons.length;
+      const btnBytes=Math.ceil(nB/8);
+      const buf=new ArrayBuffer(4+nA*2+btnBytes);
+      const view=new DataView(buf);
+      view.setUint8(0,0x4A);
+      view.setUint8(1,nA);
+      view.setUint8(2,nB);
+      view.setUint8(3,0);
+      for(let i=0;i<nA;i++){
+        const v=Math.max(-1,Math.min(1,gp.axes[i]));
+        view.setInt16(4+i*2,Math.round(v*32767),false);
+      }
+      const btnOff=4+nA*2;
+      for(let i=0;i<nB;i++){
+        if(gp.buttons[i].pressed){
+          view.setUint8(btnOff+Math.floor(i/8),view.getUint8(btnOff+Math.floor(i/8))|(1<<(i%8)));
+        }
+      }
+      return buf;
+    }
     async function sendGamepadData(gp){
       const now=performance.now();
       if(gamepadSending || (now-lastGamepadSend)<GAMEPAD_SEND_INTERVAL) return;
       gamepadSending=true;
       lastGamepadSend=now;
-      const data={axes:Array.from(gp.axes),buttons:gp.buttons.map(b=>b.pressed)};
       try{
+        if(wsConnected && wsJoystick && wsJoystick.readyState===1){
+          try{
+            wsJoystick.send(packJoystickBinary(gp));
+            gamepadSending=false;
+            return;
+          }catch(e){wsConnected=false;scheduleReconnect();}
+        }
+        const data={axes:Array.from(gp.axes),buttons:gp.buttons.map(b=>b.pressed)};
         await fetch("/updateController",{
           method:"POST",
           headers:{"Content-Type":"application/json"},
@@ -1060,6 +1109,7 @@ function stopAutoTimer(){
       setPhaseDisplay('standby');
       requestAnimationFrame(gamepadLoop);
       syncState();
+      connectWebSocket();
     });
 
     document.getElementById('autoPeriod').addEventListener('input',e=>{
