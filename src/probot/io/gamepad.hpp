@@ -25,7 +25,7 @@ namespace probot::io {
       GamepadSnapshot z{};
       _buf[0] = z;
       _buf[1] = z;
-      _timeout_ms = 300;
+      _timeout_ms = 500;
     }
 
     void write(uint32_t now_ms, const float* axes, uint32_t nAxis, const bool* buttons, uint32_t nButton){
