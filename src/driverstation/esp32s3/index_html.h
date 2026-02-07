@@ -1001,21 +1001,39 @@ function stopAutoTimer(){
     let wsJoystick=null;
     let wsConnected=false;
     let wsReconnectTimer=null;
+    let wsLastActivity=0;
 
     function connectWebSocket(){
-      if(wsJoystick && wsJoystick.readyState<=1) return;
+      if(wsJoystick){
+        try{wsJoystick.close();}catch(e){}
+        wsJoystick=null;
+      }
+      wsConnected=false;
       try{
-        wsJoystick=new WebSocket(`ws://${location.hostname}:81/joystick`);
-        wsJoystick.binaryType='arraybuffer';
-        wsJoystick.onopen=()=>{wsConnected=true;console.log('[WS] Connected');};
-        wsJoystick.onclose=()=>{wsConnected=false;console.log('[WS] Closed');scheduleReconnect();};
-        wsJoystick.onerror=()=>{wsConnected=false;};
-      }catch(e){wsConnected=false;scheduleReconnect();}
+        const ws=new WebSocket(`ws://${location.hostname}:81/joystick`);
+        ws.binaryType='arraybuffer';
+        ws.onopen=()=>{wsConnected=true;wsLastActivity=performance.now();console.log('[WS] Connected');};
+        ws.onclose=()=>{wsConnected=false;wsJoystick=null;scheduleReconnect();};
+        ws.onerror=()=>{wsConnected=false;};
+        ws.onmessage=()=>{wsLastActivity=performance.now();};
+        wsJoystick=ws;
+      }catch(e){scheduleReconnect();}
     }
     function scheduleReconnect(){
       if(wsReconnectTimer) return;
       wsReconnectTimer=setTimeout(()=>{wsReconnectTimer=null;connectWebSocket();},2000);
     }
+    function wsHealthCheck(){
+      if(!wsJoystick) return;
+      if(wsJoystick.readyState>1){wsConnected=false;wsJoystick=null;scheduleReconnect();return;}
+      if(wsConnected && performance.now()-wsLastActivity>3000){
+        console.log('[WS] Stale, reconnecting');
+        try{wsJoystick.close();}catch(e){}
+        wsConnected=false;wsJoystick=null;
+        scheduleReconnect();
+      }
+    }
+    setInterval(wsHealthCheck,1000);
     function packJoystickBinary(gp){
       const nA=gp.axes.length;
       const nB=gp.buttons.length;
@@ -1047,19 +1065,22 @@ function stopAutoTimer(){
         if(wsConnected && wsJoystick && wsJoystick.readyState===1){
           try{
             wsJoystick.send(packJoystickBinary(gp));
+            wsLastActivity=now;
             gamepadSending=false;
             return;
-          }catch(e){wsConnected=false;scheduleReconnect();}
+          }catch(e){wsConnected=false;wsJoystick=null;scheduleReconnect();}
         }
+        const ac=new AbortController();
+        const tid=setTimeout(()=>ac.abort(),2000);
         const data={axes:Array.from(gp.axes),buttons:gp.buttons.map(b=>b.pressed)};
         await fetch("/updateController",{
           method:"POST",
           headers:{"Content-Type":"application/json"},
-          body:JSON.stringify(data)
+          body:JSON.stringify(data),
+          signal:ac.signal
         });
-      }catch(err){
-        console.error(err);
-      }finally{
+        clearTimeout(tid);
+      }catch(err){}finally{
         gamepadSending=false;
       }
     }

@@ -41,6 +41,10 @@ namespace probot::driverstation::esp32 {
       };
       httpd_register_uri_handler(_server, &ws_uri);
 
+      // Periodic ping to detect dead connections
+      _pingTimer = xTimerCreate("ws_ping", pdMS_TO_TICKS(2000), pdTRUE, this, pingTimerCb);
+      if (_pingTimer) xTimerStart(_pingTimer, 0);
+
       Serial.print("[WS   ] WebSocket server on port ");
       Serial.println(port);
     }
@@ -112,8 +116,26 @@ namespace probot::driverstation::esp32 {
       _gs.write(millis(), axes, nA, buttons, nB);
     }
 
+    static void pingTimerCb(TimerHandle_t t) {
+      auto* self = static_cast<WsJoystick*>(pvTimerGetTimerID(t));
+      if (!self->_server) return;
+      // Send PING to all connected WS clients
+      httpd_ws_frame_t ping = {};
+      ping.type = HTTPD_WS_TYPE_PING;
+      // Get connected clients and send ping
+      size_t fds = 4;
+      int clients[4];
+      httpd_get_client_list(self->_server, &fds, clients);
+      for (size_t i = 0; i < fds; i++) {
+        if (httpd_ws_get_fd_info(self->_server, clients[i]) == HTTPD_WS_CLIENT_WEBSOCKET) {
+          httpd_ws_send_frame_async(self->_server, clients[i], &ping);
+        }
+      }
+    }
+
     io::GamepadService& _gs;
     httpd_handle_t      _server = nullptr;
+    TimerHandle_t       _pingTimer = nullptr;
   };
 
 }
