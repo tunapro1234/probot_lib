@@ -470,14 +470,30 @@ const char MAIN_page[] PROGMEM = R"=====(
       text-transform:uppercase;
     }
     .disconnect-overlay{background:rgba(217,48,37,0.94);}
-    .dm-overlay{background:rgba(255,152,0,0.94);z-index:9998;}
-    .disconnect-overlay.show, .dm-overlay.show{display:flex;}
-    .disconnect-overlay .sub, .dm-overlay .sub{
+    .disconnect-overlay.show{display:flex;}
+    .disconnect-overlay .sub{
       font-size:0.9rem;
       font-weight:400;
       letter-spacing:0.1em;
       opacity:0.85;
     }
+    .dm-toast{
+      position:fixed;
+      top:0;left:0;right:0;
+      z-index:9998;
+      background:rgba(255,152,0,0.95);
+      color:#fff;
+      padding:14px 24px;
+      text-align:center;
+      font-weight:700;
+      font-size:1rem;
+      letter-spacing:0.14em;
+      text-transform:uppercase;
+      transform:translateY(-100%);
+      transition:transform 300ms ease;
+      box-shadow:0 4px 16px rgba(0,0,0,0.25);
+    }
+    .dm-toast.show{transform:translateY(0);}
     @media(max-width:992px){
       .app-header{
         padding:16px 28px;
@@ -678,8 +694,9 @@ const char MAIN_page[] PROGMEM = R"=====(
       .conn-signal .bar:nth-child(2){height:11px;}
       .conn-signal .bar:nth-child(3){height:16px;}
       .conn-signal .bar:nth-child(4){height:22px;}
-      .disconnect-overlay, .dm-overlay{font-size:3.5rem;}
-      .disconnect-overlay .sub, .dm-overlay .sub{font-size:1.5rem;}
+      .disconnect-overlay{font-size:3.5rem;}
+      .disconnect-overlay .sub{font-size:1.5rem;}
+      .dm-toast{font-size:1.6rem;padding:18px 24px;}
     }
     @media(max-width:1024px) and (orientation:landscape){
       .app-header{
@@ -745,10 +762,7 @@ const char MAIN_page[] PROGMEM = R"=====(
     <span>DISCONNECTED</span>
     <span class="sub">Trying to reconnect...</span>
   </div>
-  <div class="dm-overlay" id="dmOverlay">
-    <span>DEADLINE MISS</span>
-    <span class="sub">User code is blocking the loop</span>
-  </div>
+  <div class="dm-toast" id="dmToast">DEADLINE MISS — User code blocked the loop</div>
 <main>
   <div class="column column-primary">
     <section class="stack-card" id="dashboard">
@@ -1330,6 +1344,15 @@ function stopAutoTimer(){
     }
 
     let lastDm=false;
+    let dmToastTimer=null;
+
+    function showDmToast(){
+      const toast=document.getElementById('dmToast');
+      if(!toast) return;
+      toast.classList.add('show');
+      clearTimeout(dmToastTimer);
+      dmToastTimer=setTimeout(()=>{toast.classList.remove('show');},5000);
+    }
 
     function updateConnUI(ok){
       const dot=document.getElementById('connDot');
@@ -1337,8 +1360,7 @@ function stopAutoTimer(){
       const heap=document.getElementById('connHeap');
       const signal=document.getElementById('connSignal');
       const overlay=document.getElementById('disconnectOverlay');
-      const dmOverlay=document.getElementById('dmOverlay');
-      if(!dot||!ping||!signal||!overlay||!dmOverlay) return;
+      if(!dot||!ping||!signal||!overlay) return;
 
       if(!ok){
         dot.className='conn-dot bad';
@@ -1346,18 +1368,11 @@ function stopAutoTimer(){
         if(heap) heap.textContent='--';
         signal.querySelectorAll('.bar').forEach(b=>b.classList.remove('active'));
         if(healthFailCount>=3) overlay.classList.add('show');
-        dmOverlay.classList.remove('show');
         return;
       }
 
       overlay.classList.remove('show');
-
-      if(lastDm){
-        dmOverlay.classList.add('show');
-        dot.className='conn-dot warn';
-      }else{
-        dmOverlay.classList.remove('show');
-      }
+      if(lastDm) showDmToast();
 
       ping.textContent=lastPingMs+'ms';
       if(heap) heap.textContent=lastHeap>0?Math.round(lastHeap/1024)+'KB':'--';
@@ -1371,11 +1386,9 @@ function stopAutoTimer(){
       const barEls=signal.querySelectorAll('.bar');
       barEls.forEach((b,i)=>b.classList.toggle('active',i<bars));
 
-      if(!lastDm){
-        if(bars>=3) dot.className='conn-dot';
-        else if(bars>=2) dot.className='conn-dot warn';
-        else dot.className='conn-dot bad';
-      }
+      if(bars>=3) dot.className='conn-dot';
+      else if(bars>=2) dot.className='conn-dot warn';
+      else dot.className='conn-dot bad';
     }
 
     setInterval(healthCheck,2000);

@@ -125,11 +125,20 @@ namespace probot {
       auto s = probot::robot::state().read();
       static bool on = false;
       on = !on;
+      static uint32_t dmLedTime = 0;
 
       if (s.deadlineMiss){
-        if (on) builtinled::setColor(255,0,0);
-        else builtinled::setColor(0,0,0);
-        return;
+        if (dmLedTime == 0) dmLedTime = millis();
+        if (millis() - dmLedTime > 3000){
+          probot::robot::state().setDeadlineMiss(millis(), false);
+          dmLedTime = 0;
+        } else {
+          if (on) builtinled::setColor(255,0,0);
+          else builtinled::setColor(0,0,0);
+          return;
+        }
+      } else {
+        dmLedTime = 0;
       }
 
       switch (s.phase){
@@ -212,14 +221,21 @@ namespace probot {
           startTeleop();
         }
 
-        // Heartbeat check: detect blocked user code
+        // Heartbeat check: kill stuck task, recover, notify
         {
           bool taskRunning = (s.phase == Phase::TELEOP || s.phase == Phase::AUTONOMOUS);
           uint32_t hb = __atomic_load_n(&probot::robot::g_loop_heartbeat_ms, __ATOMIC_SEQ_CST);
           if (taskRunning && hb != 0 && (int32_t)(now - hb) > 2000){
-            if (!s.deadlineMiss) probot::robot::state().setDeadlineMiss(now, true);
-          } else {
-            if (s.deadlineMiss) probot::robot::state().setDeadlineMiss(now, false);
+            probot::robot::state().setDeadlineMiss(now, true);
+            if (s.phase == Phase::AUTONOMOUS){
+              stopAutonomous();
+              probot::robot::state().setAutonomous(now, false);
+              probot::robot::state().setPhase(now, Phase::TELEOP);
+              startTeleop();
+            } else {
+              stopTeleop();
+              startTeleop();
+            }
           }
         }
 
