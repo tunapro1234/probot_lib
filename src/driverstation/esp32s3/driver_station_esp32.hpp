@@ -45,6 +45,8 @@ namespace probot::driverstation::esp32 {
 #endif
       ap_ssid_ = ssid;
       WiFi.mode(WIFI_AP);
+      wifi_country_t country = { .cc = "TR", .schan = 1, .nchan = 13, .policy = WIFI_COUNTRY_POLICY_MANUAL };
+      esp_wifi_set_country(&country);
       WiFi.softAP(ssid.c_str(), pw, PROBOT_WIFI_AP_CHANNEL);
       esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20);
       esp_wifi_set_ps(WIFI_PS_NONE);
