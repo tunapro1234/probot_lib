@@ -705,6 +705,7 @@ const char MAIN_page[] PROGMEM = R"=====(
       <h2>Telemetry</h2>
       <pre id="telemetryOutput" style="height:150px;overflow-y:auto;background:rgba(0,32,77,0.05);padding:12px;border-radius:12px;font-size:0.9rem;"></pre>
       <button onclick="clearTelemetry()" style="margin-top:12px;padding:10px 20px;font-size:0.9rem;">Clear</button>
+      <button id="autoScrollToggle" onclick="toggleAutoScroll()" style="margin-top:8px;padding:10px 20px;font-size:0.9rem;">Auto-scroll: ON</button>
     </section>
     <section class="stack-card telemetry" id="logs">
       <h2>System Logs</h2>
@@ -720,6 +721,7 @@ const char MAIN_page[] PROGMEM = R"=====(
   <script>
     let controlState="idle";
     let autoModeEnabled=false;
+    let autoScroll=true;
     let selectedGamepadIndex=-1;
     let gamepads={};
     let gamepadDetected=false;
@@ -826,6 +828,85 @@ function stopAutoTimer(){
   updateAutoDisplay();
 }
 
+    async function syncState(){
+      try{
+        const r = await fetch('/getState');
+        if(!r.ok) return;
+        const data = await r.json();
+        const btn = document.getElementById('robotButton');
+        if(!btn) return;
+
+        const autoPeriodEl = document.getElementById('autoPeriod');
+        const autoEnableEl = document.getElementById('enableAutonomous');
+
+        const isAutonomous = (data.phase === 2);
+        const isTeleop = (data.phase === 3);
+        const isRunning = (isAutonomous || isTeleop);
+        if(autoPeriodEl && typeof data.autoPeriodSeconds === 'number' && isRunning){
+          autoPeriodEl.value = data.autoPeriodSeconds;
+        }
+        if(autoEnableEl){
+          if(typeof data.autonomousEnabled === 'boolean' && (isAutonomous || isTeleop)){
+            autoEnableEl.checked = data.autonomousEnabled;
+          }
+          autoEnableEl.disabled = isTeleop;
+        }
+
+        const remainingMs = (typeof data.autoRemainingMs === 'number') ? data.autoRemainingMs : null;
+        const remainingSec = remainingMs !== null ? Math.max(0, remainingMs) / 1000 : (parseFloat(autoPeriodEl ? autoPeriodEl.value : 0) || 0);
+
+        if(data.phase === 1){
+          controlState = "armed";
+          btn.textContent = "Start";
+          btn.style.background = "var(--start)";
+          btn.style.color = "var(--ice)";
+          stopAutoTimer();
+          if(autoEnableEl && autoEnableEl.checked){
+            autoRemaining = parseFloat(autoPeriodEl ? autoPeriodEl.value : 0) || 0;
+          }else{
+            autoRemaining = 0;
+          }
+          updateAutoDisplay();
+          setPhaseDisplay('init');
+        }else if(data.phase === 2){
+          controlState = "running";
+          btn.textContent = "Stop";
+          btn.style.background = "var(--stop)";
+          btn.style.color = "var(--ice)";
+          if(data.autonomousEnabled === false){
+            stopAutoTimer();
+            setPhaseDisplay('teleop');
+          }else{
+            stopAutoTimer();
+            if(remainingSec > 0){
+              startAutoTimer(remainingSec);
+            }else{
+              autoModeEnabled = true;
+              autoRemaining = 0;
+              updateAutoDisplay();
+              setPhaseDisplay('auto');
+            }
+          }
+        }else if(data.phase === 3){
+          controlState = "running";
+          btn.textContent = "Stop";
+          btn.style.background = "var(--stop)";
+          btn.style.color = "var(--ice)";
+          stopAutoTimer();
+          setPhaseDisplay('teleop');
+        }else{
+          controlState = "idle";
+          btn.textContent = "Init";
+          btn.style.background = "var(--navy)";
+          btn.style.color = "var(--ice)";
+          stopAutoTimer();
+          setPhaseDisplay('stopped');
+        }
+      }catch(e){
+        console.error('syncState failed:', e);
+      }
+    }
+
     async function handleRobotButton(){
       let cmd="";
       const enableAuto=document.getElementById('enableAutonomous').checked;
@@ -837,13 +918,23 @@ function stopAutoTimer(){
         default: cmd="stop"; break;
       }
 
+      // WS lifecycle: open on init, close on stop
+      if(cmd==="stop"){
+        wsStopped=true;
+        killWs();
+      }else if(cmd==="init"){
+        connectWebSocket();
+      }
+
       const url=`/robotControl?cmd=${cmd}&auto=${enableAuto?1:0}&autoLen=${autoLen}`;
       try{
-        const r=await fetch(url);
-        if(!r.ok) throw new Error("Robot command failed");
+        const ac=new AbortController();
+        const tid=setTimeout(()=>ac.abort(),3000);
+        const r=await fetch(url,{signal:ac.signal});
+        clearTimeout(tid);
+        if(!r.ok) console.error("Robot command failed:",r.status);
       }catch(err){
-        console.error(err);
-        return;
+        console.error("robotControl fetch error:",err);
       }
 
       const btn=document.getElementById('robotButton');
@@ -915,21 +1006,93 @@ function stopAutoTimer(){
     let gamepadSending=false;
     let lastGamepadSend=0;
     const GAMEPAD_SEND_INTERVAL=20; // 50Hz max
+
+    // WebSocket joystick channel
+    let wsJoystick=null;
+    let wsConnected=false;
+    let wsReconnectTimer=null;
+    let wsLastActivity=0;
+
+    let wsStopped=false;
+    function killWs(){
+      if(wsReconnectTimer){clearTimeout(wsReconnectTimer);wsReconnectTimer=null;}
+      if(wsJoystick){wsJoystick.onopen=null;wsJoystick.onclose=null;wsJoystick.onerror=null;wsJoystick.onmessage=null;try{wsJoystick.close();}catch(e){}}
+      wsJoystick=null;wsConnected=false;
+    }
+    function connectWebSocket(){
+      killWs();
+      wsStopped=false;
+      try{
+        const ws=new WebSocket(`ws://${location.hostname}:81/joystick`);
+        ws.binaryType='arraybuffer';
+        ws.onopen=()=>{wsConnected=true;wsLastActivity=performance.now();console.log('[WS] Connected');};
+        ws.onclose=()=>{wsConnected=false;wsJoystick=null;if(!wsStopped)scheduleReconnect();};
+        ws.onerror=()=>{wsConnected=false;};
+        ws.onmessage=()=>{wsLastActivity=performance.now();};
+        wsJoystick=ws;
+      }catch(e){if(!wsStopped)scheduleReconnect();}
+    }
+    function scheduleReconnect(){
+      if(wsReconnectTimer||wsStopped) return;
+      wsReconnectTimer=setTimeout(()=>{wsReconnectTimer=null;if(!wsStopped)connectWebSocket();},2000);
+    }
+    function wsHealthCheck(){
+      if(wsStopped||!wsJoystick) return;
+      if(wsJoystick.readyState>1){wsConnected=false;wsJoystick=null;scheduleReconnect();return;}
+      if(wsConnected && performance.now()-wsLastActivity>3000){
+        console.log('[WS] Stale, reconnecting');
+        killWs();
+        scheduleReconnect();
+      }
+    }
+    setInterval(wsHealthCheck,1000);
+    function packJoystickBinary(gp){
+      const nA=gp.axes.length;
+      const nB=gp.buttons.length;
+      const btnBytes=Math.ceil(nB/8);
+      const buf=new ArrayBuffer(4+nA*2+btnBytes);
+      const view=new DataView(buf);
+      view.setUint8(0,0x4A);
+      view.setUint8(1,nA);
+      view.setUint8(2,nB);
+      view.setUint8(3,0);
+      for(let i=0;i<nA;i++){
+        const v=Math.max(-1,Math.min(1,gp.axes[i]));
+        view.setInt16(4+i*2,Math.round(v*32767),false);
+      }
+      const btnOff=4+nA*2;
+      for(let i=0;i<nB;i++){
+        if(gp.buttons[i].pressed){
+          view.setUint8(btnOff+Math.floor(i/8),view.getUint8(btnOff+Math.floor(i/8))|(1<<(i%8)));
+        }
+      }
+      return buf;
+    }
     async function sendGamepadData(gp){
       const now=performance.now();
       if(gamepadSending || (now-lastGamepadSend)<GAMEPAD_SEND_INTERVAL) return;
       gamepadSending=true;
       lastGamepadSend=now;
-      const data={axes:Array.from(gp.axes),buttons:gp.buttons.map(b=>b.pressed)};
       try{
+        if(wsConnected && wsJoystick && wsJoystick.readyState===1){
+          try{
+            wsJoystick.send(packJoystickBinary(gp));
+            wsLastActivity=now;
+            gamepadSending=false;
+            return;
+          }catch(e){wsConnected=false;wsJoystick=null;scheduleReconnect();}
+        }
+        const ac=new AbortController();
+        const tid=setTimeout(()=>ac.abort(),2000);
+        const data={axes:Array.from(gp.axes),buttons:gp.buttons.map(b=>b.pressed)};
         await fetch("/updateController",{
           method:"POST",
           headers:{"Content-Type":"application/json"},
-          body:JSON.stringify(data)
+          body:JSON.stringify(data),
+          signal:ac.signal
         });
-      }catch(err){
-        console.error(err);
-      }finally{
+        clearTimeout(tid);
+      }catch(err){}finally{
         gamepadSending=false;
       }
     }
@@ -973,10 +1136,13 @@ function stopAutoTimer(){
     window.addEventListener('load',()=>{
       ensureJoyButtons(DEFAULT_BUTTON_COUNT);
       updateJoyVisuals(null);
+      updateAutoScrollButton();
       autoRemaining=parseFloat(document.getElementById('autoPeriod').value)||0;
       updateAutoDisplay();
       setPhaseDisplay('standby');
       requestAnimationFrame(gamepadLoop);
+      syncState();
+      connectWebSocket();
     });
 
     document.getElementById('autoPeriod').addEventListener('input',e=>{
@@ -989,9 +1155,21 @@ function stopAutoTimer(){
       updateAutoDisplay();
     });
 
-    document.getElementById('enableAutonomous').addEventListener('change',e=>{
+    document.getElementById('enableAutonomous').addEventListener('change', async e=>{
       if(!e.target.checked){
-        stopAutoTimer();
+        if(controlState === "running"){
+          try{
+            const r = await fetch('/robotControl?cmd=cancelAuto');
+            if(!r.ok) throw new Error("Cancel auto failed");
+          }catch(err){
+            console.error(err);
+            return;
+          }
+          stopAutoTimer();
+          setPhaseDisplay('teleop');
+        }else{
+          stopAutoTimer();
+        }
       }
     });
 
@@ -1002,7 +1180,12 @@ function stopAutoTimer(){
         if(r.ok){
           const text=await r.text();
           const el=document.getElementById('telemetryOutput');
-          if(el && text) el.textContent=text;
+          if(el && text){
+            el.textContent=text;
+            if(autoScroll){
+              el.scrollTop = el.scrollHeight;
+            }
+          }
         }
       }catch(e){}
     }
@@ -1010,7 +1193,21 @@ function stopAutoTimer(){
       const el=document.getElementById('telemetryOutput');
       if(el) el.textContent='';
     }
+    function updateAutoScrollButton(){
+      const btn=document.getElementById('autoScrollToggle');
+      if(!btn) return;
+      btn.textContent = autoScroll ? 'Auto-scroll: ON' : 'Auto-scroll: OFF';
+    }
+    function toggleAutoScroll(){
+      autoScroll = !autoScroll;
+      updateAutoScrollButton();
+      if(autoScroll){
+        const el=document.getElementById('telemetryOutput');
+        if(el) el.scrollTop = el.scrollHeight;
+      }
+    }
     setInterval(pollTelemetry,50);
+    setInterval(syncState, 1000);
 </script>
 </body>
 </html>

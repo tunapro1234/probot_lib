@@ -13,6 +13,7 @@ TEST_CASE(state_service_updates_fields){
   state.setBatteryVoltage(10u, 11.5f);
   state.setAutonomous(10u, true);
   state.setAutoPeriodSeconds(10u, 15);
+  state.setAutoStartMs(10u, 123u);
   state.setClientCount(10u, 1);
   state.setDeadlineMiss(10u, true);
 
@@ -22,6 +23,7 @@ TEST_CASE(state_service_updates_fields){
   EXPECT_NEAR(snap.batteryVoltage, 11.5f, 1e-5f);
   EXPECT_TRUE(snap.autonomousEnabled);
   EXPECT_TRUE(snap.autoPeriodSeconds == 15);
+  EXPECT_TRUE(snap.autoStartMs == 123u);
   EXPECT_TRUE(snap.clientCount == 1);
   EXPECT_TRUE(snap.deadlineMiss);
   EXPECT_TRUE(snap.seq > snap0.seq);

@@ -1,4 +1,6 @@
+#define PROBOT_WIFI_AP_SSID     "ProBot"
 #define PROBOT_WIFI_AP_PASSWORD "ProBot1234"
+#define PROBOT_WIFI_AP_CHANNEL  3
 
 #include <probot.h>
 #include <probot/io/joystick_api.hpp>

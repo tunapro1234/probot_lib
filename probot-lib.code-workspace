@@ -1,0 +1,9 @@
+{
+	"folders": [
+		{
+			"name": "probot-lib",
+			"path": "../../Arduino/libraries/probot-lib"
+		}
+	],
+	"settings": {}
+}
