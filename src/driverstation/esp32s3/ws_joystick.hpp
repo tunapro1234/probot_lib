@@ -7,7 +7,7 @@
 namespace probot::driverstation::esp32 {
 
   /**
-   * WebSocket joystick server (ESP-IDF httpd, port 81)
+   * WebSocket joystick handler (attaches to existing ESP-IDF httpd)
    *
    * Binary frame format:
    *   [0]       uint8   0x4A ('J' magic)
@@ -21,16 +21,8 @@ namespace probot::driverstation::esp32 {
   public:
     explicit WsJoystick(io::GamepadService& gs) : _gs(gs) {}
 
-    void begin(uint16_t port = 81) {
-      httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
-      cfg.server_port = port;
-      cfg.ctrl_port   = port + 1;
-      cfg.stack_size  = 4096;
-
-      if (httpd_start(&_server, &cfg) != ESP_OK) {
-        Serial.println("[WS   ] Failed to start WebSocket server");
-        return;
-      }
+    void attach(httpd_handle_t server) {
+      _server = server;
 
       httpd_uri_t ws_uri = {
         .uri      = "/joystick",
@@ -46,8 +38,7 @@ namespace probot::driverstation::esp32 {
       _pingTimer = xTimerCreate("ws_ping", pdMS_TO_TICKS(2000), pdTRUE, this, pingTimerCb);
       if (_pingTimer) xTimerStart(_pingTimer, 0);
 
-      Serial.print("[WS   ] WebSocket server on port ");
-      Serial.println(port);
+      Serial.println("[WS   ] WebSocket handler attached to /joystick");
     }
 
     void closeAll() {

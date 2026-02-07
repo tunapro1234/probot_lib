@@ -1146,7 +1146,7 @@ const char MAIN_page[] PROGMEM = R"=====(
       killWs();
       wsStopped=false;
       try{
-        var ws=new WebSocket('ws://'+location.hostname+':81/joystick');
+        var ws=new WebSocket('ws://'+location.host+'/joystick');
         ws.binaryType='arraybuffer';
         ws.onopen=function(){wsConnected=true;wsLastActivity=performance.now();console.log('[WS] Connected');};
         ws.onclose=function(){wsConnected=false;wsJoystick=null;if(!wsStopped)scheduleReconnect();};

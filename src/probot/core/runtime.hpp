@@ -262,6 +262,13 @@ namespace probot {
           }
         }
 
+        // Expire DS owner if idle (replaces handleClient polling)
+#ifdef ESP32
+        if (probot::driverstation::detail::g_driver_station){
+          probot::driverstation::detail::g_driver_station->expireOwnerIfIdle();
+        }
+#endif
+
         if (now - lastLed >= 500){
           lastLed = now;
           updateLed();
