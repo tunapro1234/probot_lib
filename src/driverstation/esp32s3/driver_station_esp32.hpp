@@ -235,13 +235,24 @@ namespace probot::driverstation::esp32 {
     }
 
     void handleInfo(){
-      char buf[256];
+      char buf[512];
       snprintf(buf, sizeof(buf),
-        "{\"ssid\":\"%s\",\"ch\":%d,\"pw\":\"%s\",\"ip\":\"%s\"}",
+        "{\"ssid\":\"%s\",\"ch\":%d,\"pw\":\"%s\",\"ip\":\"%s\","
+        "\"chip\":\"%s\",\"cpuMhz\":%u,\"sdk\":\"%s\","
+        "\"totalHeap\":%lu,\"totalFlash\":%lu,"
+        "\"sketchSize\":%lu,\"freeSketch\":%lu,\"psram\":%lu}",
         ap_ssid_.c_str(),
         PROBOT_WIFI_AP_CHANNEL,
         PROBOT_WIFI_AP_PASSWORD,
-        WiFi.softAPIP().toString().c_str());
+        WiFi.softAPIP().toString().c_str(),
+        ESP.getChipModel(),
+        ESP.getCpuFreqMHz(),
+        ESP.getSdkVersion(),
+        (unsigned long)ESP.getHeapSize(),
+        (unsigned long)ESP.getFlashChipSize(),
+        (unsigned long)ESP.getSketchSize(),
+        (unsigned long)ESP.getFreeSketchSpace(),
+        (unsigned long)ESP.getPsramSize());
       _server.send(200, "application/json", buf);
     }
 

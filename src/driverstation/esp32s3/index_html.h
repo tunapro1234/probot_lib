@@ -771,10 +771,8 @@ const char MAIN_page[] PROGMEM = R"=====(
           </div>
         </div>
       </section>
-    </div>
-    <div class="column">
       <section class="stack-card">
-        <h2>System Status</h2>
+        <h2>Network Status</h2>
         <div class="debug-grid">
           <div class="debug-item">
             <span class="debug-label">RSSI</span>
@@ -785,20 +783,51 @@ const char MAIN_page[] PROGMEM = R"=====(
             <span class="debug-value" id="dbgPing">--</span>
           </div>
           <div class="debug-item">
-            <span class="debug-label">Free RAM</span>
-            <span class="debug-value" id="dbgHeap">--</span>
-          </div>
-          <div class="debug-item">
-            <span class="debug-label">Uptime</span>
-            <span class="debug-value" id="dbgUptime">--</span>
-          </div>
-          <div class="debug-item">
             <span class="debug-label">WebSocket</span>
             <span class="debug-value" id="dbgWs">--</span>
           </div>
           <div class="debug-item">
             <span class="debug-label">Deadline Miss</span>
             <span class="debug-value" id="dbgDm">--</span>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="column">
+      <section class="stack-card">
+        <h2>ESP32 System</h2>
+        <div class="debug-grid">
+          <div class="debug-item">
+            <span class="debug-label">Chip</span>
+            <span class="debug-value" id="dbgChip">--</span>
+          </div>
+          <div class="debug-item">
+            <span class="debug-label">CPU</span>
+            <span class="debug-value" id="dbgCpu">--</span>
+          </div>
+          <div class="debug-item">
+            <span class="debug-label">SDK</span>
+            <span class="debug-value" id="dbgSdk">--</span>
+          </div>
+          <div class="debug-item">
+            <span class="debug-label">Uptime</span>
+            <span class="debug-value" id="dbgUptime">--</span>
+          </div>
+          <div class="debug-item">
+            <span class="debug-label">Heap (Free / Total)</span>
+            <span class="debug-value" id="dbgHeap">--</span>
+          </div>
+          <div class="debug-item">
+            <span class="debug-label">PSRAM</span>
+            <span class="debug-value" id="dbgPsram">--</span>
+          </div>
+          <div class="debug-item">
+            <span class="debug-label">Flash (Sketch / Total)</span>
+            <span class="debug-value" id="dbgFlash">--</span>
+          </div>
+          <div class="debug-item">
+            <span class="debug-label">Free Sketch Space</span>
+            <span class="debug-value" id="dbgFreeSketch">--</span>
           </div>
         </div>
       </section>
@@ -1316,7 +1345,11 @@ const char MAIN_page[] PROGMEM = R"=====(
 
       overlay.classList.remove('show');
       ping.textContent=lastPingMs+'ms';
-      if(heap) heap.textContent=lastHeap>0?Math.round(lastHeap/1024)+'KB':'--';
+      if(heap){
+        if(lastHeap>0&&infoTotalHeap>0) heap.textContent=Math.round(lastHeap/1024)+'/'+Math.round(infoTotalHeap/1024)+'KB';
+        else if(lastHeap>0) heap.textContent=Math.round(lastHeap/1024)+'KB';
+        else heap.textContent='--';
+      }
 
       var bars=0;
       if(lastRssi>-50) bars=4;
@@ -1336,11 +1369,21 @@ const char MAIN_page[] PROGMEM = R"=====(
     }
 
     /* ===== DEBUG PANEL (Logs page) ===== */
+    var infoTotalHeap=0;
+    var infoTotalFlash=0;
+    var infoSketchSize=0;
+
+    function fmtKB(b){return b>0?Math.round(b/1024)+' KB':'--';}
+
     function updateDebugPanel(){
       var el=function(id){return document.getElementById(id);};
       if(el('dbgRssi')) el('dbgRssi').textContent=lastRssi+' dBm';
       if(el('dbgPing')) el('dbgPing').textContent=healthFailCount>0?'--':lastPingMs+' ms';
-      if(el('dbgHeap')) el('dbgHeap').textContent=lastHeap>0?Math.round(lastHeap/1024)+' KB':'--';
+      if(el('dbgHeap')){
+        if(lastHeap>0&&infoTotalHeap>0) el('dbgHeap').textContent=fmtKB(lastHeap)+' / '+fmtKB(infoTotalHeap);
+        else if(lastHeap>0) el('dbgHeap').textContent=fmtKB(lastHeap);
+        else el('dbgHeap').textContent='--';
+      }
       if(el('dbgUptime')&&lastUpMs>0){
         var totalSec=Math.floor(lastUpMs/1000);
         var h=Math.floor(totalSec/3600);
@@ -1363,6 +1406,20 @@ const char MAIN_page[] PROGMEM = R"=====(
         if(el('dbgPw')) el('dbgPw').textContent=data.pw||'--';
         if(el('dbgCh')) el('dbgCh').textContent=data.ch||'--';
         if(el('dbgIp')) el('dbgIp').textContent=data.ip||'--';
+        if(el('dbgChip')) el('dbgChip').textContent=data.chip||'--';
+        if(el('dbgCpu')) el('dbgCpu').textContent=data.cpuMhz?data.cpuMhz+' MHz':'--';
+        if(el('dbgSdk')) el('dbgSdk').textContent=data.sdk||'--';
+        infoTotalHeap=data.totalHeap||0;
+        infoTotalFlash=data.totalFlash||0;
+        infoSketchSize=data.sketchSize||0;
+        if(el('dbgFlash')&&infoTotalFlash>0){
+          el('dbgFlash').textContent=fmtKB(infoSketchSize)+' / '+fmtKB(infoTotalFlash);
+        }
+        if(el('dbgFreeSketch')) el('dbgFreeSketch').textContent=fmtKB(data.freeSketch||0);
+        if(el('dbgPsram')){
+          var ps=data.psram||0;
+          el('dbgPsram').textContent=ps>0?fmtKB(ps):'None';
+        }
       }).catch(function(){});
     }
 
