@@ -14,15 +14,21 @@
 #error "Driver station AP password not provided. Define PROBOT_WIFI_AP_PASSWORD (>=8 chars) before including probot.h."
 #endif
 static_assert(sizeof(PROBOT_WIFI_AP_PASSWORD) - 1 >= 8, "PROBOT_WIFI_AP_PASSWORD must be at least 8 characters.");
+
 #ifndef PROBOT_WIFI_AP_SSID
-#error "WiFi AP SSID not provided. Define PROBOT_WIFI_AP_SSID before including probot.h."
+  #define PROBOT_WIFI_AP_SSID "Probot"
+  #ifndef PROBOT_WIFI_AP_SSID_MAC_SUFFIX
+    #define PROBOT_WIFI_AP_SSID_MAC_SUFFIX
+  #endif
+  #warning "PROBOT_WIFI_AP_SSID not defined. Using auto-generated SSID (Probot-XXXXXX). Define a custom SSID for better identification."
 #endif
 static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 >= 1, "PROBOT_WIFI_AP_SSID must be at least 1 character.");
-#ifdef PROBOT_WIFI_AP_SSID_NO_MAC_SUFFIX
-static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 32, "PROBOT_WIFI_AP_SSID must be 32 characters or fewer.");
-#else
+#ifdef PROBOT_WIFI_AP_SSID_MAC_SUFFIX
 static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 25, "PROBOT_WIFI_AP_SSID must be 25 characters or fewer when MAC suffix is enabled.");
+#else
+static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 32, "PROBOT_WIFI_AP_SSID must be 32 characters or fewer.");
 #endif
+
 #ifndef PROBOT_WIFI_AP_CHANNEL
 #error "WiFi AP channel not provided. Define PROBOT_WIFI_AP_CHANNEL (1-13) before including probot.h."
 #endif
@@ -38,7 +44,7 @@ namespace probot::driverstation::esp32 {
     void begin(){
       const char* pw = PROBOT_WIFI_AP_PASSWORD;
       String ssid = String(PROBOT_WIFI_AP_SSID);
-#ifndef PROBOT_WIFI_AP_SSID_NO_MAC_SUFFIX
+#ifdef PROBOT_WIFI_AP_SSID_MAC_SUFFIX
       char suffix[8];
       snprintf(suffix, sizeof(suffix), "-%06X", (unsigned int)(ESP.getEfuseMac() & 0xFFFFFF));
       ssid += suffix;
@@ -69,6 +75,7 @@ namespace probot::driverstation::esp32 {
       _server.on("/getState", HTTP_GET, [this](){ if (!enforceOwner()) return; handleGetState(); });
       _server.on("/getBattery", HTTP_GET, [this](){ handleGetBattery(); });
       _server.on("/telemetry", HTTP_GET, [this](){ if (!enforceOwner()) return; handleTelemetry(); });
+      _server.on("/health", HTTP_GET, [this](){ if (!enforceOwner()) return; handleHealth(); });
       _server.begin();
       _ws.begin(81);
     }
@@ -207,6 +214,23 @@ namespace probot::driverstation::esp32 {
 
     void handleTelemetry(){
       _server.send(200, "text/plain", probot::telemetry::getBuffer());
+    }
+
+    void handleHealth(){
+      int8_t rssi = -100;
+      wifi_sta_list_t sta_list;
+      if (esp_wifi_ap_get_sta_list(&sta_list) == ESP_OK && sta_list.num > 0) {
+        rssi = sta_list.sta[0].rssi;
+      }
+      auto s = _rs.read();
+      char buf[128];
+      snprintf(buf, sizeof(buf),
+        "{\"rssi\":%d,\"up\":%lu,\"heap\":%lu,\"dm\":%s}",
+        (int)rssi,
+        (unsigned long)millis(),
+        (unsigned long)ESP.getFreeHeap(),
+        s.deadlineMiss ? "true" : "false");
+      _server.send(200, "application/json", buf);
     }
 
     robot::StateService& _rs;

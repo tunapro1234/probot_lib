@@ -38,14 +38,24 @@ namespace probot {
     inline void autonomousWorker(void*){
       uint32_t now = millis();
       __atomic_store_n(&g_state.auto_start_ms, now, __ATOMIC_SEQ_CST);
+      __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, now, __ATOMIC_SEQ_CST);
       probot::robot::state().setAutoStartMs(now, now);
       ::autonomousInit();
-      for(;;){ ::autonomousLoop(); vTaskDelay(pdMS_TO_TICKS(20)); }
+      for(;;){
+        ::autonomousLoop();
+        __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, millis(), __ATOMIC_SEQ_CST);
+        vTaskDelay(pdMS_TO_TICKS(20));
+      }
     }
 
     inline void teleopWorker(void*){
+      __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, millis(), __ATOMIC_SEQ_CST);
       ::teleopInit();
-      for(;;){ ::teleopLoop(); vTaskDelay(pdMS_TO_TICKS(20)); }
+      for(;;){
+        ::teleopLoop();
+        __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, millis(), __ATOMIC_SEQ_CST);
+        vTaskDelay(pdMS_TO_TICKS(20));
+      }
     }
 
     inline void robotInitWorker(void*){
@@ -66,12 +76,14 @@ namespace probot {
       auto& s = g_state;
       if (s.hAuto){ vTaskDelete(s.hAuto); s.hAuto = nullptr; ::autonomousEnd(); }
       __atomic_store_n(&s.auto_start_ms, 0u, __ATOMIC_SEQ_CST);
+      __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, 0u, __ATOMIC_SEQ_CST);
       probot::robot::state().setAutoStartMs(millis(), 0u);
     }
 
     inline void stopTeleop(){
       auto& s = g_state;
       if (s.hTeleop){ vTaskDelete(s.hTeleop); s.hTeleop = nullptr; ::teleopEnd(); }
+      __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, 0u, __ATOMIC_SEQ_CST);
     }
 
     inline void stopInit(){
@@ -115,22 +127,11 @@ namespace probot {
       auto s = probot::robot::state().read();
       static bool on = false;
       on = !on;
-      static uint32_t deadlineMissTime = 0;
 
-      // Show deadline miss for 2 seconds (4 blinks) then auto-clear
       if (s.deadlineMiss){
-        if (deadlineMissTime == 0) deadlineMissTime = millis();
-        if (millis() - deadlineMissTime > 2000){
-          probot::robot::state().setDeadlineMiss(millis(), false);
-          deadlineMissTime = 0;
-        } else {
-          // Blink red
-          if (on) builtinled::setColor(255,0,0);
-          else builtinled::setColor(0,0,0);
-          return;
-        }
-      } else {
-        deadlineMissTime = 0;
+        if (on) builtinled::setColor(255,0,0);
+        else builtinled::setColor(0,0,0);
+        return;
       }
 
       switch (s.phase){
@@ -211,6 +212,17 @@ namespace probot {
           stopAutonomous();
           probot::robot::state().setPhase(now, Phase::TELEOP);
           startTeleop();
+        }
+
+        // Heartbeat check: detect blocked user code
+        {
+          bool taskRunning = (s.phase == Phase::TELEOP || s.phase == Phase::AUTONOMOUS);
+          uint32_t hb = __atomic_load_n(&probot::robot::g_loop_heartbeat_ms, __ATOMIC_SEQ_CST);
+          if (taskRunning && hb != 0 && (int32_t)(now - hb) > 2000){
+            if (!s.deadlineMiss) probot::robot::state().setDeadlineMiss(now, true);
+          } else {
+            if (s.deadlineMiss) probot::robot::state().setDeadlineMiss(now, false);
+          }
         }
 
         if (now - lastLed >= 500){

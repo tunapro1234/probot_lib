@@ -84,4 +84,8 @@ namespace probot::robot {
     static StateService instance;
     return instance;
   }
+
+  // User loop heartbeat — updated by teleop/auto workers each iteration.
+  // Checked by health endpoint and userLoopTask to detect blocked code.
+  inline volatile uint32_t g_loop_heartbeat_ms = 0;
 }

@@ -414,6 +414,70 @@ const char MAIN_page[] PROGMEM = R"=====(
       color:rgba(0,32,77,0.6);
       letter-spacing:0.06em;
     }
+    .conn-bar{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:0.75rem;
+      letter-spacing:0.08em;
+      color:rgba(229,228,226,0.85);
+    }
+    .conn-dot{
+      width:8px;
+      height:8px;
+      border-radius:50%;
+      background:#28a745;
+      box-shadow:0 0 6px rgba(40,167,69,0.5);
+      transition:background 300ms ease, box-shadow 300ms ease;
+    }
+    .conn-dot.warn{background:#ffc107;box-shadow:0 0 6px rgba(255,193,7,0.5);}
+    .conn-dot.bad{background:#d93025;box-shadow:0 0 6px rgba(217,48,37,0.5);}
+    .conn-signal{
+      display:flex;
+      align-items:flex-end;
+      gap:2px;
+      height:14px;
+    }
+    .conn-signal .bar{
+      width:3px;
+      background:rgba(229,228,226,0.25);
+      border-radius:1px;
+      transition:background 300ms ease;
+    }
+    .conn-signal .bar.active{background:rgba(229,228,226,0.9);}
+    .conn-signal .bar:nth-child(1){height:4px;}
+    .conn-signal .bar:nth-child(2){height:7px;}
+    .conn-signal .bar:nth-child(3){height:10px;}
+    .conn-signal .bar:nth-child(4){height:14px;}
+    .conn-ping, .conn-heap{
+      font-variant-numeric:tabular-nums;
+      min-width:36px;
+      text-align:right;
+    }
+    .disconnect-overlay, .dm-overlay{
+      display:none;
+      position:fixed;
+      inset:0;
+      z-index:9999;
+      color:#fff;
+      justify-content:center;
+      align-items:center;
+      flex-direction:column;
+      gap:16px;
+      font-size:2rem;
+      font-weight:700;
+      letter-spacing:0.2em;
+      text-transform:uppercase;
+    }
+    .disconnect-overlay{background:rgba(217,48,37,0.94);}
+    .dm-overlay{background:rgba(255,152,0,0.94);z-index:9998;}
+    .disconnect-overlay.show, .dm-overlay.show{display:flex;}
+    .disconnect-overlay .sub, .dm-overlay .sub{
+      font-size:0.9rem;
+      font-weight:400;
+      letter-spacing:0.1em;
+      opacity:0.85;
+    }
     @media(max-width:992px){
       .app-header{
         padding:16px 28px;
@@ -606,6 +670,16 @@ const char MAIN_page[] PROGMEM = R"=====(
         margin:0 auto;
       }
       .joy-status strong{font-size:1.8rem;}
+      .conn-bar{font-size:1.3rem;gap:12px;}
+      .conn-dot{width:14px;height:14px;}
+      .conn-signal{height:22px;gap:3px;}
+      .conn-signal .bar{width:5px;}
+      .conn-signal .bar:nth-child(1){height:6px;}
+      .conn-signal .bar:nth-child(2){height:11px;}
+      .conn-signal .bar:nth-child(3){height:16px;}
+      .conn-signal .bar:nth-child(4){height:22px;}
+      .disconnect-overlay, .dm-overlay{font-size:3.5rem;}
+      .disconnect-overlay .sub, .dm-overlay .sub{font-size:1.5rem;}
     }
     @media(max-width:1024px) and (orientation:landscape){
       .app-header{
@@ -650,12 +724,31 @@ const char MAIN_page[] PROGMEM = R"=====(
       <a href="#logs">Logs</a>
       <a href="#settings">Settings</a>
     </nav>
+    <div class="conn-bar" id="connBar">
+      <div class="conn-dot" id="connDot"></div>
+      <div class="conn-signal" id="connSignal">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+      </div>
+      <span class="conn-ping" id="connPing">--</span>
+      <span class="conn-heap" id="connHeap">--</span>
+    </div>
     <div class="header-status">
       <span class="status-label">Status</span>
       <span class="status-value" id="headerStatusValue">Standby</span>
       <span class="status-detail" id="headerStatusDetail">Awaiting command</span>
     </div>
   </header>
+  <div class="disconnect-overlay" id="disconnectOverlay">
+    <span>DISCONNECTED</span>
+    <span class="sub">Trying to reconnect...</span>
+  </div>
+  <div class="dm-overlay" id="dmOverlay">
+    <span>DEADLINE MISS</span>
+    <span class="sub">User code is blocking the loop</span>
+  </div>
 <main>
   <div class="column column-primary">
     <section class="stack-card" id="dashboard">
@@ -1208,6 +1301,85 @@ function stopAutoTimer(){
     }
     setInterval(pollTelemetry,50);
     setInterval(syncState, 1000);
+
+    // Connection health check
+    let healthFailCount=0;
+    let lastPingMs=0;
+    let lastRssi=-100;
+    let lastHeap=0;
+
+    async function healthCheck(){
+      const start=performance.now();
+      try{
+        const ac=new AbortController();
+        const tid=setTimeout(()=>ac.abort(),3000);
+        const r=await fetch('/health',{signal:ac.signal});
+        clearTimeout(tid);
+        if(!r.ok) throw new Error('health');
+        const data=await r.json();
+        lastPingMs=Math.round(performance.now()-start);
+        lastRssi=(typeof data.rssi==='number')?data.rssi:-100;
+        lastHeap=(typeof data.heap==='number')?data.heap:0;
+        lastDm=!!data.dm;
+        healthFailCount=0;
+        updateConnUI(true);
+      }catch(e){
+        healthFailCount++;
+        updateConnUI(false);
+      }
+    }
+
+    let lastDm=false;
+
+    function updateConnUI(ok){
+      const dot=document.getElementById('connDot');
+      const ping=document.getElementById('connPing');
+      const heap=document.getElementById('connHeap');
+      const signal=document.getElementById('connSignal');
+      const overlay=document.getElementById('disconnectOverlay');
+      const dmOverlay=document.getElementById('dmOverlay');
+      if(!dot||!ping||!signal||!overlay||!dmOverlay) return;
+
+      if(!ok){
+        dot.className='conn-dot bad';
+        ping.textContent='--';
+        if(heap) heap.textContent='--';
+        signal.querySelectorAll('.bar').forEach(b=>b.classList.remove('active'));
+        if(healthFailCount>=3) overlay.classList.add('show');
+        dmOverlay.classList.remove('show');
+        return;
+      }
+
+      overlay.classList.remove('show');
+
+      if(lastDm){
+        dmOverlay.classList.add('show');
+        dot.className='conn-dot warn';
+      }else{
+        dmOverlay.classList.remove('show');
+      }
+
+      ping.textContent=lastPingMs+'ms';
+      if(heap) heap.textContent=lastHeap>0?Math.round(lastHeap/1024)+'KB':'--';
+
+      let bars=0;
+      if(lastRssi>-50) bars=4;
+      else if(lastRssi>-60) bars=3;
+      else if(lastRssi>-70) bars=2;
+      else if(lastRssi>-80) bars=1;
+
+      const barEls=signal.querySelectorAll('.bar');
+      barEls.forEach((b,i)=>b.classList.toggle('active',i<bars));
+
+      if(!lastDm){
+        if(bars>=3) dot.className='conn-dot';
+        else if(bars>=2) dot.className='conn-dot warn';
+        else dot.className='conn-dot bad';
+      }
+    }
+
+    setInterval(healthCheck,2000);
+    healthCheck();
 </script>
 </body>
 </html>
