@@ -92,6 +92,9 @@ namespace probot::driverstation::esp32 {
       IPAddress ip = _server.client().remoteIP();
       if (_owner_set && _owner_timeout_ms > 0 &&
           (uint32_t)(now - _owner_last_ms) > _owner_timeout_ms){
+        uint32_t idle = now - _owner_last_ms;
+        Serial.printf("[DS   ] Owner timeout: %s idle %lu ms (limit %lu ms)\n",
+                      _owner.toString().c_str(), (unsigned long)idle, (unsigned long)_owner_timeout_ms);
         releaseOwner(now);
       }
       if (!_owner_set){
@@ -99,12 +102,14 @@ namespace probot::driverstation::esp32 {
         _owner_set = true;
         _owner_last_ms = now;
         _rs.setClientCount(now, 1);
+        Serial.printf("[DS   ] Owner acquired: %s\n", ip.toString().c_str());
         return true;
       }
       if (ip == _owner){
         _owner_last_ms = now;
         return true;
       }
+      Serial.printf("[DS   ] Rejected %s (owner: %s)\n", ip.toString().c_str(), _owner.toString().c_str());
       _server.send(403, "text/plain", "Another client is already connected.");
       return false;
     }
@@ -113,11 +118,15 @@ namespace probot::driverstation::esp32 {
       if (!_owner_set || _owner_timeout_ms == 0) return;
       uint32_t now = millis();
       if ((uint32_t)(now - _owner_last_ms) > _owner_timeout_ms){
+        uint32_t idle = now - _owner_last_ms;
+        Serial.printf("[DS   ] Owner expired: %s idle %lu ms\n",
+                      _owner.toString().c_str(), (unsigned long)idle);
         releaseOwner(now);
       }
     }
 
     void releaseOwner(uint32_t now_ms){
+      Serial.printf("[DS   ] Owner released: %s\n", _owner.toString().c_str());
       _owner_set = false;
       _owner = IPAddress();
       _rs.setClientCount(now_ms, 0);
