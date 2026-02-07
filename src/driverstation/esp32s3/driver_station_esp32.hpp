@@ -76,6 +76,7 @@ namespace probot::driverstation::esp32 {
       _server.on("/getBattery", HTTP_GET, [this](){ handleGetBattery(); });
       _server.on("/telemetry", HTTP_GET, [this](){ if (!enforceOwner()) return; handleTelemetry(); });
       _server.on("/health", HTTP_GET, [this](){ if (!enforceOwner()) return; handleHealth(); });
+      _server.on("/info", HTTP_GET, [this](){ if (!enforceOwner()) return; handleInfo(); });
       _server.begin();
       _ws.begin(81);
     }
@@ -230,6 +231,17 @@ namespace probot::driverstation::esp32 {
         (unsigned long)millis(),
         (unsigned long)ESP.getFreeHeap(),
         s.deadlineMiss ? "true" : "false");
+      _server.send(200, "application/json", buf);
+    }
+
+    void handleInfo(){
+      char buf[256];
+      snprintf(buf, sizeof(buf),
+        "{\"ssid\":\"%s\",\"ch\":%d,\"pw\":\"%s\",\"ip\":\"%s\"}",
+        ap_ssid_.c_str(),
+        PROBOT_WIFI_AP_CHANNEL,
+        PROBOT_WIFI_AP_PASSWORD,
+        WiFi.softAPIP().toString().c_str());
       _server.send(200, "application/json", buf);
     }
 
