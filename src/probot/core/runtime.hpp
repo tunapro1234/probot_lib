@@ -5,6 +5,7 @@
 #include <probot/core/core_config.hpp>
 #include <probot/core/wdt.hpp>
 #include <probot/robot/system.hpp>
+#include <probot/telemetry/telemetry.hpp>
 #include <probot/devices/leds/builtin.hpp>
 
 namespace probot {
@@ -228,11 +229,13 @@ namespace probot {
           if (taskRunning && hb != 0 && (int32_t)(now - hb) > 2000){
             probot::robot::state().setDeadlineMiss(now, true);
             if (s.phase == Phase::AUTONOMOUS){
+              probot::telemetry::println("!! DEADLINE MISS — auto blocked, switching to teleop");
               stopAutonomous();
               probot::robot::state().setAutonomous(now, false);
               probot::robot::state().setPhase(now, Phase::TELEOP);
               startTeleop();
             } else {
+              probot::telemetry::println("!! DEADLINE MISS — teleop blocked, restarting");
               stopTeleop();
               startTeleop();
             }

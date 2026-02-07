@@ -10,6 +10,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval';">
   <title>Probot Driver Station</title>
   <style>
     :root{
@@ -132,6 +133,7 @@ const char MAIN_page[] PROGMEM = R"=====(
       display:grid;
       grid-template-columns:minmax(0,1fr) minmax(0,1fr);
       gap:36px;
+      min-height:calc(100vh - 80px);
     }
     .column{
       display:flex;
@@ -477,23 +479,6 @@ const char MAIN_page[] PROGMEM = R"=====(
       letter-spacing:0.1em;
       opacity:0.85;
     }
-    .dm-toast{
-      position:fixed;
-      top:0;left:0;right:0;
-      z-index:9998;
-      background:rgba(255,152,0,0.95);
-      color:#fff;
-      padding:14px 24px;
-      text-align:center;
-      font-weight:700;
-      font-size:1rem;
-      letter-spacing:0.14em;
-      text-transform:uppercase;
-      transform:translateY(-100%);
-      transition:transform 300ms ease;
-      box-shadow:0 4px 16px rgba(0,0,0,0.25);
-    }
-    .dm-toast.show{transform:translateY(0);}
     @media(max-width:992px){
       .app-header{
         padding:16px 28px;
@@ -696,7 +681,6 @@ const char MAIN_page[] PROGMEM = R"=====(
       .conn-signal .bar:nth-child(4){height:22px;}
       .disconnect-overlay{font-size:3.5rem;}
       .disconnect-overlay .sub{font-size:1.5rem;}
-      .dm-toast{font-size:1.6rem;padding:18px 24px;}
     }
     @media(max-width:1024px) and (orientation:landscape){
       .app-header{
@@ -762,7 +746,6 @@ const char MAIN_page[] PROGMEM = R"=====(
     <span>DISCONNECTED</span>
     <span class="sub">Trying to reconnect...</span>
   </div>
-  <div class="dm-toast" id="dmToast">DEADLINE MISS — User code blocked the loop</div>
 <main>
   <div class="column column-primary">
     <section class="stack-card" id="dashboard">
@@ -806,14 +789,6 @@ const char MAIN_page[] PROGMEM = R"=====(
         <p class="hint" id="gamepadHint" style="display:none;">Press any controller button to activate.</p>
       </div>
     </section>
-  </div>
-  <div class="column column-secondary">
-    <section class="stack-card" id="telemetry-panel">
-      <h2>Telemetry</h2>
-      <pre id="telemetryOutput" style="height:150px;overflow-y:auto;background:rgba(0,32,77,0.05);padding:12px;border-radius:12px;font-size:0.9rem;"></pre>
-      <button onclick="clearTelemetry()" style="margin-top:12px;padding:10px 20px;font-size:0.9rem;">Clear</button>
-      <button id="autoScrollToggle" onclick="toggleAutoScroll()" style="margin-top:8px;padding:10px 20px;font-size:0.9rem;">Auto-scroll: ON</button>
-    </section>
     <section class="stack-card telemetry" id="logs">
       <h2>System Logs</h2>
       <select id="joystickSelect" onchange="changeSelectedGamepad()">
@@ -822,6 +797,14 @@ const char MAIN_page[] PROGMEM = R"=====(
       <pre id="joystickStatus">No gamepad selected.</pre>
       <pre id="axisData">No axis data...</pre>
       <pre id="buttonData">No button data...</pre>
+    </section>
+  </div>
+  <div class="column column-secondary">
+    <section class="stack-card" id="telemetry-panel" style="flex:1;display:flex;flex-direction:column;">
+      <h2>Telemetry</h2>
+      <pre id="telemetryOutput" style="flex:1;min-height:300px;overflow-y:auto;background:rgba(0,32,77,0.05);padding:12px;border-radius:12px;font-size:0.9rem;"></pre>
+      <button onclick="clearTelemetry()" style="margin-top:12px;padding:10px 20px;font-size:0.9rem;">Clear</button>
+      <button id="autoScrollToggle" onclick="toggleAutoScroll()" style="margin-top:8px;padding:10px 20px;font-size:0.9rem;">Auto-scroll: ON</button>
     </section>
   </div>
 </main>
@@ -1334,24 +1317,12 @@ function stopAutoTimer(){
         lastPingMs=Math.round(performance.now()-start);
         lastRssi=(typeof data.rssi==='number')?data.rssi:-100;
         lastHeap=(typeof data.heap==='number')?data.heap:0;
-        lastDm=!!data.dm;
         healthFailCount=0;
         updateConnUI(true);
       }catch(e){
         healthFailCount++;
         updateConnUI(false);
       }
-    }
-
-    let lastDm=false;
-    let dmToastTimer=null;
-
-    function showDmToast(){
-      const toast=document.getElementById('dmToast');
-      if(!toast) return;
-      toast.classList.add('show');
-      clearTimeout(dmToastTimer);
-      dmToastTimer=setTimeout(()=>{toast.classList.remove('show');},5000);
     }
 
     function updateConnUI(ok){
@@ -1372,8 +1343,6 @@ function stopAutoTimer(){
       }
 
       overlay.classList.remove('show');
-      if(lastDm) showDmToast();
-
       ping.textContent=lastPingMs+'ms';
       if(heap) heap.textContent=lastHeap>0?Math.round(lastHeap/1024)+'KB':'--';
 
