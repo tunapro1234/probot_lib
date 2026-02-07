@@ -107,3 +107,19 @@ inline uint32_t getSeq() {
 }
 
 } // namespace probot::telemetry
+
+// Convenience shortcuts in probot:: namespace
+namespace probot {
+  inline void print(const char* msg) { telemetry::print(msg); }
+  inline void println(const char* msg = "") { telemetry::println(msg); }
+  inline void printf(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
+  inline void printf(const char* fmt, ...) {
+    char tmp[128];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(tmp, sizeof(tmp), fmt, args);
+    va_end(args);
+    telemetry::print(tmp);
+  }
+  inline void clearTelemetry() { telemetry::clear(); }
+}

@@ -16,8 +16,10 @@ void robotInit();
 void robotEnd();
 void teleopInit();
 void teleopLoop();
+void teleopEnd();
 void autonomousInit();
 void autonomousLoop();
+void autonomousEnd();
 
 namespace probot {
   namespace detail {
@@ -62,14 +64,14 @@ namespace probot {
 
     inline void stopAutonomous(){
       auto& s = g_state;
-      if (s.hAuto){ vTaskDelete(s.hAuto); s.hAuto = nullptr; }
+      if (s.hAuto){ vTaskDelete(s.hAuto); s.hAuto = nullptr; ::autonomousEnd(); }
       __atomic_store_n(&s.auto_start_ms, 0u, __ATOMIC_SEQ_CST);
       probot::robot::state().setAutoStartMs(millis(), 0u);
     }
 
     inline void stopTeleop(){
       auto& s = g_state;
-      if (s.hTeleop){ vTaskDelete(s.hTeleop); s.hTeleop = nullptr; }
+      if (s.hTeleop){ vTaskDelete(s.hTeleop); s.hTeleop = nullptr; ::teleopEnd(); }
     }
 
     inline void stopInit(){
