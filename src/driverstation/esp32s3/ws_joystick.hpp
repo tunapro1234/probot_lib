@@ -2,11 +2,12 @@
 #ifdef ESP32
 #include <esp_http_server.h>
 #include <probot/io/gamepad.hpp>
+#include <probot/robot/state.hpp>
 
 namespace probot::driverstation::esp32 {
 
   /**
-   * WebSocket joystick server (ESP-IDF httpd, port 81)
+   * WebSocket joystick handler (attaches to existing ESP-IDF httpd)
    *
    * Binary frame format:
    *   [0]       uint8   0x4A ('J' magic)
@@ -20,16 +21,8 @@ namespace probot::driverstation::esp32 {
   public:
     explicit WsJoystick(io::GamepadService& gs) : _gs(gs) {}
 
-    void begin(uint16_t port = 81) {
-      httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
-      cfg.server_port = port;
-      cfg.ctrl_port   = port + 1;
-      cfg.stack_size  = 4096;
-
-      if (httpd_start(&_server, &cfg) != ESP_OK) {
-        Serial.println("[WS   ] Failed to start WebSocket server");
-        return;
-      }
+    void attach(httpd_handle_t server) {
+      _server = server;
 
       httpd_uri_t ws_uri = {
         .uri      = "/joystick",
@@ -45,8 +38,19 @@ namespace probot::driverstation::esp32 {
       _pingTimer = xTimerCreate("ws_ping", pdMS_TO_TICKS(2000), pdTRUE, this, pingTimerCb);
       if (_pingTimer) xTimerStart(_pingTimer, 0);
 
-      Serial.print("[WS   ] WebSocket server on port ");
-      Serial.println(port);
+      Serial.println("[WS   ] WebSocket handler attached to /joystick");
+    }
+
+    void closeAll() {
+      if (!_server) return;
+      size_t fds = 8;
+      int clients[8];
+      if (httpd_get_client_list(_server, &fds, clients) != ESP_OK) return;
+      for (size_t i = 0; i < fds; i++) {
+        if (httpd_ws_get_fd_info(_server, clients[i]) == HTTPD_WS_CLIENT_WEBSOCKET) {
+          httpd_sess_trigger_close(_server, clients[i]);
+        }
+      }
     }
 
   private:
@@ -114,6 +118,7 @@ namespace probot::driverstation::esp32 {
       }
 
       _gs.write(millis(), axes, nA, buttons, nB);
+      __atomic_store_n(&probot::robot::g_ds_last_activity_ms, millis(), __ATOMIC_SEQ_CST);
     }
 
     static void pingTimerCb(TimerHandle_t t) {

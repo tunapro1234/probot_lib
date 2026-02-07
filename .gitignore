@@ -5,3 +5,4 @@ tests/control_tests
 .build/
 review/
 tuna_test/
+*.code-workspace

@@ -4,8 +4,12 @@
 #include <freertos/task.h>
 #include <probot/core/core_config.hpp>
 #include <probot/core/wdt.hpp>
-#include <probot/core/scheduler_registry.hpp>
+
+#ifndef PROBOT_DS_TIMEOUT_MS
+#define PROBOT_DS_TIMEOUT_MS 10000
+#endif
 #include <probot/robot/system.hpp>
+#include <probot/telemetry/telemetry.hpp>
 #include <probot/devices/leds/builtin.hpp>
 
 namespace probot {
@@ -23,8 +27,7 @@ void autonomousLoop();
 namespace probot {
   namespace detail {
     struct RuntimeState {
-      TaskHandle_t hCtrl = nullptr;
-      TaskHandle_t hUser = nullptr;
+      TaskHandle_t hSysloop = nullptr;
       TaskHandle_t hAuto = nullptr;
       TaskHandle_t hTeleop = nullptr;
       TaskHandle_t hInit = nullptr;
@@ -38,14 +41,24 @@ namespace probot {
     inline void autonomousWorker(void*){
       uint32_t now = millis();
       __atomic_store_n(&g_state.auto_start_ms, now, __ATOMIC_SEQ_CST);
+      __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, now, __ATOMIC_SEQ_CST);
       probot::robot::state().setAutoStartMs(now, now);
       ::autonomousInit();
-      for(;;){ ::autonomousLoop(); vTaskDelay(pdMS_TO_TICKS(20)); }
+      for(;;){
+        ::autonomousLoop();
+        __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, millis(), __ATOMIC_SEQ_CST);
+        vTaskDelay(pdMS_TO_TICKS(20));
+      }
     }
 
     inline void teleopWorker(void*){
+      __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, millis(), __ATOMIC_SEQ_CST);
       ::teleopInit();
-      for(;;){ ::teleopLoop(); vTaskDelay(pdMS_TO_TICKS(20)); }
+      for(;;){
+        ::teleopLoop();
+        __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, millis(), __ATOMIC_SEQ_CST);
+        vTaskDelay(pdMS_TO_TICKS(20));
+      }
     }
 
     inline void robotInitWorker(void*){
@@ -66,12 +79,14 @@ namespace probot {
       auto& s = g_state;
       if (s.hAuto){ vTaskDelete(s.hAuto); s.hAuto = nullptr; }
       __atomic_store_n(&s.auto_start_ms, 0u, __ATOMIC_SEQ_CST);
+      __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, 0u, __ATOMIC_SEQ_CST);
       probot::robot::state().setAutoStartMs(millis(), 0u);
     }
 
     inline void stopTeleop(){
       auto& s = g_state;
       if (s.hTeleop){ vTaskDelete(s.hTeleop); s.hTeleop = nullptr; }
+      __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, 0u, __ATOMIC_SEQ_CST);
     }
 
     inline void stopInit(){
@@ -115,22 +130,20 @@ namespace probot {
       auto s = probot::robot::state().read();
       static bool on = false;
       on = !on;
-      static uint32_t deadlineMissTime = 0;
+      static uint32_t dmLedTime = 0;
 
-      // Show deadline miss for 2 seconds (4 blinks) then auto-clear
       if (s.deadlineMiss){
-        if (deadlineMissTime == 0) deadlineMissTime = millis();
-        if (millis() - deadlineMissTime > 2000){
+        if (dmLedTime == 0) dmLedTime = millis();
+        if (millis() - dmLedTime > 3000){
           probot::robot::state().setDeadlineMiss(millis(), false);
-          deadlineMissTime = 0;
+          dmLedTime = 0;
         } else {
-          // Blink red
           if (on) builtinled::setColor(255,0,0);
           else builtinled::setColor(0,0,0);
           return;
         }
       } else {
-        deadlineMissTime = 0;
+        dmLedTime = 0;
       }
 
       switch (s.phase){
@@ -150,7 +163,7 @@ namespace probot {
       }
     }
 
-    inline void userLoopTask(){
+    inline void sysloopTask(){
       using probot::robot::Status;
       using probot::robot::Phase;
       Status lastStatus = Status::STOP;
@@ -213,6 +226,49 @@ namespace probot {
           startTeleop();
         }
 
+        // Deadline miss: warn on teleop, kill autonomous
+        {
+          bool taskRunning = (s.phase == Phase::TELEOP || s.phase == Phase::AUTONOMOUS);
+          uint32_t hb = __atomic_load_n(&probot::robot::g_loop_heartbeat_ms, __ATOMIC_SEQ_CST);
+          if (taskRunning && hb != 0 && (int32_t)(now - hb) > 2000){
+            probot::robot::state().setDeadlineMiss(now, true);
+            if (s.phase == Phase::AUTONOMOUS){
+              probot::telemetry::println("!! DEADLINE MISS — auto blocked, switching to teleop");
+              stopAutonomous();
+              probot::robot::state().setAutonomous(now, false);
+              probot::robot::state().setPhase(now, Phase::TELEOP);
+              startTeleop();
+            } else {
+              probot::telemetry::println("!! DEADLINE MISS — teleop blocked");
+            }
+          }
+        }
+
+        // DS connection heartbeat: no activity → stop robot + disconnect
+        {
+          uint32_t dsAct = __atomic_load_n(&probot::robot::g_ds_last_activity_ms, __ATOMIC_SEQ_CST);
+          if (dsAct != 0 && s.status != Status::STOP &&
+              (int32_t)(now - dsAct) > (int32_t)PROBOT_DS_TIMEOUT_MS){
+            Serial.printf("[SYS  ] DS timeout: no activity for %lu ms\n", (unsigned long)(now - dsAct));
+            probot::telemetry::println("!! DS CONNECTION LOST — stopping robot");
+            probot::robot::state().setStatus(now, Status::STOP);
+            lastStatus = Status::STOP;
+#ifdef ESP32
+            if (probot::driverstation::detail::g_driver_station){
+              probot::driverstation::detail::g_driver_station->forceDisconnect(now);
+            }
+#endif
+            __atomic_store_n(&probot::robot::g_ds_last_activity_ms, 0u, __ATOMIC_SEQ_CST);
+          }
+        }
+
+        // Expire DS owner if idle (replaces handleClient polling)
+#ifdef ESP32
+        if (probot::driverstation::detail::g_driver_station){
+          probot::driverstation::detail::g_driver_station->expireOwnerIfIdle();
+        }
+#endif
+
         if (now - lastLed >= 500){
           lastLed = now;
           updateLed();
@@ -225,7 +281,7 @@ namespace probot {
   inline void runtime_setup(){
     Serial.begin(115200);
     delay(200);
-    Serial.println("\n[PROBOT] Core0=FREE, Core1=CTRL(high)+USER(low)");
+    Serial.println("\n[Probot] Core0=DS+SYS, Core1=USER");
 
     wdt_init_no_idle(3, true);
 
@@ -234,11 +290,7 @@ namespace probot {
 #endif
 
     auto& s = detail::g_state;
-    if (detail::g_scheduler_init && detail::g_scheduler_task){
-      detail::g_scheduler_init(8);
-      xTaskCreatePinnedToCore(detail::g_scheduler_task, "ctrl", STACK_CTRL, NULL, PRIO_CTRL, &s.hCtrl, CORE_CTRL);
-    }
-    xTaskCreatePinnedToCore([](void*){ detail::userLoopTask(); }, "user", STACK_USER, NULL, PRIO_USER, &s.hUser, CORE_CTRL);
+    xTaskCreatePinnedToCore([](void*){ detail::sysloopTask(); }, "sysloop", STACK_CTRL, NULL, PRIO_CTRL, &s.hSysloop, CORE_UI);
   }
 
 } // namespace probot
