@@ -86,6 +86,13 @@ namespace probot::driverstation::esp32 {
       expireOwnerIfIdle();
     }
 
+    void forceDisconnect(uint32_t now_ms){
+      Serial.println("[DS   ] Force disconnect: connection timeout");
+      if (_owner_set) releaseOwner(now_ms);
+      _ws.closeAll();
+      Serial.println("[DS   ] Owner released, WS connections closed");
+    }
+
   private:
     bool enforceOwner(){
       uint32_t now = millis();
@@ -101,12 +108,14 @@ namespace probot::driverstation::esp32 {
         _owner = ip;
         _owner_set = true;
         _owner_last_ms = now;
+        __atomic_store_n(&probot::robot::g_ds_last_activity_ms, now, __ATOMIC_SEQ_CST);
         _rs.setClientCount(now, 1);
         Serial.printf("[DS   ] Owner acquired: %s\n", ip.toString().c_str());
         return true;
       }
       if (ip == _owner){
         _owner_last_ms = now;
+        __atomic_store_n(&probot::robot::g_ds_last_activity_ms, now, __ATOMIC_SEQ_CST);
         return true;
       }
       Serial.printf("[DS   ] Rejected %s (owner: %s)\n", ip.toString().c_str(), _owner.toString().c_str());

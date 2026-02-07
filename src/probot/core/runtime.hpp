@@ -4,6 +4,10 @@
 #include <freertos/task.h>
 #include <probot/core/core_config.hpp>
 #include <probot/core/wdt.hpp>
+
+#ifndef PROBOT_DS_TIMEOUT_MS
+#define PROBOT_DS_TIMEOUT_MS 10000
+#endif
 #include <probot/robot/system.hpp>
 #include <probot/telemetry/telemetry.hpp>
 #include <probot/devices/leds/builtin.hpp>
@@ -23,7 +27,7 @@ void autonomousLoop();
 namespace probot {
   namespace detail {
     struct RuntimeState {
-      TaskHandle_t hWatchdog = nullptr;
+      TaskHandle_t hSysloop = nullptr;
       TaskHandle_t hAuto = nullptr;
       TaskHandle_t hTeleop = nullptr;
       TaskHandle_t hInit = nullptr;
@@ -159,7 +163,7 @@ namespace probot {
       }
     }
 
-    inline void watchdogTask(){
+    inline void sysloopTask(){
       using probot::robot::Status;
       using probot::robot::Phase;
       Status lastStatus = Status::STOP;
@@ -222,7 +226,7 @@ namespace probot {
           startTeleop();
         }
 
-        // Heartbeat check: kill stuck task, recover, notify
+        // Deadline miss: warn on teleop, kill autonomous
         {
           bool taskRunning = (s.phase == Phase::TELEOP || s.phase == Phase::AUTONOMOUS);
           uint32_t hb = __atomic_load_n(&probot::robot::g_loop_heartbeat_ms, __ATOMIC_SEQ_CST);
@@ -235,10 +239,26 @@ namespace probot {
               probot::robot::state().setPhase(now, Phase::TELEOP);
               startTeleop();
             } else {
-              probot::telemetry::println("!! DEADLINE MISS — teleop blocked, restarting");
-              stopTeleop();
-              startTeleop();
+              probot::telemetry::println("!! DEADLINE MISS — teleop blocked");
             }
+          }
+        }
+
+        // DS connection heartbeat: no activity → stop robot + disconnect
+        {
+          uint32_t dsAct = __atomic_load_n(&probot::robot::g_ds_last_activity_ms, __ATOMIC_SEQ_CST);
+          if (dsAct != 0 && s.status != Status::STOP &&
+              (int32_t)(now - dsAct) > (int32_t)PROBOT_DS_TIMEOUT_MS){
+            Serial.printf("[SYS  ] DS timeout: no activity for %lu ms\n", (unsigned long)(now - dsAct));
+            probot::telemetry::println("!! DS CONNECTION LOST — stopping robot");
+            probot::robot::state().setStatus(now, Status::STOP);
+            lastStatus = Status::STOP;
+#ifdef ESP32
+            if (probot::driverstation::detail::g_driver_station){
+              probot::driverstation::detail::g_driver_station->forceDisconnect(now);
+            }
+#endif
+            __atomic_store_n(&probot::robot::g_ds_last_activity_ms, 0u, __ATOMIC_SEQ_CST);
           }
         }
 
@@ -254,7 +274,7 @@ namespace probot {
   inline void runtime_setup(){
     Serial.begin(115200);
     delay(200);
-    Serial.println("\n[Probot] Core0=DS+WDOG, Core1=USER");
+    Serial.println("\n[Probot] Core0=DS+SYS, Core1=USER");
 
     wdt_init_no_idle(3, true);
 
@@ -263,7 +283,7 @@ namespace probot {
 #endif
 
     auto& s = detail::g_state;
-    xTaskCreatePinnedToCore([](void*){ detail::watchdogTask(); }, "wdog", STACK_CTRL, NULL, PRIO_CTRL, &s.hWatchdog, CORE_UI);
+    xTaskCreatePinnedToCore([](void*){ detail::sysloopTask(); }, "sysloop", STACK_CTRL, NULL, PRIO_CTRL, &s.hSysloop, CORE_UI);
   }
 
 } // namespace probot

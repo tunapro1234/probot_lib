@@ -2,6 +2,7 @@
 #ifdef ESP32
 #include <esp_http_server.h>
 #include <probot/io/gamepad.hpp>
+#include <probot/robot/state.hpp>
 
 namespace probot::driverstation::esp32 {
 
@@ -47,6 +48,18 @@ namespace probot::driverstation::esp32 {
 
       Serial.print("[WS   ] WebSocket server on port ");
       Serial.println(port);
+    }
+
+    void closeAll() {
+      if (!_server) return;
+      size_t fds = 8;
+      int clients[8];
+      if (httpd_get_client_list(_server, &fds, clients) != ESP_OK) return;
+      for (size_t i = 0; i < fds; i++) {
+        if (httpd_ws_get_fd_info(_server, clients[i]) == HTTPD_WS_CLIENT_WEBSOCKET) {
+          httpd_sess_trigger_close(_server, clients[i]);
+        }
+      }
     }
 
   private:
@@ -114,6 +127,7 @@ namespace probot::driverstation::esp32 {
       }
 
       _gs.write(millis(), axes, nA, buttons, nB);
+      __atomic_store_n(&probot::robot::g_ds_last_activity_ms, millis(), __ATOMIC_SEQ_CST);
     }
 
     static void pingTimerCb(TimerHandle_t t) {
