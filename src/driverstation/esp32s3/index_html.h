@@ -918,20 +918,23 @@ function stopAutoTimer(){
         default: cmd="stop"; break;
       }
 
-      const url=`/robotControl?cmd=${cmd}&auto=${enableAuto?1:0}&autoLen=${autoLen}`;
-      try{
-        const r=await fetch(url);
-        if(!r.ok) throw new Error("Robot command failed");
-      }catch(err){
-        console.error(err);
-        return;
-      }
       // WS lifecycle: open on init, close on stop
       if(cmd==="stop"){
         wsStopped=true;
         killWs();
       }else if(cmd==="init"){
         connectWebSocket();
+      }
+
+      const url=`/robotControl?cmd=${cmd}&auto=${enableAuto?1:0}&autoLen=${autoLen}`;
+      try{
+        const ac=new AbortController();
+        const tid=setTimeout(()=>ac.abort(),3000);
+        const r=await fetch(url,{signal:ac.signal});
+        clearTimeout(tid);
+        if(!r.ok) console.error("Robot command failed:",r.status);
+      }catch(err){
+        console.error("robotControl fetch error:",err);
       }
 
       const btn=document.getElementById('robotButton');
