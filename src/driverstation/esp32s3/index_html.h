@@ -926,6 +926,13 @@ function stopAutoTimer(){
         console.error(err);
         return;
       }
+      // WS lifecycle: open on init, close on stop
+      if(cmd==="stop"){
+        wsStopped=true;
+        killWs();
+      }else if(cmd==="init"){
+        connectWebSocket();
+      }
 
       const btn=document.getElementById('robotButton');
       if(controlState==="idle"){
@@ -1003,33 +1010,35 @@ function stopAutoTimer(){
     let wsReconnectTimer=null;
     let wsLastActivity=0;
 
+    let wsStopped=false;
+    function killWs(){
+      if(wsReconnectTimer){clearTimeout(wsReconnectTimer);wsReconnectTimer=null;}
+      if(wsJoystick){wsJoystick.onopen=null;wsJoystick.onclose=null;wsJoystick.onerror=null;wsJoystick.onmessage=null;try{wsJoystick.close();}catch(e){}}
+      wsJoystick=null;wsConnected=false;
+    }
     function connectWebSocket(){
-      if(wsJoystick){
-        try{wsJoystick.close();}catch(e){}
-        wsJoystick=null;
-      }
-      wsConnected=false;
+      killWs();
+      wsStopped=false;
       try{
         const ws=new WebSocket(`ws://${location.hostname}:81/joystick`);
         ws.binaryType='arraybuffer';
         ws.onopen=()=>{wsConnected=true;wsLastActivity=performance.now();console.log('[WS] Connected');};
-        ws.onclose=()=>{wsConnected=false;wsJoystick=null;scheduleReconnect();};
+        ws.onclose=()=>{wsConnected=false;wsJoystick=null;if(!wsStopped)scheduleReconnect();};
         ws.onerror=()=>{wsConnected=false;};
         ws.onmessage=()=>{wsLastActivity=performance.now();};
         wsJoystick=ws;
-      }catch(e){scheduleReconnect();}
+      }catch(e){if(!wsStopped)scheduleReconnect();}
     }
     function scheduleReconnect(){
-      if(wsReconnectTimer) return;
-      wsReconnectTimer=setTimeout(()=>{wsReconnectTimer=null;connectWebSocket();},2000);
+      if(wsReconnectTimer||wsStopped) return;
+      wsReconnectTimer=setTimeout(()=>{wsReconnectTimer=null;if(!wsStopped)connectWebSocket();},2000);
     }
     function wsHealthCheck(){
-      if(!wsJoystick) return;
+      if(wsStopped||!wsJoystick) return;
       if(wsJoystick.readyState>1){wsConnected=false;wsJoystick=null;scheduleReconnect();return;}
       if(wsConnected && performance.now()-wsLastActivity>3000){
         console.log('[WS] Stale, reconnecting');
-        try{wsJoystick.close();}catch(e){}
-        wsConnected=false;wsJoystick=null;
+        killWs();
         scheduleReconnect();
       }
     }

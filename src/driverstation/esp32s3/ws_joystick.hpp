@@ -119,16 +119,17 @@ namespace probot::driverstation::esp32 {
     static void pingTimerCb(TimerHandle_t t) {
       auto* self = static_cast<WsJoystick*>(pvTimerGetTimerID(t));
       if (!self->_server) return;
-      // Send PING to all connected WS clients
       httpd_ws_frame_t ping = {};
       ping.type = HTTPD_WS_TYPE_PING;
-      // Get connected clients and send ping
-      size_t fds = 4;
-      int clients[4];
-      httpd_get_client_list(self->_server, &fds, clients);
+      size_t fds = 8;
+      int clients[8];
+      if (httpd_get_client_list(self->_server, &fds, clients) != ESP_OK) return;
       for (size_t i = 0; i < fds; i++) {
         if (httpd_ws_get_fd_info(self->_server, clients[i]) == HTTPD_WS_CLIENT_WEBSOCKET) {
-          httpd_ws_send_frame_async(self->_server, clients[i], &ping);
+          esp_err_t err = httpd_ws_send_frame_async(self->_server, clients[i], &ping);
+          if (err != ESP_OK) {
+            httpd_sess_trigger_close(self->_server, clients[i]);
+          }
         }
       }
     }
