@@ -24,10 +24,10 @@ static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 32, "PROBOT_WIFI_AP_SSID must b
 static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 25, "PROBOT_WIFI_AP_SSID must be 25 characters or fewer when MAC suffix is enabled.");
 #endif
 #ifndef PROBOT_WIFI_AP_CHANNEL
-#error "WiFi AP channel not provided. Define PROBOT_WIFI_AP_CHANNEL (1-11) before including probot.h."
+#error "WiFi AP channel not provided. Define PROBOT_WIFI_AP_CHANNEL (1-13) before including probot.h."
 #endif
-static_assert(PROBOT_WIFI_AP_CHANNEL >= 1 && PROBOT_WIFI_AP_CHANNEL <= 11,
-              "PROBOT_WIFI_AP_CHANNEL must be between 1 and 11.");
+static_assert(PROBOT_WIFI_AP_CHANNEL >= 1 && PROBOT_WIFI_AP_CHANNEL <= 13,
+              "PROBOT_WIFI_AP_CHANNEL must be between 1 and 13.");
 
 namespace probot::driverstation::esp32 {
   class DriverStation {
