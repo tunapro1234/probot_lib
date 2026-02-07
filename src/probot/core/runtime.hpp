@@ -23,7 +23,7 @@ void autonomousLoop();
 namespace probot {
   namespace detail {
     struct RuntimeState {
-      TaskHandle_t hUser = nullptr;
+      TaskHandle_t hWatchdog = nullptr;
       TaskHandle_t hAuto = nullptr;
       TaskHandle_t hTeleop = nullptr;
       TaskHandle_t hInit = nullptr;
@@ -159,7 +159,7 @@ namespace probot {
       }
     }
 
-    inline void userLoopTask(){
+    inline void watchdogTask(){
       using probot::robot::Status;
       using probot::robot::Phase;
       Status lastStatus = Status::STOP;
@@ -254,7 +254,7 @@ namespace probot {
   inline void runtime_setup(){
     Serial.begin(115200);
     delay(200);
-    Serial.println("\n[Probot] Core0=FREE, Core1=CTRL(high)+USER(low)");
+    Serial.println("\n[Probot] Core0=DS+WDOG, Core1=USER");
 
     wdt_init_no_idle(3, true);
 
@@ -263,7 +263,7 @@ namespace probot {
 #endif
 
     auto& s = detail::g_state;
-    xTaskCreatePinnedToCore([](void*){ detail::userLoopTask(); }, "user", STACK_USER, NULL, PRIO_USER, &s.hUser, CORE_CTRL);
+    xTaskCreatePinnedToCore([](void*){ detail::watchdogTask(); }, "wdog", STACK_CTRL, NULL, PRIO_CTRL, &s.hWatchdog, CORE_UI);
   }
 
 } // namespace probot
