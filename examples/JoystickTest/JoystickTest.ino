@@ -48,8 +48,5 @@ void teleopLoop() {
   delay(100);
 }
 
-void teleopEnd() {}
-
 void autonomousInit() {}
 void autonomousLoop() { delay(100); }
-void autonomousEnd() {}
