@@ -918,13 +918,23 @@ function stopAutoTimer(){
         default: cmd="stop"; break;
       }
 
+      // WS lifecycle: open on init, close on stop
+      if(cmd==="stop"){
+        wsStopped=true;
+        killWs();
+      }else if(cmd==="init"){
+        connectWebSocket();
+      }
+
       const url=`/robotControl?cmd=${cmd}&auto=${enableAuto?1:0}&autoLen=${autoLen}`;
       try{
-        const r=await fetch(url);
-        if(!r.ok) throw new Error("Robot command failed");
+        const ac=new AbortController();
+        const tid=setTimeout(()=>ac.abort(),3000);
+        const r=await fetch(url,{signal:ac.signal});
+        clearTimeout(tid);
+        if(!r.ok) console.error("Robot command failed:",r.status);
       }catch(err){
-        console.error(err);
-        return;
+        console.error("robotControl fetch error:",err);
       }
 
       const btn=document.getElementById('robotButton');
@@ -1001,21 +1011,41 @@ function stopAutoTimer(){
     let wsJoystick=null;
     let wsConnected=false;
     let wsReconnectTimer=null;
+    let wsLastActivity=0;
 
+    let wsStopped=false;
+    function killWs(){
+      if(wsReconnectTimer){clearTimeout(wsReconnectTimer);wsReconnectTimer=null;}
+      if(wsJoystick){wsJoystick.onopen=null;wsJoystick.onclose=null;wsJoystick.onerror=null;wsJoystick.onmessage=null;try{wsJoystick.close();}catch(e){}}
+      wsJoystick=null;wsConnected=false;
+    }
     function connectWebSocket(){
-      if(wsJoystick && wsJoystick.readyState<=1) return;
+      killWs();
+      wsStopped=false;
       try{
-        wsJoystick=new WebSocket(`ws://${location.hostname}:81/joystick`);
-        wsJoystick.binaryType='arraybuffer';
-        wsJoystick.onopen=()=>{wsConnected=true;console.log('[WS] Connected');};
-        wsJoystick.onclose=()=>{wsConnected=false;console.log('[WS] Closed');scheduleReconnect();};
-        wsJoystick.onerror=()=>{wsConnected=false;};
-      }catch(e){wsConnected=false;scheduleReconnect();}
+        const ws=new WebSocket(`ws://${location.hostname}:81/joystick`);
+        ws.binaryType='arraybuffer';
+        ws.onopen=()=>{wsConnected=true;wsLastActivity=performance.now();console.log('[WS] Connected');};
+        ws.onclose=()=>{wsConnected=false;wsJoystick=null;if(!wsStopped)scheduleReconnect();};
+        ws.onerror=()=>{wsConnected=false;};
+        ws.onmessage=()=>{wsLastActivity=performance.now();};
+        wsJoystick=ws;
+      }catch(e){if(!wsStopped)scheduleReconnect();}
     }
     function scheduleReconnect(){
-      if(wsReconnectTimer) return;
-      wsReconnectTimer=setTimeout(()=>{wsReconnectTimer=null;connectWebSocket();},2000);
+      if(wsReconnectTimer||wsStopped) return;
+      wsReconnectTimer=setTimeout(()=>{wsReconnectTimer=null;if(!wsStopped)connectWebSocket();},2000);
     }
+    function wsHealthCheck(){
+      if(wsStopped||!wsJoystick) return;
+      if(wsJoystick.readyState>1){wsConnected=false;wsJoystick=null;scheduleReconnect();return;}
+      if(wsConnected && performance.now()-wsLastActivity>3000){
+        console.log('[WS] Stale, reconnecting');
+        killWs();
+        scheduleReconnect();
+      }
+    }
+    setInterval(wsHealthCheck,1000);
     function packJoystickBinary(gp){
       const nA=gp.axes.length;
       const nB=gp.buttons.length;
@@ -1047,19 +1077,22 @@ function stopAutoTimer(){
         if(wsConnected && wsJoystick && wsJoystick.readyState===1){
           try{
             wsJoystick.send(packJoystickBinary(gp));
+            wsLastActivity=now;
             gamepadSending=false;
             return;
-          }catch(e){wsConnected=false;scheduleReconnect();}
+          }catch(e){wsConnected=false;wsJoystick=null;scheduleReconnect();}
         }
+        const ac=new AbortController();
+        const tid=setTimeout(()=>ac.abort(),2000);
         const data={axes:Array.from(gp.axes),buttons:gp.buttons.map(b=>b.pressed)};
         await fetch("/updateController",{
           method:"POST",
           headers:{"Content-Type":"application/json"},
-          body:JSON.stringify(data)
+          body:JSON.stringify(data),
+          signal:ac.signal
         });
-      }catch(err){
-        console.error(err);
-      }finally{
+        clearTimeout(tid);
+      }catch(err){}finally{
         gamepadSending=false;
       }
     }

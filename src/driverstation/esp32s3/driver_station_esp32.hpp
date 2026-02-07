@@ -50,6 +50,7 @@ namespace probot::driverstation::esp32 {
       WiFi.softAP(ssid.c_str(), pw, PROBOT_WIFI_AP_CHANNEL);
       esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20);
       esp_wifi_set_ps(WIFI_PS_NONE);
+      WiFi.setTxPower(WIFI_POWER_19_5dBm);
 
       Serial.println("[DS   ] ========================================");
       Serial.print("[DS   ] WiFi SSID: ");
