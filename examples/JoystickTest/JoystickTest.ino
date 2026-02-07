@@ -1,7 +1,7 @@
 /**
  * JoystickTest - Joystick veri okuma örneği
  *
- * Bu örnek DriverStation uygulamasından gelen joystick verilerini
+ * Bu örnek Driver Station uygulamasından gelen joystick verilerini
  * seri port üzerinden yazdırır. Motor veya başka donanım kullanmaz.
  *
  * ============================================================================
@@ -47,7 +47,7 @@
  * - Stick dead zone: Joystick ortada bile tam 0.0 vermeyebilir.
  *   Genelde |değer| < 0.1 ise 0 kabul edilir.
  *
- * - Veri güncelliği: getSeq() değeri değişmiyorsa DriverStation bağlı
+ * - Veri güncelliği: getSeq() değeri değişmiyorsa Driver Station bağlı
  *   olmayabilir veya veri göndermiyor olabilir.
  *
  * - Teleop modu: Joystick verisi sadece teleop modunda aktif olarak
@@ -56,8 +56,8 @@
  * ============================================================================
  */
 
-#define PROBOT_WIFI_AP_SSID     "ProBot"
-#define PROBOT_WIFI_AP_PASSWORD "ProBot1234"
+#define PROBOT_WIFI_AP_SSID     "Probot"
+#define PROBOT_WIFI_AP_PASSWORD "Probot1234"
 #define PROBOT_WIFI_AP_CHANNEL  3
 
 #include <probot.h>
@@ -73,7 +73,7 @@ void robotInit() {
   Serial.println("============================================");
   Serial.println("[JoystickTest] Joystick veri okuma örneği");
   Serial.println("============================================");
-  Serial.println("DriverStation'dan bağlanın ve joystick kullanın.");
+  Serial.println("Driver Station'dan bağlanın ve joystick kullanın.");
   Serial.println("");
   Serial.println("Veri formatı:");
   Serial.println("  seq   = Paket sıra numarası");
@@ -101,7 +101,7 @@ void teleopInit() {
  * Teleop döngüsü (sürekli çağrılır)
  *
  * Bu fonksiyon joystick verilerini okur ve hem seri porta hem de
- * telemetri sistemine yazdırır. DriverStation'da telemetri panelinde
+ * telemetri sistemine yazdırır. Driver Station'da telemetri panelinde
  * bu veriler görünür.
  */
 void teleopLoop() {
@@ -127,7 +127,7 @@ void teleopLoop() {
   // =========================================================================
   // TELEMETRİ ÇIKTISI
   // =========================================================================
-  // DriverStation uygulamasında telemetri panelinde görünür.
+  // Driver Station uygulamasında telemetri panelinde görünür.
   // HTTP polling ile 50ms'de bir güncellenir.
   //
   // API:

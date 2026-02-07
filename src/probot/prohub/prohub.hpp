@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * ProHub - Dual-loop control system for ProBot with Pico co-processor.
+ * ProHub - Dual-loop control system for Probot with Pico co-processor.
  *
  * FTC-Style Usage:
  *   #include <probot.h>

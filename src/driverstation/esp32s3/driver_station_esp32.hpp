@@ -11,7 +11,7 @@
 #include "ws_joystick.hpp"
 
 #ifndef PROBOT_WIFI_AP_PASSWORD
-#error "DriverStation AP password not provided. Define PROBOT_WIFI_AP_PASSWORD (>=8 chars) before including probot.h."
+#error "Driver station AP password not provided. Define PROBOT_WIFI_AP_PASSWORD (>=8 chars) before including probot.h."
 #endif
 static_assert(sizeof(PROBOT_WIFI_AP_PASSWORD) - 1 >= 8, "PROBOT_WIFI_AP_PASSWORD must be at least 8 characters.");
 #ifndef PROBOT_WIFI_AP_SSID
@@ -143,7 +143,7 @@ namespace probot::driverstation::esp32 {
       return true;
     }
 
-    String generateSSID(){ uint64_t mac=ESP.getEfuseMac(); char ssid[32]; snprintf(ssid, sizeof(ssid), "ProBot-%06X", (unsigned int)(mac & 0xFFFFFF)); return String(ssid); }
+    String generateSSID(){ uint64_t mac=ESP.getEfuseMac(); char ssid[32]; snprintf(ssid, sizeof(ssid), "Probot-%06X", (unsigned int)(mac & 0xFFFFFF)); return String(ssid); }
 
     void handleRoot(){
       _server.setContentLength(strlen_P(MAIN_page));

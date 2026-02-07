@@ -4,7 +4,6 @@
 #include <freertos/task.h>
 #include <probot/core/core_config.hpp>
 #include <probot/core/wdt.hpp>
-#include <probot/core/scheduler_registry.hpp>
 #include <probot/robot/system.hpp>
 #include <probot/devices/leds/builtin.hpp>
 
@@ -23,7 +22,6 @@ void autonomousLoop();
 namespace probot {
   namespace detail {
     struct RuntimeState {
-      TaskHandle_t hCtrl = nullptr;
       TaskHandle_t hUser = nullptr;
       TaskHandle_t hAuto = nullptr;
       TaskHandle_t hTeleop = nullptr;
@@ -225,7 +223,7 @@ namespace probot {
   inline void runtime_setup(){
     Serial.begin(115200);
     delay(200);
-    Serial.println("\n[PROBOT] Core0=FREE, Core1=CTRL(high)+USER(low)");
+    Serial.println("\n[Probot] Core0=FREE, Core1=CTRL(high)+USER(low)");
 
     wdt_init_no_idle(3, true);
 
@@ -234,10 +232,6 @@ namespace probot {
 #endif
 
     auto& s = detail::g_state;
-    if (detail::g_scheduler_init && detail::g_scheduler_task){
-      detail::g_scheduler_init(8);
-      xTaskCreatePinnedToCore(detail::g_scheduler_task, "ctrl", STACK_CTRL, NULL, PRIO_CTRL, &s.hCtrl, CORE_CTRL);
-    }
     xTaskCreatePinnedToCore([](void*){ detail::userLoopTask(); }, "user", STACK_USER, NULL, PRIO_USER, &s.hUser, CORE_CTRL);
   }
 

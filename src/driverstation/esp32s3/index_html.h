@@ -10,7 +10,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>ProBot DriverStation</title>
+  <title>Probot Driver Station</title>
   <style>
     :root{
       --navy:#00204d;
@@ -642,7 +642,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 <body>
   <header class="app-header" id="appHeader">
     <div class="header-left">
-      <h1>ProBot DriverStation</h1>
+      <h1>Probot Driver Station</h1>
       <span class="header-subtitle">by NFR Products · c2025</span>
     </div>
     <nav>
