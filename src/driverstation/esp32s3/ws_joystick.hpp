@@ -59,6 +59,14 @@ namespace probot::driverstation::esp32 {
     static constexpr uint32_t MAX_BTNS = 20;
     static constexpr size_t   MAX_FRAME = 4 + MAX_AXES * 2 + (MAX_BTNS + 7) / 8;
 
+    // Close a WS session only after this many consecutive ping send
+    // failures. Tolerates brief RF hiccups in noisy environments (a
+    // single lost frame used to close the connection).
+    static constexpr uint8_t  PING_MAX_FAILS   = 3;
+    static constexpr uint8_t  PING_TRACK_SLOTS = 8;
+
+    struct PingState { int fd = -1; uint8_t fails = 0; };
+
     static esp_err_t wsHandler(httpd_req_t* req) {
       if (req->method == HTTP_GET) {
         return ESP_OK; // WS handshake — just accept
@@ -121,6 +129,16 @@ namespace probot::driverstation::esp32 {
       __atomic_store_n(&probot::robot::g_ds_last_activity_ms, millis(), __ATOMIC_SEQ_CST);
     }
 
+    uint8_t* trackPingFd(int fd) {
+      for (auto& s : _pingState) if (s.fd == fd) return &s.fails;
+      for (auto& s : _pingState) if (s.fd == -1) { s.fd = fd; s.fails = 0; return &s.fails; }
+      return nullptr;
+    }
+
+    void clearPingFd(int fd) {
+      for (auto& s : _pingState) if (s.fd == fd) { s.fd = -1; s.fails = 0; }
+    }
+
     static void pingTimerCb(TimerHandle_t t) {
       auto* self = static_cast<WsJoystick*>(pvTimerGetTimerID(t));
       if (!self->_server) return;
@@ -129,12 +147,28 @@ namespace probot::driverstation::esp32 {
       size_t fds = 8;
       int clients[8];
       if (httpd_get_client_list(self->_server, &fds, clients) != ESP_OK) return;
+
+      // Prune tracked fds that are no longer WS clients
+      for (auto& s : self->_pingState) {
+        if (s.fd == -1) continue;
+        if (httpd_ws_get_fd_info(self->_server, s.fd) != HTTPD_WS_CLIENT_WEBSOCKET) {
+          s.fd = -1; s.fails = 0;
+        }
+      }
+
       for (size_t i = 0; i < fds; i++) {
-        if (httpd_ws_get_fd_info(self->_server, clients[i]) == HTTPD_WS_CLIENT_WEBSOCKET) {
-          esp_err_t err = httpd_ws_send_frame_async(self->_server, clients[i], &ping);
-          if (err != ESP_OK) {
+        if (httpd_ws_get_fd_info(self->_server, clients[i]) != HTTPD_WS_CLIENT_WEBSOCKET) continue;
+        uint8_t* fails = self->trackPingFd(clients[i]);
+        esp_err_t err = httpd_ws_send_frame_async(self->_server, clients[i], &ping);
+        if (err != ESP_OK) {
+          if (fails && ++(*fails) >= PING_MAX_FAILS) {
+            Serial.printf("[WS   ] /joystick ping fail x%u, closing fd=%d\n",
+                          (unsigned)*fails, clients[i]);
             httpd_sess_trigger_close(self->_server, clients[i]);
+            self->clearPingFd(clients[i]);
           }
+        } else if (fails) {
+          *fails = 0;
         }
       }
     }
@@ -142,6 +176,7 @@ namespace probot::driverstation::esp32 {
     io::GamepadService& _gs;
     httpd_handle_t      _server = nullptr;
     TimerHandle_t       _pingTimer = nullptr;
+    PingState           _pingState[PING_TRACK_SLOTS] = {};
   };
 
 }
