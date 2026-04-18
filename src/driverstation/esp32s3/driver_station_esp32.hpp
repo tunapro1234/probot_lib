@@ -368,9 +368,11 @@ namespace probot::driverstation::esp32 {
       return ESP_OK;
     }
 
+    // /health and /info are OPEN (no owner enforcement).
+    // Monitoring stations (judge/referee) need to observe robot liveness
+    // without grabbing the DS ownership slot away from the active driver.
     static esp_err_t handleHealth(httpd_req_t* req) {
       auto* ds = self(req);
-      if (!ds->enforceOwner(req)) return ESP_OK;
 
       int8_t rssi = -100;
       wifi_sta_list_t sta_list;
@@ -393,20 +395,21 @@ namespace probot::driverstation::esp32 {
 
     static esp_err_t handleInfo(httpd_req_t* req) {
       auto* ds = self(req);
-      if (!ds->enforceOwner(req)) return ESP_OK;
 
+      // /info is now open (no owner check) so the password field is
+      // omitted — anyone connected already has the password; we don't
+      // want other teams' monitoring stations harvesting it.
       char buf[512];
       snprintf(buf, sizeof(buf),
-        "{\"ssid\":\"%s\",\"ch\":%d,\"pw\":\"%s\",\"ip\":\"%s\","
-        "\"chip\":\"%s\",\"cpuMhz\":%u,\"sdk\":\"%s\","
+        "{\"ssid\":\"%s\",\"ch\":%d,\"ip\":\"%s\","
+        "\"chip\":\"%s\",\"cpuMhz\":%lu,\"sdk\":\"%s\","
         "\"totalHeap\":%lu,\"totalFlash\":%lu,"
         "\"sketchSize\":%lu,\"freeSketch\":%lu,\"psram\":%lu}",
         ds->ap_ssid_.c_str(),
         PROBOT_WIFI_AP_CHANNEL,
-        PROBOT_WIFI_AP_PASSWORD,
         WiFi.softAPIP().toString().c_str(),
         ESP.getChipModel(),
-        ESP.getCpuFreqMHz(),
+        (unsigned long)ESP.getCpuFreqMHz(),
         ESP.getSdkVersion(),
         (unsigned long)ESP.getHeapSize(),
         (unsigned long)ESP.getFlashChipSize(),
