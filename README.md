@@ -1,212 +1,282 @@
 # Probot Lib
 
-MEB robot yarışmaları için geliştirilmiş Arduino kütüphanesi. PID kontrolü, WiFi sürücü istasyonu ve ESP32-S3 desteği ile geliyor.
+MEB robot yarışmaları için ESP32 tabanlı Arduino kütüphanesi. Kablosuz
+driver station, WiFi AP, WebSocket üzerinden düşük gecikmeli joystick
+aktarımı ve FreeRTOS tabanlı çift çekirdek görev yönetimi sunar.
 
-**Tüm dokümantasyon için:** https://docs.probotstudio.com/yazilim/
+**Dokümantasyon:** https://docs.probotstudio.com/yazilim/
+
+> **0.2.8** bir **bağlantı güvenilirliği** sürümüdür. Tam liste için
+> aşağıdaki "Bu sürümde neler değişti" bölümüne ve `CHANGELOG.md`
+> dosyasına bakın.
 
 ---
 
 ## Hızlı Başlangıç
 
-**Kurulum:**
-Arduino IDE'nin Library Manager'ından "Probot Lib" arayıp yükleyin.
+**Kurulum (Arduino IDE):** Library Manager'dan "Probot Lib" arayıp yükleyin.
 
-**İlk robot kodunuz:**
-1. `File → Examples → Probot Lib → command_based → TankDriveDemo` açın
-2. ESP32-S3'e yükleyin
-3. `Probot-XXXX` WiFi ağına bağlanın
-4. Tarayıcıdan `http://192.168.4.1` adresini açın
-5. Joystick ile robotunuzu kontrol edin
+**Kurulum (arduino-cli):**
+```bash
+arduino-cli lib install "Probot Lib"
+# veya doğrudan git deposundan:
+git clone https://github.com/probot-studio/probot-core ~/Arduino/libraries/probot-core
+```
+
+**Kart ayarı:** `ESP32 Dev Module` veya `ESP32S3 Dev Module`, partition
+şeması **`Huge APP (3MB No OTA)`** seçin — varsayılan 1.2MB bölümü
+yetersizdir.
+
+**İlk sketch:**
+```cpp
+#define PROBOT_WIFI_AP_SSID     "MyRobot"
+#define PROBOT_WIFI_AP_PASSWORD "robot1234"
+#define PROBOT_WIFI_AP_CHANNEL  1
+#include <probot.h>
+
+void robotInit()       {}
+void robotEnd()        {}
+void teleopInit()      {}
+void teleopLoop() {
+  auto& gp = probot::io::gamepad();
+  // gp.getLeftX(), gp.getA(), … ile motor kodunu buraya yaz
+}
+void autonomousInit()  {}
+void autonomousLoop()  { delay(100); }
+```
+
+ESP'ye yükle → `MyRobot` WiFi ağına bağlan → `http://192.168.4.1`'i aç
+→ joystick'le kontrol et.
 
 ---
 
 ## Örnekler
 
-Kütüphane seviyelerine göre düzenlenmiş örneklerle geliyor:
+`examples/JoystickTest/` — joystick eksenlerini ve butonlarını seri
+porta ve telemetri paneline yazdırır. API'yı öğrenmek için başlangıç
+noktası.
 
-**Başlangıç seviyesi:**
-- `command_based/TankDriveDemo` - Tank sürüş sistemi ve joystick kontrolü
-- `MotorOpenLoopDemo` - Motor kontrolcu test ve kalibrasyonu
-
-**Orta seviye:**
-- `MotorControllerDemo` - PID tabanlı hız kontrolü (PidMotorWrapper)
-- `command_based/AutonomousDemo` - Otonom hareket (mesafe ve dönüş)
-
-**İleri seviye:**
-- `command_based/MecanumDriveDemo` - Mecanum sürüş ve kinematik kontrol
-- `ShooterDemo` - Kapalı çevrim atıcı kontrolü
-
-Her örnek doğrudan çalışır durumda ve yorumlarla açıklanmıştır.
+Motor sürücü entegrasyonları (tank drive, mecanum, PID, kapalı çevrim)
+bu sürümde kullanıcı tarafında yazılır; referans implementasyonlar
+ileriki sürümlerde gelecek.
 
 ---
 
-## Platform Desteği
+## Bu sürümde neler değişti (0.2.8)
 
-- **Arduino IDE / arduino-cli:** `library.properties` ve `Makefile` üzerinden doğrudan desteklenir. `make build EXAMPLE=command_based/TankDriveDemo` komutu, `arduino-cli` ile örnekleri derler.
-- **PlatformIO (Arduino framework):** Kütüphaneyi `lib_deps = /path/to/probot-lib` ya da Git URL'siyle ekleyin. `library.json` sürüm bilgisi `VERSION` dosyasından otomatik güncellenir.
-- **ESP-IDF + Arduino bileşeni:** Depoyu IDF projenizin `components/` klasörüne yerleştirip `idf.py build` çalıştırabilirsiniz. `idf_component.yml` otomatik olarak Arduino bileşenine bağımlıdır; `app_main` içinde `probot::runtime_setup()` çağırarak Arduino dışındaki uygulamalarda da aynı robot yaşam döngüsünü başlatabilirsiniz.
+Tümü bağlantı dayanıklılığına odaklı:
 
-Tüm platformlarda sürüm numarası `VERSION` dosyasından yönetilir; `make version-sync` çağrısı metadata dosyalarını günceller.
+1. **WS ping 3-fail toleransı** — Tek başarısız ping'de kapatma
+   yerine ardışık 3 fail'de kapat. Gürültülü RF ortamında sahte
+   kopmaları ortadan kaldırır.
+2. **`/health` ve `/info` owner'sız** — Hakem/izleme cihazları, aktif
+   sürücünün sahiplik slotunu çalmadan robot sağlığını görebilir.
+3. **Owner release'de gamepad nötr** — Bağlantı kopunca son eksen/buton
+   state'i buffer'dan sıfırlanır. Kullanıcı kodu stale input okuyup
+   motorları sürmez.
+4. **`PROBOT_DS_TIMEOUT_FORCE_STOP`** — Varsayılan `1` (güvenli,
+   bağlantı kopunca robot STOP). `0` yaparsan loop çalışmaya devam
+   eder, joystick nötrlenir, bağlantı dönünce restart gerekmez.
+5. **`/joystick` WS handshake'de owner kontrolü** — Handshake ve her
+   frame'de yeniden doğrulama. İkinci bir client slot'u ele geçiremez.
+
+Detay: `CHANGELOG.md`.
 
 ---
 
-## Ne içeriyor?
+## Yapılandırma makroları
 
-Kütüphane şunları sağlar:
-- WiFi tabanlı driver station (web arayüzü)
-- PID ve feedforward
-- State-space kontrol araçları (Kalman filtre, LQR)
-- Tank ve mecanum sürüş soyutlamaları
-- Mekanizma yardımcıları (kol, asansör, slider)
-- 20ms periyotlu gerçek zamanlı görev yöneticisi
+`probot.h`'yi include etmeden önce tanımla:
 
-Detaylı API dokümantasyonu ve kullanım örnekleri için https://docs.probotstudio.com/yazilim/ adresini ziyaret edin.
+```cpp
+#define PROBOT_WIFI_AP_SSID     "RobotAdi"    // 1-32 karakter
+#define PROBOT_WIFI_AP_PASSWORD "en-az-8-char" // en az 8 karakter
+#define PROBOT_WIFI_AP_CHANNEL  1             // 1-13
+// isteğe bağlı:
+#define PROBOT_WIFI_AP_SSID_MAC_SUFFIX        // SSID'ye -XXXXXX ekle
+#define PROBOT_DS_TIMEOUT_MS    10000         // DS aktivite timeout
+#define PROBOT_DS_TIMEOUT_FORCE_STOP 1        // 0 = soft, 1 = STOP
+```
+
+---
+
+## Platform desteği
+
+- **Arduino IDE / arduino-cli**: `library.properties` üzerinden doğrudan
+  derlenir. `make build EXAMPLE=JoystickTest`.
+- **PlatformIO (Arduino framework)**: `lib_deps`'e path veya git URL ekle.
+- **ESP-IDF + Arduino component**: `components/` altına kopyala,
+  `app_main` içinden `probot::runtime_setup()` çağır.
+
+Sürüm numarası `VERSION` dosyasından yönetilir; `make version-sync`
+metadata dosyalarını eşitler.
 
 ---
 
 ## Donanım
 
-**Önerilen:** [Boardoza Pulse S32-S3](https://boardoza.com/product/boardoza-pulse-s32-s3-breakout-board/)
+Kütüphane **ESP32 ve ESP32-S3** ile uyumludur (WROOM, WROVER, S3 DevKit).
+Test edilmiş kart: [Boardoza Pulse S32-S3](https://boardoza.com/product/boardoza-pulse-s32-s3-breakout-board/).
 
-Kütüphane ESP32-S3 için geliştirilmiştir. Motor kontrolcusu olarak herhangi bir PWM kontrolcu kullanabilirsiniz (Boardoza VNH5019, BTS7960B, TB6612, vb.)
-
----
-
-## Katkıda Bulunma
-
-Katkılarınızı bekliyoruz. Hata bildirimi veya özellik önerisi için GitHub Issues kullanabilirsiniz. Pull request'ler için küçük ve odaklı değişiklikler tercih edilir.
-
-Geliştirme için:
-```bash
-git clone https://github.com/nfrproducts/probot-lib
-cd probot-lib
-make libs        # gerekli Arduino kütüphanelerini (Adafruit NeoPixel) kur
-make test
-```
-
-Detaylar için `CONTRIBUTING.md` dosyasına bakın.
+PWM çıkışı veren herhangi bir motor sürücü kullanılabilir: VNH5019,
+BTS7960B, TB6612, L298N, vb.
 
 ---
 
 ## Lisans
 
-Proje MIT lisansı ile yayınlanır. Ticari kullanım için Commons Clause koşulu geçerlidir.
-
-Eğitim ve yarışma amaçlı kullanım ücretsizdir. Ticari lisans için: tunagul54@gmail.com
+MIT + Commons Clause. Eğitim ve yarışma kullanımı ücretsiz; ticari
+lisans için: tunagul54@gmail.com
 
 ---
 
 ## Destek
 
-**Dokümantasyon:** https://docs.probotstudio.com/yazilim/  
-**WhatsApp:** +90 538 040 81 48  
-**Hata bildirimi:** [GitHub Issues](https://github.com/nfrproducts/probot-lib/issues)
+- **Dokümantasyon:** https://docs.probotstudio.com/yazilim/
+- **WhatsApp:** +90 538 040 81 48
+- **Hata bildirimi:** https://github.com/probot-studio/probot-core/issues
 
-Amacımız ekiplerin yarışma gününe hazır robotlarla çıkmasını sağlamak.
-
+---
 ---
 
 # Probot Lib (EN)
 
-Arduino library built for Ministry of Education robot competitions. Includes PID control, a WiFi driver station, and ESP32-S3 support.
+ESP32-based Arduino library for Ministry of Education robotics
+competitions. Provides a wireless driver station over WiFi AP,
+low-latency joystick transport via WebSocket, and a dual-core
+FreeRTOS-based task manager.
 
-**Full documentation:** https://docs.probotstudio.com/yazilim/
+**Documentation:** https://docs.probotstudio.com/yazilim/
+
+> **0.2.8** is a **connection-reliability** release. See "What changed
+> in this release" below and `CHANGELOG.md` for the full list.
 
 ---
 
-## Quick Start
+## Quick start
 
-**Installation:**
-Open the Arduino IDE Library Manager, search for "Probot Lib", and install it.
+**Install (Arduino IDE):** Library Manager → search "Probot Lib" → install.
 
-**Your first robot code:**
-1. Open `File → Examples → Probot Lib → command_based → TankDriveDemo`
-2. Upload it to the ESP32-S3
-3. Connect to the `Probot-XXXX` WiFi network
-4. Visit `http://192.168.4.1` in your browser
-5. Control the robot with the joystick
+**Install (arduino-cli):**
+```bash
+arduino-cli lib install "Probot Lib"
+# or from git:
+git clone https://github.com/probot-studio/probot-core ~/Arduino/libraries/probot-core
+```
+
+**Board setup:** Pick `ESP32 Dev Module` or `ESP32S3 Dev Module`. Set
+partition scheme to **`Huge APP (3MB No OTA)`** — the default 1.2 MB
+slot is not enough.
+
+**Minimal sketch:**
+```cpp
+#define PROBOT_WIFI_AP_SSID     "MyRobot"
+#define PROBOT_WIFI_AP_PASSWORD "robot1234"
+#define PROBOT_WIFI_AP_CHANNEL  1
+#include <probot.h>
+
+void robotInit()       {}
+void robotEnd()        {}
+void teleopInit()      {}
+void teleopLoop() {
+  auto& gp = probot::io::gamepad();
+  // drive motors with gp.getLeftX(), gp.getA(), …
+}
+void autonomousInit()  {}
+void autonomousLoop()  { delay(100); }
+```
+
+Flash → join `MyRobot` WiFi → visit `http://192.168.4.1` → drive with a
+joystick.
 
 ---
 
 ## Examples
 
-The library ships with examples organized by proficiency level:
+`examples/JoystickTest/` — prints joystick axes and buttons to Serial
+and the telemetry panel. Starting point for learning the API.
 
-**Beginner level:**
-- `command_based/TankDriveDemo` - Tank drive system with joystick control
-- `MotorOpenLoopDemo` - Motor controller open-loop test and calibration
-
-**Intermediate:**
-- `MotorControllerDemo` - PID-based speed control (PidMotorWrapper)
-- `command_based/AutonomousDemo` - Autonomous motion (distance and turn)
-
-**Advanced:**
-- `command_based/MecanumDriveDemo` - Mecanum drive and kinematic control
-- `ShooterDemo` - Closed-loop shooter control
-
-Every example runs out of the box and is documented with inline comments.
+Motor integrations (tank drive, mecanum, PID, closed-loop) are written
+by the user in this release; reference implementations will ship in a
+later version.
 
 ---
 
-## Platform Support
+## What changed in this release (0.2.8)
 
-- **Arduino IDE / arduino-cli:** build examples with `make build EXAMPLE=command_based/TankDriveDemo`; metadata comes from `library.properties`.
-- **PlatformIO (Arduino framework):** add `lib_deps = /path/to/probot-lib` or the Git URL; `library.json` stays in sync with `VERSION`.
-- **ESP-IDF with the Arduino component:** drop the repository under your project's `components/` directory (or use `idf_component.yml` via the component manager) and call `idf.py build`. Invoke `probot::runtime_setup()` from `app_main()` to reuse the Arduino lifecycle on pure ESP-IDF projects.
+All focused on connection reliability:
 
-`make version-sync` keeps all manifests aligned with the single `VERSION` file.
+1. **WS ping 3-fail tolerance** — Closing on a single failed ping
+   caused spurious disconnects under noisy RF. The link now survives
+   short interference bursts (closes only after three consecutive
+   failures).
+2. **`/health` and `/info` are open** — Judges and monitoring stations
+   can observe robot health without stealing the active driver's
+   ownership slot. `/info` no longer leaks the WiFi password.
+3. **Gamepad state zeroed on owner release** — When the link dies the
+   gamepad buffer is cleared so user code reading axes/buttons sees
+   neutral values instead of whatever the driver held at the moment
+   of disconnect.
+4. **`PROBOT_DS_TIMEOUT_FORCE_STOP`** — Default `1` (safe: set Status
+   to STOP when DS goes quiet). Set to `0` for a softer behavior: user
+   loops keep running with neutral input, no manual restart needed on
+   reconnect.
+5. **Owner check at `/joystick` WS handshake and per-frame** —
+   Previously the WebSocket accepted any client at handshake and only
+   HTTP routes enforced ownership. Now a second driver can't open a
+   parallel WS and race joystick frames.
+
+Full details: `CHANGELOG.md`.
 
 ---
 
-## What's inside?
+## Configuration macros
 
-The library provides:
-- WiFi-based driver station (web interface)
-- PID and feedforward utilities
-- State-space control tools (Kalman filter, LQR)
-- Tank and mecanum drive abstractions
-- Mechanism helpers (arm, elevator, slider)
-- A real-time task manager with a 20 ms period
+Define before including `probot.h`:
 
-For in-depth API docs and usage guides, visit https://docs.probotstudio.com/yazilim/.
+```cpp
+#define PROBOT_WIFI_AP_SSID     "RobotName"   // 1-32 chars
+#define PROBOT_WIFI_AP_PASSWORD "minimum8"    // >= 8 chars
+#define PROBOT_WIFI_AP_CHANNEL  1             // 1-13
+// optional:
+#define PROBOT_WIFI_AP_SSID_MAC_SUFFIX        // append -XXXXXX
+#define PROBOT_DS_TIMEOUT_MS    10000         // DS activity timeout
+#define PROBOT_DS_TIMEOUT_FORCE_STOP 1        // 0 = soft, 1 = hard stop
+```
+
+---
+
+## Platform support
+
+- **Arduino IDE / arduino-cli**: built directly via `library.properties`.
+  Try `make build EXAMPLE=JoystickTest`.
+- **PlatformIO (Arduino framework)**: add via `lib_deps` path or git URL.
+- **ESP-IDF + Arduino component**: drop into `components/`, call
+  `probot::runtime_setup()` from `app_main`.
+
+The single source of truth for version is `VERSION`; `make version-sync`
+keeps the manifests aligned.
 
 ---
 
 ## Hardware
 
-**Recommended:** [Boardoza Pulse S32-S3](https://boardoza.com/product/boardoza-pulse-s32-s3-breakout-board/)
+Works on **ESP32 and ESP32-S3** variants (WROOM, WROVER, S3 DevKit).
+Tested on [Boardoza Pulse S32-S3](https://boardoza.com/product/boardoza-pulse-s32-s3-breakout-board/).
 
-The library targets the ESP32-S3. You can use any PWM motor controller board (Boardoza VNH5019, BTS7960B, TB6612, etc.).
-
----
-
-## Contributing
-
-We welcome contributions. Please use GitHub Issues for bug reports or feature requests. Keep pull requests small and focused.
-
-For development:
-```bash
-git clone https://github.com/nfrproducts/probot-lib
-cd probot-lib
-make test
-```
-
-See `CONTRIBUTING.md` for more details.
+Any PWM motor controller works: VNH5019, BTS7960B, TB6612, L298N, etc.
 
 ---
 
 ## License
 
-The project is released under the MIT license. Commercial use follows the Commons Clause terms.
-
-Educational and competition use is free. For commercial licensing, contact: tunagul54@gmail.com
+MIT + Commons Clause. Educational and competition use is free; contact
+tunagul54@gmail.com for commercial licensing.
 
 ---
 
 ## Support
 
-**Documentation:** https://docs.probotstudio.com/yazilim/  
-**WhatsApp:** +90 538 040 81 48  
-**Bug reports:** [GitHub Issues](https://github.com/nfrproducts/probot-lib/issues)
-
-Our goal is to help teams arrive on competition day with ready-to-run robots.
+- **Docs:** https://docs.probotstudio.com/yazilim/
+- **WhatsApp:** +90 538 040 81 48
+- **Issues:** https://github.com/probot-studio/probot-core/issues
