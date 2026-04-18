@@ -8,6 +8,15 @@
 #ifndef PROBOT_DS_TIMEOUT_MS
 #define PROBOT_DS_TIMEOUT_MS 10000
 #endif
+
+// On DS activity timeout:
+//   1  -> set Status::STOP (kills teleop/auto tasks, user code stops)   — default, safe
+//   0  -> only forceDisconnect (release owner, zero gamepad); user loops keep running
+// Teams that want auto-recovery when the link returns without a full
+// robot restart can set this to 0 in their sketch.
+#ifndef PROBOT_DS_TIMEOUT_FORCE_STOP
+#define PROBOT_DS_TIMEOUT_FORCE_STOP 1
+#endif
 #include <probot/robot/system.hpp>
 #include <probot/telemetry/telemetry.hpp>
 #include <probot/devices/leds/builtin.hpp>
@@ -244,15 +253,19 @@ namespace probot {
           }
         }
 
-        // DS connection heartbeat: no activity → stop robot + disconnect
+        // DS connection heartbeat: no activity → stop robot and/or disconnect
         {
           uint32_t dsAct = __atomic_load_n(&probot::robot::g_ds_last_activity_ms, __ATOMIC_SEQ_CST);
           if (dsAct != 0 && s.status != Status::STOP &&
               (int32_t)(now - dsAct) > (int32_t)PROBOT_DS_TIMEOUT_MS){
             Serial.printf("[SYS  ] DS timeout: no activity for %lu ms\n", (unsigned long)(now - dsAct));
+#if PROBOT_DS_TIMEOUT_FORCE_STOP
             probot::telemetry::println("!! DS CONNECTION LOST — stopping robot");
             probot::robot::state().setStatus(now, Status::STOP);
             lastStatus = Status::STOP;
+#else
+            probot::telemetry::println("!! DS CONNECTION LOST — joystick neutral, waiting reconnect");
+#endif
 #ifdef ESP32
             if (probot::driverstation::detail::g_driver_station){
               probot::driverstation::detail::g_driver_station->forceDisconnect(now);
