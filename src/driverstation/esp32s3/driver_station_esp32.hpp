@@ -93,7 +93,8 @@ namespace probot::driverstation::esp32 {
       registerUri("/health",           HTTP_GET,  handleHealth);
       registerUri("/info",             HTTP_GET,  handleInfo);
 
-      // Attach WebSocket handler
+      // Attach WebSocket handler (with owner gatekeeper)
+      _ws.setOwnerAuthorizer(&DriverStation::wsOwnerAuthorizer, this);
       _ws.attach(_server);
 
       Serial.println("[DS   ] HTTP server started on port 80");
@@ -159,11 +160,13 @@ namespace probot::driverstation::esp32 {
 
     // ── Owner enforcement ──
 
-    bool enforceOwner(httpd_req_t* req) {
+    bool enforceOwner(httpd_req_t* req, bool sendHttpError = true) {
       uint32_t now = millis();
       char ip[48];
       if (!getClientIP(req, ip, sizeof(ip))) {
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Cannot determine client IP");
+        if (sendHttpError) {
+          httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Cannot determine client IP");
+        }
         return false;
       }
 
@@ -194,9 +197,16 @@ namespace probot::driverstation::esp32 {
       }
 
       Serial.printf("[DS   ] Rejected %s (owner: %s)\n", ip, _owner_str);
-      httpd_resp_set_status(req, "403 Forbidden");
-      httpd_resp_send(req, "Another client is already connected.", HTTPD_RESP_USE_STRLEN);
+      if (sendHttpError) {
+        httpd_resp_set_status(req, "403 Forbidden");
+        httpd_resp_send(req, "Another client is already connected.", HTTPD_RESP_USE_STRLEN);
+      }
       return false;
+    }
+
+    static bool wsOwnerAuthorizer(void* ctx, httpd_req_t* req) {
+      auto* ds = static_cast<DriverStation*>(ctx);
+      return ds->enforceOwner(req, /*sendHttpError=*/false);
     }
 
     void releaseOwner(uint32_t now_ms) {

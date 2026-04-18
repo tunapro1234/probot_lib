@@ -19,7 +19,16 @@ namespace probot::driverstation::esp32 {
    */
   class WsJoystick {
   public:
+    using OwnerAuthorizer = bool (*)(void* ctx, httpd_req_t* req);
+
     explicit WsJoystick(io::GamepadService& gs) : _gs(gs) {}
+
+    // Optional gatekeeper invoked at WS handshake and for every incoming
+    // frame. Returning false rejects the client (non-owner).
+    void setOwnerAuthorizer(OwnerAuthorizer authorizer, void* ctx) {
+      _ownerAuthorizer = authorizer;
+      _ownerCtx = ctx;
+    }
 
     void attach(httpd_handle_t server) {
       _server = server;
@@ -68,11 +77,25 @@ namespace probot::driverstation::esp32 {
     struct PingState { int fd = -1; uint8_t fails = 0; };
 
     static esp_err_t wsHandler(httpd_req_t* req) {
+      auto* self = static_cast<WsJoystick*>(req->user_ctx);
+
       if (req->method == HTTP_GET) {
-        return ESP_OK; // WS handshake — just accept
+        // WS handshake — reject non-owner clients so a stray tablet
+        // can't hijack joystick input.
+        if (self->_ownerAuthorizer && !self->_ownerAuthorizer(self->_ownerCtx, req)) {
+          return ESP_FAIL;
+        }
+        return ESP_OK;
       }
 
-      auto* self = static_cast<WsJoystick*>(req->user_ctx);
+      // Frame-time owner re-check (owner may have changed since handshake).
+      if (self->_ownerAuthorizer && !self->_ownerAuthorizer(self->_ownerCtx, req)) {
+        int fd = httpd_req_to_sockfd(req);
+        if (fd >= 0 && self->_server) {
+          httpd_sess_trigger_close(self->_server, fd);
+        }
+        return ESP_OK;
+      }
 
       // Step 1: 0-length receive to learn frame size & type
       httpd_ws_frame_t frame = {};
@@ -176,6 +199,8 @@ namespace probot::driverstation::esp32 {
     io::GamepadService& _gs;
     httpd_handle_t      _server = nullptr;
     TimerHandle_t       _pingTimer = nullptr;
+    OwnerAuthorizer     _ownerAuthorizer = nullptr;
+    void*               _ownerCtx = nullptr;
     PingState           _pingState[PING_TRACK_SLOTS] = {};
   };
 
