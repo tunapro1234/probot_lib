@@ -203,6 +203,9 @@ namespace probot::driverstation::esp32 {
       Serial.printf("[DS   ] Owner released: %s\n", _owner_str);
       _owner_set = false;
       _owner_str[0] = '\0';
+      // Zero the gamepad state so user code reading axes/buttons does
+      // not see stale values (last-command runaway when link dies).
+      _gs.write(now_ms, nullptr, 0, nullptr, 0);
       _rs.setClientCount(now_ms, 0);
     }
 
