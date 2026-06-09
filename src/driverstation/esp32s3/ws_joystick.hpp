@@ -1,6 +1,8 @@
 #pragma once
 #ifdef ESP32
 #include <esp_http_server.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 #include <probot/io/gamepad.hpp>
 #include <probot/robot/state.hpp>
 
@@ -32,6 +34,7 @@ namespace probot::driverstation::esp32 {
 
     void attach(httpd_handle_t server) {
       _server = server;
+      _sendMutex = xSemaphoreCreateMutex();
 
       httpd_uri_t ws_uri = {
         .uri      = "/joystick",
@@ -113,9 +116,17 @@ namespace probot::driverstation::esp32 {
       // Handle control frames
       if (frame.type == HTTPD_WS_TYPE_CLOSE) return ESP_OK;
       if (frame.type == HTTPD_WS_TYPE_PING) {
+        // Serialize against the heartbeat timer: concurrent WS sends to
+        // one fd interleave header/payload and corrupt frames
+        // (esp-idf #14495).
         httpd_ws_frame_t pong = {};
         pong.type = HTTPD_WS_TYPE_PONG;
-        return httpd_ws_send_frame(req, &pong);
+        esp_err_t perr = ESP_OK;
+        if (!self->_sendMutex || xSemaphoreTake(self->_sendMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+          perr = httpd_ws_send_frame(req, &pong);
+          if (self->_sendMutex) xSemaphoreGive(self->_sendMutex);
+        }
+        return perr;
       }
       if (frame.type != HTTPD_WS_TYPE_BINARY) return ESP_OK;
 
@@ -172,6 +183,9 @@ namespace probot::driverstation::esp32 {
     static void heartbeatTimerCb(TimerHandle_t t) {
       auto* self = static_cast<WsJoystick*>(pvTimerGetTimerID(t));
       if (!self->_server) return;
+      // Never block the timer-service task: if a send is in flight,
+      // skip this round (next heartbeat comes in 2s).
+      if (self->_sendMutex && xSemaphoreTake(self->_sendMutex, 0) != pdTRUE) return;
       static uint8_t seq = 0;
       uint8_t payload[2] = { HEARTBEAT_MAGIC, ++seq };
       httpd_ws_frame_t hb = {};
@@ -205,11 +219,13 @@ namespace probot::driverstation::esp32 {
           *fails = 0;
         }
       }
+      if (self->_sendMutex) xSemaphoreGive(self->_sendMutex);
     }
 
     io::GamepadService& _gs;
     httpd_handle_t      _server = nullptr;
     TimerHandle_t       _pingTimer = nullptr;
+    SemaphoreHandle_t   _sendMutex = nullptr;
     OwnerAuthorizer     _ownerAuthorizer = nullptr;
     void*               _ownerCtx = nullptr;
     PingState           _pingState[PING_TRACK_SLOTS] = {};

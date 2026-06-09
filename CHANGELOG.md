@@ -11,6 +11,17 @@ Biçim [Keep a Changelog](https://keepachangelog.com/), sürümler
 Bağlantı sağlamlaştırma (devam), servo desteği ve doküman yenileme.
 
 ### Eklendi
+- **RF/TCP ince ayarları** (datasheet/IDF kaynak araştırmasına dayalı):
+  TX gücü düzeltildi — `WIFI_POWER_19_5dBm` API'de aşağı yuvarlanıp
+  **18 dBm** veriyordu, artık gerçek maksimum **20 dBm** kullanılıyor
+  (+2 dB); 802.11b hızları varsayılan kapalı (beacon airtime 6 kat
+  azalır, `PROBOT_WIFI_ENABLE_11B` ile geri açılır); httpd soketlerine
+  `TCP_NODELAY` (Nagle × delayed-ACK gecikmesi biter) ve TCP keepalive
+  (~7 sn'de ölü client tespiti); WS gönderimleri mutex ile sıralandı
+  (eşzamanlı `httpd_ws_send_frame_async` çerçeve bozuyor, esp-idf
+  #14495); `send_wait_timeout` 5 sn → 2 sn; `max_open_sockets` 10.
+  Yeni makrolar: `PROBOT_INPUT_TIMEOUT_MS`, `PROBOT_WIFI_ENABLE_11B`,
+  `PROBOT_WIFI_PMF_REQUIRED`.
 - **`probot::devices::Servo`** (`devices/servo/servo.hpp`): 50 Hz LEDC
   donanım PWM ile servo sınıfı. Kanalları üstten ayırır — `analogWrite`
   motor PWM'iyle timer çakışması (servo titremesinin 1 numaralı yazılım
@@ -132,6 +143,17 @@ Versioning: [Semantic Versioning](https://semver.org/).
 Continued link hardening, servo support, documentation overhaul.
 
 ### Added
+- **RF/TCP tuning** (grounded in datasheet/IDF source research): TX
+  power fix — `WIFI_POWER_19_5dBm` quantized down to **18 dBm** in the
+  API; we now request the true API max of **20 dBm** (+2 dB); 802.11b
+  rates disabled by default (6x less beacon airtime; re-enable with
+  `PROBOT_WIFI_ENABLE_11B`); `TCP_NODELAY` on httpd sockets (kills the
+  Nagle × delayed-ACK stall) and TCP keepalive (~7 s dead-client
+  detection); WS sends serialized with a mutex (concurrent
+  `httpd_ws_send_frame_async` corrupts frames, esp-idf #14495);
+  `send_wait_timeout` 5 s → 2 s; `max_open_sockets` 10. New macros:
+  `PROBOT_INPUT_TIMEOUT_MS`, `PROBOT_WIFI_ENABLE_11B`,
+  `PROBOT_WIFI_PMF_REQUIRED`.
 - **`probot::devices::Servo`** (`devices/servo/servo.hpp`): hobby-servo
   class on 50 Hz LEDC hardware PWM. Channels are allocated from the top
   of the range downward, so a timer collision with `analogWrite` motor

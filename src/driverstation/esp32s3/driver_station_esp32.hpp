@@ -42,6 +42,23 @@ static_assert(PROBOT_WIFI_AP_CHANNEL >= 0 && PROBOT_WIFI_AP_CHANNEL <= 13,
 #define PROBOT_DS_OWNER_TIMEOUT_MS 5000
 #endif
 
+// 802.11b rates: disabled by default. With b-rates on, beacons go out at
+// 1 Mbps DSSS (~2.5 ms airtime each — ~2.5% of the channel per AP); with
+// them off, 6 Mbps OFDM (~0.4%). Every WiFi-certified 2.4 GHz client
+// since 802.11g (any 2010+ phone/tablet) supports OFDM. Set to 1 only if
+// you must support a pre-802.11g device.
+#ifndef PROBOT_WIFI_ENABLE_11B
+#define PROBOT_WIFI_ENABLE_11B 0
+#endif
+
+// Protected Management Frames (802.11w). Set to 1 to require PMF, which
+// blocks deauth-spoofing attacks (a real sabotage vector at events) but
+// also blocks rare clients without PMF support. Default off for maximum
+// compatibility with old tablets.
+#ifndef PROBOT_WIFI_PMF_REQUIRED
+#define PROBOT_WIFI_PMF_REQUIRED 0
+#endif
+
 namespace probot::driverstation::esp32 {
   class DriverStation {
   public:
@@ -73,10 +90,29 @@ namespace probot::driverstation::esp32 {
 
       WiFi.mode(WIFI_AP);
       esp_wifi_set_country(&country);
+#if !PROBOT_WIFI_ENABLE_11B
+      esp_err_t rate_err = esp_wifi_config_11b_rate(WIFI_IF_AP, true);
+      if (rate_err != ESP_OK) {
+        Serial.printf("[DS   ] 11b rate disable failed: 0x%x\n", rate_err);
+      }
+#endif
       WiFi.softAP(ssid.c_str(), pw, channel_);
       esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20);
       esp_wifi_set_ps(WIFI_PS_NONE);
-      WiFi.setTxPower(WIFI_POWER_19_5dBm);
+      // The TX power API quantizes downward: requesting 19.5 dBm (=78)
+      // actually yields 18 dBm; any request >= 80 yields the true API
+      // max of 20 dBm. WIFI_POWER_21dBm therefore buys +2 dB over the
+      // old WIFI_POWER_19_5dBm setting.
+      WiFi.setTxPower(WIFI_POWER_21dBm);
+#if PROBOT_WIFI_PMF_REQUIRED
+      {
+        wifi_config_t apcfg;
+        if (esp_wifi_get_config(WIFI_IF_AP, &apcfg) == ESP_OK) {
+          apcfg.ap.pmf_cfg.required = true;
+          esp_wifi_set_config(WIFI_IF_AP, &apcfg);
+        }
+      }
+#endif
 
       Serial.println("[DS   ] ========================================");
       Serial.print("[DS   ] WiFi SSID: ");
@@ -99,6 +135,21 @@ namespace probot::driverstation::esp32 {
       // Keep all networking on core 0 with the WiFi stack; core 1 stays
       // exclusively for user teleop/autonomous loops.
       cfg.core_id        = 0;
+      // Ceiling is CONFIG_LWIP_MAX_SOCKETS(16) - 3 reserved = 13.
+      cfg.max_open_sockets = 10;
+      // httpd does NOT set TCP_NODELAY by default; without it, LWIP's
+      // Nagle + the client's delayed ACK can hold small server->client
+      // frames for tens of ms.
+      cfg.open_fn = onSocketOpen;
+      // Bound how long a send to a stalled client can block (default 5s).
+      cfg.send_wait_timeout = 2;
+      // TCP keepalive detects a vanished client (tablet walked away,
+      // battery died) in ~7s at the TCP layer, closing the session
+      // without app-level machinery.
+      cfg.keep_alive_enable   = true;
+      cfg.keep_alive_idle     = 3;
+      cfg.keep_alive_interval = 2;
+      cfg.keep_alive_count    = 2;
 
       if (httpd_start(&_server, &cfg) != ESP_OK) {
         Serial.println("[DS   ] Failed to start HTTP server");
@@ -210,6 +261,12 @@ namespace probot::driverstation::esp32 {
 
     static DriverStation* self(httpd_req_t* req) {
       return static_cast<DriverStation*>(req->user_ctx);
+    }
+
+    static esp_err_t onSocketOpen(httpd_handle_t hd, int sockfd) {
+      int yes = 1;
+      setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
+      return ESP_OK;
     }
 
     // ── Client IP extraction ──

@@ -2,6 +2,13 @@
 #include <stdint.h>
 #include <Arduino.h>
 
+// How long after the last received joystick packet axes/buttons keep
+// their values before read() returns neutral. FRC uses 125 ms, FTC
+// ~300 ms, WPILib XRP 500 ms; tighten for faster failsafe.
+#ifndef PROBOT_INPUT_TIMEOUT_MS
+#define PROBOT_INPUT_TIMEOUT_MS 500
+#endif
+
 namespace probot::io {
   struct GamepadSnapshot {
     uint32_t ms;
@@ -25,7 +32,7 @@ namespace probot::io {
       GamepadSnapshot z{};
       _buf[0] = z;
       _buf[1] = z;
-      _timeout_ms = 500;
+      _timeout_ms = PROBOT_INPUT_TIMEOUT_MS;
     }
 
     // Written from two tasks (WS/HTTP handlers push frames, sysloop
