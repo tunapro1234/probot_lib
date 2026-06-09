@@ -31,10 +31,16 @@ static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 32, "PROBOT_WIFI_AP_SSID must b
 #endif
 
 #ifndef PROBOT_WIFI_AP_CHANNEL
-#error "WiFi AP channel not provided. Define PROBOT_WIFI_AP_CHANNEL (1-13) before including probot.h."
+#error "WiFi AP channel not provided. Define PROBOT_WIFI_AP_CHANNEL (1-13, or 0 for auto-select) before including probot.h."
 #endif
-static_assert(PROBOT_WIFI_AP_CHANNEL >= 1 && PROBOT_WIFI_AP_CHANNEL <= 13,
-              "PROBOT_WIFI_AP_CHANNEL must be between 1 and 13.");
+static_assert(PROBOT_WIFI_AP_CHANNEL >= 0 && PROBOT_WIFI_AP_CHANNEL <= 13,
+              "PROBOT_WIFI_AP_CHANNEL must be 1-13, or 0 for auto-select.");
+
+// How long the owner slot survives without any request from the owning
+// client before another client may take over.
+#ifndef PROBOT_DS_OWNER_TIMEOUT_MS
+#define PROBOT_DS_OWNER_TIMEOUT_MS 5000
+#endif
 
 namespace probot::driverstation::esp32 {
   class DriverStation {
@@ -51,10 +57,23 @@ namespace probot::driverstation::esp32 {
       ssid += suffix;
 #endif
       ap_ssid_ = ssid;
-      WiFi.mode(WIFI_AP);
+
       wifi_country_t country = { .cc = "TR", .schan = 1, .nchan = 13, .policy = WIFI_COUNTRY_POLICY_MANUAL };
+
+      channel_ = PROBOT_WIFI_AP_CHANNEL;
+      if (PROBOT_WIFI_AP_CHANNEL == 0) {
+        // Auto-select: scan the band and pick the least congested of the
+        // non-overlapping channels. Adds ~2-3 s to boot. Clients find the
+        // AP by SSID regardless of channel, so this is transparent to the
+        // driver station.
+        WiFi.mode(WIFI_STA);
+        esp_wifi_set_country(&country);
+        channel_ = autoSelectChannel();
+      }
+
+      WiFi.mode(WIFI_AP);
       esp_wifi_set_country(&country);
-      WiFi.softAP(ssid.c_str(), pw, PROBOT_WIFI_AP_CHANNEL);
+      WiFi.softAP(ssid.c_str(), pw, channel_);
       esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20);
       esp_wifi_set_ps(WIFI_PS_NONE);
       WiFi.setTxPower(WIFI_POWER_19_5dBm);
@@ -64,8 +83,8 @@ namespace probot::driverstation::esp32 {
       Serial.println(ssid);
       Serial.print("[DS   ] Password:  ");
       Serial.println("********");
-      Serial.print("[DS   ] Channel:   ");
-      Serial.println(PROBOT_WIFI_AP_CHANNEL);
+      Serial.printf("[DS   ] Channel:   %d%s\n", channel_,
+                    (PROBOT_WIFI_AP_CHANNEL == 0) ? " (auto)" : "");
       Serial.print("[DS   ] IP Address: ");
       Serial.println(WiFi.softAPIP());
       Serial.println("[DS   ] ========================================");
@@ -77,6 +96,9 @@ namespace probot::driverstation::esp32 {
       cfg.stack_size     = 8192;
       cfg.max_uri_handlers = 12;
       cfg.lru_purge_enable = true;
+      // Keep all networking on core 0 with the WiFi stack; core 1 stays
+      // exclusively for user teleop/autonomous loops.
+      cfg.core_id        = 0;
 
       if (httpd_start(&_server, &cfg) != ESP_OK) {
         Serial.println("[DS   ] Failed to start HTTP server");
@@ -101,25 +123,80 @@ namespace probot::driverstation::esp32 {
     }
 
     void expireOwnerIfIdle(){
-      if (!_owner_set || _owner_timeout_ms == 0) return;
+      if (_owner_timeout_ms == 0) return;
       uint32_t now = millis();
-      if ((uint32_t)(now - _owner_last_ms) > _owner_timeout_ms){
-        uint32_t idle = now - _owner_last_ms;
+      char prev[sizeof(_owner_str)] = {0};
+      uint32_t idle = 0;
+      bool expired = false;
+      portENTER_CRITICAL(&_owner_mux);
+      if (_owner_set && (uint32_t)(now - _owner_last_ms) > _owner_timeout_ms){
+        idle = now - _owner_last_ms;
+        strncpy(prev, _owner_str, sizeof(prev) - 1);
+        releaseOwnerLocked();
+        expired = true;
+      }
+      portEXIT_CRITICAL(&_owner_mux);
+      if (expired){
         Serial.printf("[DS   ] Owner expired: %s idle %lu ms\n",
-                      _owner_str, (unsigned long)idle);
-        releaseOwner(now);
+                      prev, (unsigned long)idle);
+        onOwnerReleased(now);
       }
     }
 
     void forceDisconnect(uint32_t now_ms){
       Serial.println("[DS   ] Force disconnect: connection timeout");
-      if (_owner_set) releaseOwner(now_ms);
+      char prev[sizeof(_owner_str)] = {0};
+      bool released = false;
+      portENTER_CRITICAL(&_owner_mux);
+      if (_owner_set){
+        strncpy(prev, _owner_str, sizeof(prev) - 1);
+        releaseOwnerLocked();
+        released = true;
+      }
+      portEXIT_CRITICAL(&_owner_mux);
+      if (released){
+        Serial.printf("[DS   ] Owner released: %s\n", prev);
+        onOwnerReleased(now_ms);
+      }
       _ws.closeAll();
-      Serial.println("[DS   ] Owner released, WS connections closed");
+      Serial.println("[DS   ] WS connections closed");
     }
 
   private:
     // ── Helpers ──
+
+    // Pick the least congested of the four non-overlapping 2.4 GHz
+    // channels. Each visible network adds interference weight to
+    // channels within ±3 of its own (20 MHz overlap), stronger signals
+    // weigh more. Ties go to the lower channel.
+    static int autoSelectChannel() {
+      static constexpr int CANDIDATES[] = {1, 5, 9, 13};
+      Serial.println("[DS   ] Scanning band for channel auto-select...");
+      int n = WiFi.scanNetworks(/*async=*/false, /*show_hidden=*/true);
+      int32_t score[4] = {0, 0, 0, 0};
+      for (int i = 0; i < n; i++) {
+        int ch = WiFi.channel(i);
+        int32_t rssi = WiFi.RSSI(i);
+        // -100 dBm (negligible) .. -30 dBm (very strong) → 5..70
+        int32_t strength = rssi + 100;
+        if (strength < 5)  strength = 5;
+        if (strength > 70) strength = 70;
+        for (int c = 0; c < 4; c++) {
+          int d = ch - CANDIDATES[c];
+          if (d < 0) d = -d;
+          if (d < 4) score[c] += (4 - d) * strength;
+        }
+      }
+      int best = 0;
+      for (int c = 1; c < 4; c++) {
+        if (score[c] < score[best]) best = c;
+      }
+      Serial.printf("[DS   ] Scan: %d networks. Scores ch1=%ld ch5=%ld ch9=%ld ch13=%ld -> ch%d\n",
+                    n, (long)score[0], (long)score[1], (long)score[2], (long)score[3],
+                    CANDIDATES[best]);
+      WiFi.scanDelete();
+      return CANDIDATES[best];
+    }
 
     void registerUri(const char* uri, httpd_method_t method, esp_err_t (*handler)(httpd_req_t*)) {
       httpd_uri_t u = {
@@ -159,6 +236,9 @@ namespace probot::driverstation::esp32 {
     }
 
     // ── Owner enforcement ──
+    // Owner fields are touched from two tasks (httpd handlers here, the
+    // sysloop expiry/timeout path above), so every access goes through
+    // _owner_mux. Critical sections stay short: no logging or I/O inside.
 
     bool enforceOwner(httpd_req_t* req, bool sendHttpError = true) {
       uint32_t now = millis();
@@ -170,33 +250,53 @@ namespace probot::driverstation::esp32 {
         return false;
       }
 
-      // Check timeout on current owner
+      enum class Verdict : uint8_t { ACQUIRED, REFRESHED, REJECTED };
+      Verdict verdict;
+      char prev[sizeof(_owner_str)] = {0};
+      uint32_t idle = 0;
+      bool expired = false;
+
+      portENTER_CRITICAL(&_owner_mux);
       if (_owner_set && _owner_timeout_ms > 0 &&
           (uint32_t)(now - _owner_last_ms) > _owner_timeout_ms) {
-        uint32_t idle = now - _owner_last_ms;
-        Serial.printf("[DS   ] Owner timeout: %s idle %lu ms (limit %lu ms)\n",
-                      _owner_str, (unsigned long)idle, (unsigned long)_owner_timeout_ms);
-        releaseOwner(now);
+        idle = now - _owner_last_ms;
+        strncpy(prev, _owner_str, sizeof(prev) - 1);
+        releaseOwnerLocked();
+        expired = true;
       }
-
       if (!_owner_set) {
         strncpy(_owner_str, ip, sizeof(_owner_str) - 1);
         _owner_str[sizeof(_owner_str) - 1] = '\0';
         _owner_set = true;
         _owner_last_ms = now;
+        verdict = Verdict::ACQUIRED;
+      } else if (strcmp(ip, _owner_str) == 0) {
+        _owner_last_ms = now;
+        verdict = Verdict::REFRESHED;
+      } else {
+        strncpy(prev, _owner_str, sizeof(prev) - 1);
+        verdict = Verdict::REJECTED;
+      }
+      portEXIT_CRITICAL(&_owner_mux);
+
+      if (expired) {
+        Serial.printf("[DS   ] Owner timeout: %s idle %lu ms (limit %lu ms)\n",
+                      prev, (unsigned long)idle, (unsigned long)_owner_timeout_ms);
+        onOwnerReleased(now);
+      }
+
+      if (verdict == Verdict::ACQUIRED) {
         __atomic_store_n(&probot::robot::g_ds_last_activity_ms, now, __ATOMIC_SEQ_CST);
         _rs.setClientCount(now, 1);
-        Serial.printf("[DS   ] Owner acquired: %s\n", _owner_str);
+        Serial.printf("[DS   ] Owner acquired: %s\n", ip);
         return true;
       }
-
-      if (strcmp(ip, _owner_str) == 0) {
-        _owner_last_ms = now;
+      if (verdict == Verdict::REFRESHED) {
         __atomic_store_n(&probot::robot::g_ds_last_activity_ms, now, __ATOMIC_SEQ_CST);
         return true;
       }
 
-      Serial.printf("[DS   ] Rejected %s (owner: %s)\n", ip, _owner_str);
+      Serial.printf("[DS   ] Rejected %s (owner: %s)\n", ip, prev);
       if (sendHttpError) {
         httpd_resp_set_status(req, "403 Forbidden");
         httpd_resp_send(req, "Another client is already connected.", HTTPD_RESP_USE_STRLEN);
@@ -209,12 +309,16 @@ namespace probot::driverstation::esp32 {
       return ds->enforceOwner(req, /*sendHttpError=*/false);
     }
 
-    void releaseOwner(uint32_t now_ms) {
-      Serial.printf("[DS   ] Owner released: %s\n", _owner_str);
+    // Clears the owner slot. Caller must hold _owner_mux.
+    void releaseOwnerLocked() {
       _owner_set = false;
       _owner_str[0] = '\0';
-      // Zero the gamepad state so user code reading axes/buttons does
-      // not see stale values (last-command runaway when link dies).
+    }
+
+    // Post-release side effects — run OUTSIDE the critical section.
+    // Zeroes the gamepad so user code reading axes/buttons does not see
+    // stale values (last-command runaway when the link dies).
+    void onOwnerReleased(uint32_t now_ms) {
       _gs.write(now_ms, nullptr, 0, nullptr, 0);
       _rs.setClientCount(now_ms, 0);
     }
@@ -419,7 +523,7 @@ namespace probot::driverstation::esp32 {
         "\"totalHeap\":%lu,\"totalFlash\":%lu,"
         "\"sketchSize\":%lu,\"freeSketch\":%lu,\"psram\":%lu}",
         ds->ap_ssid_.c_str(),
-        PROBOT_WIFI_AP_CHANNEL,
+        ds->channel_,
         WiFi.softAPIP().toString().c_str(),
         ESP.getChipModel(),
         (unsigned long)ESP.getCpuFreqMHz(),
@@ -440,10 +544,12 @@ namespace probot::driverstation::esp32 {
     io::GamepadService&  _gs;
     WsJoystick           _ws;
     httpd_handle_t       _server = nullptr;
+    portMUX_TYPE         _owner_mux = portMUX_INITIALIZER_UNLOCKED;
     bool                 _owner_set = false;
     char                 _owner_str[48] = {0};
     uint32_t             _owner_last_ms = 0;
-    uint32_t             _owner_timeout_ms = 5000;
+    uint32_t             _owner_timeout_ms = PROBOT_DS_OWNER_TIMEOUT_MS;
+    int                  channel_ = PROBOT_WIFI_AP_CHANNEL;
     String               ap_ssid_;
   };
 }

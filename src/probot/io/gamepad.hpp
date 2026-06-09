@@ -28,7 +28,11 @@ namespace probot::io {
       _timeout_ms = 500;
     }
 
+    // Written from two tasks (WS/HTTP handlers push frames, sysloop
+    // zeroes state on owner release) — the spinlock serializes writers;
+    // readers stay lock-free on the double buffer.
     void write(uint32_t now_ms, const float* axes, uint32_t nAxis, const bool* buttons, uint32_t nButton){
+      lock();
       uint32_t cur = __atomic_load_n(&_cur, __ATOMIC_SEQ_CST);
       uint32_t w   = 1u - cur;
       GamepadSnapshot s = _buf[cur];
@@ -41,6 +45,7 @@ namespace probot::io {
       __atomic_thread_fence(__ATOMIC_SEQ_CST);
       _buf[w] = s;
       __atomic_store_n(&_cur, w, __ATOMIC_SEQ_CST);
+      unlock();
     }
 
     void setTimeoutMs(uint32_t timeout_ms){
@@ -64,8 +69,19 @@ namespace probot::io {
     }
 
   private:
+    void lock() const {
+      uint32_t expected = 0;
+      while (!__atomic_compare_exchange_n(&_write_lock, &expected, 1u, false,
+                                          __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
+        expected = 0;
+      }
+    }
+
+    void unlock() const { __atomic_store_n(&_write_lock, 0u, __ATOMIC_RELEASE); }
+
     mutable GamepadSnapshot _buf[2];
     mutable volatile uint32_t _cur;
     mutable volatile uint32_t _timeout_ms;
+    mutable volatile uint32_t _write_lock = 0;
   };
 }
