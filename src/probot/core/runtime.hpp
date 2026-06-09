@@ -279,6 +279,7 @@ namespace probot {
 #ifdef ESP32
         if (probot::driverstation::detail::g_driver_station){
           probot::driverstation::detail::g_driver_station->expireOwnerIfIdle();
+          probot::driverstation::detail::g_driver_station->processDns();
         }
 #endif
 

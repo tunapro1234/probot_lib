@@ -9,15 +9,22 @@
 namespace probot::driverstation::esp32 {
 
   /**
-   * WebSocket joystick handler (attaches to existing ESP-IDF httpd)
+   * WebSocket handler for /joystick (attaches to existing ESP-IDF httpd)
    *
-   * Binary frame format:
-   *   [0]       uint8   0x4A ('J' magic)
-   *   [1]       uint8   axisCount   (max 20)
-   *   [2]       uint8   buttonCount (max 20)
-   *   [3]       uint8   reserved
-   *   [4..]     int16[] axes (big-endian, value = float * 32767)
-   *   [4+nA*2]  uint8[] buttons (packed bits, LSB first)
+   * Client -> robot binary frames (first byte = type):
+   *   'J' 0x4A  joystick data:
+   *     [1]       uint8   axisCount   (max 20)
+   *     [2]       uint8   buttonCount (max 20)
+   *     [3]       uint8   reserved
+   *     [4..]     int16[] axes (big-endian, value = float * 32767)
+   *     [4+nA*2]  uint8[] buttons (packed bits, LSB first)
+   *   'P' 0x50  idle keepalive (no payload) — sent when no gamepad is
+   *             active so the owner slot / DS activity stay alive.
+   *
+   * Robot -> client binary frames (sent by the DS push task via
+   * sendToAll; first byte = type):
+   *   'S' 0x53  state+health JSON (also serves as the heartbeat)
+   *   'T' 0x54  telemetry buffer text
    */
   class WsJoystick {
   public:
@@ -46,17 +53,60 @@ namespace probot::driverstation::esp32 {
       };
       httpd_register_uri_handler(_server, &ws_uri);
 
-      // Periodic heartbeat to detect dead connections on both ends
-      _pingTimer = xTimerCreate("ws_hb", pdMS_TO_TICKS(HEARTBEAT_PERIOD_MS), pdTRUE, this, heartbeatTimerCb);
-      if (_pingTimer) xTimerStart(_pingTimer, 0);
-
       Serial.println("[WS   ] WebSocket handler attached to /joystick");
+    }
+
+    // Broadcast one binary frame to every connected WS client. Sends are
+    // serialized behind _sendMutex (concurrent sends to one fd corrupt
+    // frames — esp-idf #14495); per-fd consecutive failures close the
+    // session after SEND_MAX_FAILS. Returns the number of clients that
+    // received the frame.
+    int sendToAll(const uint8_t* data, size_t len) {
+      if (!_server || len == 0) return 0;
+      httpd_ws_frame_t frame = {};
+      frame.type    = HTTPD_WS_TYPE_BINARY;
+      frame.payload = const_cast<uint8_t*>(data);
+      frame.len     = len;
+
+      size_t fds = MAX_CLIENTS;
+      int clients[MAX_CLIENTS];
+      if (httpd_get_client_list(_server, &fds, clients) != ESP_OK) return 0;
+
+      if (_sendMutex && xSemaphoreTake(_sendMutex, pdMS_TO_TICKS(500)) != pdTRUE) return 0;
+
+      // Prune tracked fds that are no longer WS clients
+      for (auto& s : _sendState) {
+        if (s.fd == -1) continue;
+        if (httpd_ws_get_fd_info(_server, s.fd) != HTTPD_WS_CLIENT_WEBSOCKET) {
+          s.fd = -1; s.fails = 0;
+        }
+      }
+
+      int sent = 0;
+      for (size_t i = 0; i < fds; i++) {
+        if (httpd_ws_get_fd_info(_server, clients[i]) != HTTPD_WS_CLIENT_WEBSOCKET) continue;
+        uint8_t* fails = trackFd(clients[i]);
+        esp_err_t err = httpd_ws_send_frame_async(_server, clients[i], &frame);
+        if (err != ESP_OK) {
+          if (fails && ++(*fails) >= SEND_MAX_FAILS) {
+            Serial.printf("[WS   ] /joystick send fail x%u, closing fd=%d\n",
+                          (unsigned)*fails, clients[i]);
+            httpd_sess_trigger_close(_server, clients[i]);
+            clearFd(clients[i]);
+          }
+        } else {
+          sent++;
+          if (fails) *fails = 0;
+        }
+      }
+      if (_sendMutex) xSemaphoreGive(_sendMutex);
+      return sent;
     }
 
     void closeAll() {
       if (!_server) return;
-      size_t fds = 8;
-      int clients[8];
+      size_t fds = MAX_CLIENTS;
+      int clients[MAX_CLIENTS];
       if (httpd_get_client_list(_server, &fds, clients) != ESP_OK) return;
       for (size_t i = 0; i < fds; i++) {
         if (httpd_ws_get_fd_info(_server, clients[i]) == HTTPD_WS_CLIENT_WEBSOCKET) {
@@ -66,25 +116,18 @@ namespace probot::driverstation::esp32 {
     }
 
   private:
-    static constexpr uint8_t  MAGIC    = 0x4A;
+    static constexpr uint8_t  MAGIC    = 0x4A;   // 'J' joystick frame (client->robot)
     static constexpr uint32_t MAX_AXES = 20;
     static constexpr uint32_t MAX_BTNS = 20;
     static constexpr size_t   MAX_FRAME = 4 + MAX_AXES * 2 + (MAX_BTNS + 7) / 8;
 
-    // Heartbeat is a 2-byte BINARY frame ('H', seq), not a WS PING:
-    // browsers auto-pong pings invisibly to JS, so the page cannot use
-    // them to tell a live link from a dead one. A data frame fires
-    // onmessage, giving the client a real liveness signal.
-    static constexpr uint8_t  HEARTBEAT_MAGIC     = 0x48; // 'H'
-    static constexpr uint32_t HEARTBEAT_PERIOD_MS = 2000;
-
-    // Close a WS session only after this many consecutive heartbeat
-    // send failures. Tolerates brief RF hiccups in noisy environments
+    // Close a WS session only after this many consecutive send
+    // failures. Tolerates brief RF hiccups in noisy environments
     // (a single lost frame used to close the connection).
-    static constexpr uint8_t  PING_MAX_FAILS   = 3;
-    static constexpr uint8_t  PING_TRACK_SLOTS = 8;
+    static constexpr uint8_t  SEND_MAX_FAILS = 3;
+    static constexpr size_t   MAX_CLIENTS    = 8;
 
-    struct PingState { int fd = -1; uint8_t fails = 0; };
+    struct SendState { int fd = -1; uint8_t fails = 0; };
 
     static esp_err_t wsHandler(httpd_req_t* req) {
       auto* self = static_cast<WsJoystick*>(req->user_ctx);
@@ -170,65 +213,22 @@ namespace probot::driverstation::esp32 {
       __atomic_store_n(&probot::robot::g_ds_last_activity_ms, millis(), __ATOMIC_SEQ_CST);
     }
 
-    uint8_t* trackPingFd(int fd) {
-      for (auto& s : _pingState) if (s.fd == fd) return &s.fails;
-      for (auto& s : _pingState) if (s.fd == -1) { s.fd = fd; s.fails = 0; return &s.fails; }
+    uint8_t* trackFd(int fd) {
+      for (auto& s : _sendState) if (s.fd == fd) return &s.fails;
+      for (auto& s : _sendState) if (s.fd == -1) { s.fd = fd; s.fails = 0; return &s.fails; }
       return nullptr;
     }
 
-    void clearPingFd(int fd) {
-      for (auto& s : _pingState) if (s.fd == fd) { s.fd = -1; s.fails = 0; }
-    }
-
-    static void heartbeatTimerCb(TimerHandle_t t) {
-      auto* self = static_cast<WsJoystick*>(pvTimerGetTimerID(t));
-      if (!self->_server) return;
-      // Never block the timer-service task: if a send is in flight,
-      // skip this round (next heartbeat comes in 2s).
-      if (self->_sendMutex && xSemaphoreTake(self->_sendMutex, 0) != pdTRUE) return;
-      static uint8_t seq = 0;
-      uint8_t payload[2] = { HEARTBEAT_MAGIC, ++seq };
-      httpd_ws_frame_t hb = {};
-      hb.type    = HTTPD_WS_TYPE_BINARY;
-      hb.payload = payload;
-      hb.len     = sizeof(payload);
-      size_t fds = 8;
-      int clients[8];
-      if (httpd_get_client_list(self->_server, &fds, clients) != ESP_OK) return;
-
-      // Prune tracked fds that are no longer WS clients
-      for (auto& s : self->_pingState) {
-        if (s.fd == -1) continue;
-        if (httpd_ws_get_fd_info(self->_server, s.fd) != HTTPD_WS_CLIENT_WEBSOCKET) {
-          s.fd = -1; s.fails = 0;
-        }
-      }
-
-      for (size_t i = 0; i < fds; i++) {
-        if (httpd_ws_get_fd_info(self->_server, clients[i]) != HTTPD_WS_CLIENT_WEBSOCKET) continue;
-        uint8_t* fails = self->trackPingFd(clients[i]);
-        esp_err_t err = httpd_ws_send_frame_async(self->_server, clients[i], &hb);
-        if (err != ESP_OK) {
-          if (fails && ++(*fails) >= PING_MAX_FAILS) {
-            Serial.printf("[WS   ] /joystick heartbeat fail x%u, closing fd=%d\n",
-                          (unsigned)*fails, clients[i]);
-            httpd_sess_trigger_close(self->_server, clients[i]);
-            self->clearPingFd(clients[i]);
-          }
-        } else if (fails) {
-          *fails = 0;
-        }
-      }
-      if (self->_sendMutex) xSemaphoreGive(self->_sendMutex);
+    void clearFd(int fd) {
+      for (auto& s : _sendState) if (s.fd == fd) { s.fd = -1; s.fails = 0; }
     }
 
     io::GamepadService& _gs;
     httpd_handle_t      _server = nullptr;
-    TimerHandle_t       _pingTimer = nullptr;
     SemaphoreHandle_t   _sendMutex = nullptr;
     OwnerAuthorizer     _ownerAuthorizer = nullptr;
     void*               _ownerCtx = nullptr;
-    PingState           _pingState[PING_TRACK_SLOTS] = {};
+    SendState           _sendState[MAX_CLIENTS] = {};
   };
 
 }

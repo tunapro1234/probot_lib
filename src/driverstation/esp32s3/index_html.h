@@ -766,6 +766,23 @@ const char MAIN_page[] PROGMEM = R"=====(
             <span class="debug-value" id="dbgIp">--</span>
           </div>
         </div>
+        <div class="control" style="margin-top:12px;">
+          <label>Kanal Değiştir (CSA — bağlantı korunur)</label>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <select id="chSelect" style="flex:1;">
+              <option value="0">Otomatik (açılışta)</option>
+              <option value="1">1</option><option value="5">5</option>
+              <option value="9">9</option><option value="13">13</option>
+              <option value="2">2</option><option value="3">3</option>
+              <option value="4">4</option><option value="6">6</option>
+              <option value="7">7</option><option value="8">8</option>
+              <option value="10">10</option><option value="11">11</option>
+              <option value="12">12</option>
+            </select>
+            <button onclick="applyChannel()" style="padding:10px 18px;font-size:0.9rem;">Uygula</button>
+          </div>
+          <span class="hint" id="chStatus">1/5/9/13 önerilir</span>
+        </div>
       </section>
       <section class="stack-card">
         <h2>Network Status</h2>
@@ -785,6 +802,18 @@ const char MAIN_page[] PROGMEM = R"=====(
           <div class="debug-item">
             <span class="debug-label">Deadline Miss</span>
             <span class="debug-value" id="dbgDm">--</span>
+          </div>
+          <div class="debug-item">
+            <span class="debug-label">Joystick Age</span>
+            <span class="debug-value" id="dbgJoyAge">--</span>
+          </div>
+          <div class="debug-item">
+            <span class="debug-label">Clients</span>
+            <span class="debug-value" id="dbgSta">--</span>
+          </div>
+          <div class="debug-item">
+            <span class="debug-label">Last Disconnect</span>
+            <span class="debug-value" id="dbgDisc">--</span>
           </div>
         </div>
       </section>
@@ -961,19 +990,9 @@ const char MAIN_page[] PROGMEM = R"=====(
       updateAutoDisplay();
     }
 
-    /* ===== SYNC STATE ===== */
-    var syncStateBusy=false;
-    function syncState(){
-      if(syncStateBusy) return;
-      syncStateBusy=true;
-      var ac=new AbortController();
-      var tid=setTimeout(function(){ac.abort();},3000);
-      fetch('/getState',{signal:ac.signal}).then(function(r){
-        clearTimeout(tid);
-        if(!r.ok) return;
-        return r.json();
-      }).then(function(data){
-        syncStateBusy=false;
+    /* ===== STATE RENDER ===== */
+    /* Fed by 'S' WS frames normally; by the HTTP fallback when WS is down. */
+    function applyState(data){
         if(!data) return;
         var btn=document.getElementById('robotButton');
         if(!btn) return;
@@ -1036,9 +1055,23 @@ const char MAIN_page[] PROGMEM = R"=====(
           stopAutoTimer();
           setPhaseDisplay('stopped');
         }
-      }).catch(function(e){
-        syncStateBusy=false;
-        console.error('syncState failed:',e);
+    }
+
+    var fetchStateBusy=false;
+    function fetchState(){
+      if(fetchStateBusy) return;
+      fetchStateBusy=true;
+      var ac=new AbortController();
+      var tid=setTimeout(function(){ac.abort();},3000);
+      fetch('/getState',{signal:ac.signal}).then(function(r){
+        clearTimeout(tid);
+        if(!r.ok) return;
+        return r.json();
+      }).then(function(data){
+        fetchStateBusy=false;
+        if(data){lastDataMs=performance.now();applyState(data);}
+      }).catch(function(){
+        fetchStateBusy=false;
       });
     }
 
@@ -1053,9 +1086,6 @@ const char MAIN_page[] PROGMEM = R"=====(
         case "armed": cmd="start"; break;
         default: cmd="stop"; break;
       }
-
-      if(cmd==="stop"){wsStopped=true;killWs();}
-      else if(cmd==="init"){connectWebSocket();}
 
       var url='/robotControl?cmd='+cmd+'&auto='+(enableAuto?1:0)+'&autoLen='+autoLen;
       var ac=new AbortController();
@@ -1134,49 +1164,85 @@ const char MAIN_page[] PROGMEM = R"=====(
     var lastGamepadSend=0;
     var GAMEPAD_SEND_INTERVAL=20;
 
-    /* ===== WEBSOCKET ===== */
+    /* ===== WEBSOCKET =====
+       Single always-on socket. Client sends 'J' joystick frames (50Hz)
+       or a 'P' idle ping (2s, keeps the owner slot alive). Robot pushes
+       'S' state+health JSON (>=1Hz, doubles as heartbeat) and 'T'
+       telemetry text — no HTTP polling while the socket is up. */
     var wsJoystick=null;
     var wsConnected=false;
     var wsReconnectTimer=null;
     var wsLastActivity=0;
-    var wsStopped=false;
+    var lastDataMs=performance.now();
+    var textDecoder=new TextDecoder();
 
     function killWs(){
       if(wsReconnectTimer){clearTimeout(wsReconnectTimer);wsReconnectTimer=null;}
       if(wsJoystick){wsJoystick.onopen=null;wsJoystick.onclose=null;wsJoystick.onerror=null;wsJoystick.onmessage=null;try{wsJoystick.close();}catch(e){}}
       wsJoystick=null;wsConnected=false;
     }
+    function handleWsMessage(ev){
+      wsLastActivity=performance.now();
+      if(!(ev.data instanceof ArrayBuffer)) return;
+      var v=new Uint8Array(ev.data);
+      if(v.length<1) return;
+      if(v[0]===0x53){ /* 'S' state+health */
+        var data;
+        try{data=JSON.parse(textDecoder.decode(v.subarray(1)));}catch(e){return;}
+        lastDataMs=performance.now();
+        applyState(data);
+        applyHealth(data);
+      }else if(v[0]===0x54){ /* 'T' telemetry */
+        lastDataMs=performance.now();
+        renderTelemetry(textDecoder.decode(v.subarray(1)));
+      }
+    }
     function connectWebSocket(){
       killWs();
-      wsStopped=false;
       try{
         var ws=new WebSocket('ws://'+location.host+'/joystick');
         ws.binaryType='arraybuffer';
         ws.onopen=function(){wsConnected=true;wsLastActivity=performance.now();console.log('[WS] Connected');};
-        ws.onclose=function(){wsConnected=false;wsJoystick=null;if(!wsStopped)scheduleReconnect();};
+        ws.onclose=function(){wsConnected=false;wsJoystick=null;scheduleReconnect();};
         ws.onerror=function(){wsConnected=false;};
-        ws.onmessage=function(){wsLastActivity=performance.now();};
+        ws.onmessage=handleWsMessage;
         wsJoystick=ws;
-      }catch(e){if(!wsStopped)scheduleReconnect();}
+      }catch(e){scheduleReconnect();}
     }
     function scheduleReconnect(){
-      if(wsReconnectTimer||wsStopped) return;
-      wsReconnectTimer=setTimeout(function(){wsReconnectTimer=null;if(!wsStopped)connectWebSocket();},2000);
+      if(wsReconnectTimer) return;
+      wsReconnectTimer=setTimeout(function(){wsReconnectTimer=null;connectWebSocket();},2000);
     }
-    /* Robot sends a binary heartbeat every 2s; missing ~2 in a row means
-       the link is dead even if the socket still looks open. Own sends do
-       NOT count as activity: ws.send() into a dead TCP socket succeeds
-       silently (frames just buffer), which used to mask dead links while
-       driving. */
-    function wsHealthCheck(){
-      if(wsStopped||!wsJoystick) return;
-      if(wsJoystick.readyState>1){wsConnected=false;wsJoystick=null;scheduleReconnect();return;}
-      if(wsConnected&&performance.now()-wsLastActivity>5000){
-        console.log('[WS] Stale, reconnecting');
-        killWs();scheduleReconnect();
+    /* Robot pushes an 'S' frame at least every second; ~5s without any
+       message means the link is dead even if the socket looks open. Own
+       sends do NOT count as activity: ws.send() into a dead TCP socket
+       succeeds silently. The overlay appears when no data has arrived
+       from any source (WS or HTTP fallback) for 6s. */
+    function linkSupervisor(){
+      if(wsJoystick){
+        if(wsJoystick.readyState>1){
+          wsConnected=false;wsJoystick=null;scheduleReconnect();
+        }else if(wsConnected&&performance.now()-wsLastActivity>5000){
+          console.log('[WS] Stale, reconnecting');
+          killWs();scheduleReconnect();
+        }
+      }
+      var overlay=document.getElementById('disconnectOverlay');
+      if(overlay){
+        if(performance.now()-lastDataMs>6000) overlay.classList.add('show');
+        else overlay.classList.remove('show');
       }
     }
-    setInterval(wsHealthCheck,1000);
+    setInterval(linkSupervisor,1000);
+
+    /* Idle keepalive: with no gamepad active nothing else flows
+       client->robot, and the robot would release the owner slot. */
+    setInterval(function(){
+      if(wsConnected&&wsJoystick&&wsJoystick.readyState===1&&
+         performance.now()-lastGamepadSend>2000){
+        try{wsJoystick.send(new Uint8Array([0x50]));}catch(e){}
+      }
+    },2000);
 
     function packJoystickBinary(gp){
       var nA=gp.axes.length;
@@ -1271,26 +1337,14 @@ const char MAIN_page[] PROGMEM = R"=====(
     });
 
     /* ===== TELEMETRY ===== */
-    /* In-flight guard + timeout: without it, a congested link lets
-       requests pile up faster than they complete, making the jam worse.
-       Hidden tabs skip polling entirely — joystick frames matter more. */
-    var telemetryBusy=false;
-    function pollTelemetry(){
-      if(telemetryBusy||document.hidden) return;
-      telemetryBusy=true;
-      var ac=new AbortController();
-      var tid=setTimeout(function(){ac.abort();},2000);
-      fetch('/telemetry',{signal:ac.signal}).then(function(r){
-        clearTimeout(tid);
-        if(r.ok) return r.text();
-      }).then(function(text){
-        telemetryBusy=false;
-        var el=document.getElementById('telemetryOutput');
-        if(el&&text){
-          el.textContent=text;
-          if(autoScroll) el.scrollTop=el.scrollHeight;
-        }
-      }).catch(function(){telemetryBusy=false;});
+    /* Pushed by the robot over WS ('T' frames) whenever the buffer
+       changes — no polling. */
+    function renderTelemetry(text){
+      var el=document.getElementById('telemetryOutput');
+      if(el&&text){
+        el.textContent=text;
+        if(autoScroll) el.scrollTop=el.scrollHeight;
+      }
     }
     function clearTelemetry(){
       var el=document.getElementById('telemetryOutput');
@@ -1309,10 +1363,17 @@ const char MAIN_page[] PROGMEM = R"=====(
         if(el) el.scrollTop=el.scrollHeight;
       }
     }
-    /* 150ms is still smooth for a text log and cuts HTTP airtime ~3x
-       vs the old 50ms — leaves more room for joystick frames. */
-    setInterval(pollTelemetry,150);
-    setInterval(syncState,1000);
+    /* HTTP fallback: only while the WS is down. One state+health pair
+       per second keeps the UI alive; joystick falls back to HTTP POST
+       in sendGamepadData. */
+    setInterval(function(){
+      if(!wsConnected){fetchState();fetchHealth();}
+    },1000);
+    /* RTT sample while WS is up: a single /health every 10s feeds the
+       ping display; everything else arrives over WS. */
+    setInterval(function(){
+      if(wsConnected) fetchHealth();
+    },10000);
 
     /* ===== CONNECTION HEALTH ===== */
     var healthFailCount=0;
@@ -1321,8 +1382,27 @@ const char MAIN_page[] PROGMEM = R"=====(
     var lastHeap=0;
     var lastUpMs=0;
     var lastDm=false;
+    var lastJoyAge=-1;
+    var lastSta=0;
+    var lastDisc=0;
 
-    function healthCheck(){
+    /* Fed by 'S' WS frames normally; by fetchHealth over HTTP otherwise. */
+    function applyHealth(data){
+      lastRssi=(typeof data.rssi==='number')?data.rssi:-100;
+      lastHeap=(typeof data.heap==='number')?data.heap:0;
+      lastUpMs=(typeof data.up==='number')?data.up:0;
+      lastDm=!!data.dm;
+      if(typeof data.joyAgeMs==='number') lastJoyAge=data.joyAgeMs;
+      if(typeof data.sta==='number') lastSta=data.sta;
+      if(typeof data.disc==='number') lastDisc=data.disc;
+      updateConnUI(true);
+      updateDebugPanel();
+    }
+
+    var fetchHealthBusy=false;
+    function fetchHealth(){
+      if(fetchHealthBusy) return;
+      fetchHealthBusy=true;
       var start=performance.now();
       var ac=new AbortController();
       var tid=setTimeout(function(){ac.abort();},3000);
@@ -1331,15 +1411,13 @@ const char MAIN_page[] PROGMEM = R"=====(
         if(!r.ok) throw new Error('health');
         return r.json();
       }).then(function(data){
+        fetchHealthBusy=false;
         lastPingMs=Math.round(performance.now()-start);
-        lastRssi=(typeof data.rssi==='number')?data.rssi:-100;
-        lastHeap=(typeof data.heap==='number')?data.heap:0;
-        lastUpMs=(typeof data.up==='number')?data.up:0;
-        lastDm=!!data.dm;
+        lastDataMs=performance.now();
         healthFailCount=0;
-        updateConnUI(true);
-        updateDebugPanel();
+        applyHealth(data);
       }).catch(function(){
+        fetchHealthBusy=false;
         healthFailCount++;
         updateConnUI(false);
         updateDebugPanel();
@@ -1351,19 +1429,16 @@ const char MAIN_page[] PROGMEM = R"=====(
       var ping=document.getElementById('connPing');
       var heap=document.getElementById('connHeap');
       var signal=document.getElementById('connSignal');
-      var overlay=document.getElementById('disconnectOverlay');
-      if(!dot||!ping||!signal||!overlay) return;
+      if(!dot||!ping||!signal) return;
 
       if(!ok){
         dot.className='conn-dot bad';
         ping.textContent='--';
         if(heap) heap.textContent='--';
         signal.querySelectorAll('.bar').forEach(function(b){b.classList.remove('active');});
-        if(healthFailCount>=3) overlay.classList.add('show');
         return;
       }
 
-      overlay.classList.remove('show');
       ping.textContent=lastPingMs+'ms';
       if(heap){
         if(lastHeap>0&&infoTotalHeap>0) heap.textContent=Math.round(lastHeap/1024)+'/'+Math.round(infoTotalHeap/1024)+'KB';
@@ -1413,6 +1488,9 @@ const char MAIN_page[] PROGMEM = R"=====(
       }
       if(el('dbgWs')) el('dbgWs').textContent=wsConnected?'Connected':'Disconnected';
       if(el('dbgDm')) el('dbgDm').textContent=lastDm?'YES':'No';
+      if(el('dbgJoyAge')) el('dbgJoyAge').textContent=(lastJoyAge>=0)?(lastJoyAge+' ms'):'--';
+      if(el('dbgSta')) el('dbgSta').textContent=String(lastSta);
+      if(el('dbgDisc')) el('dbgDisc').textContent=lastDisc?('reason '+lastDisc):'--';
     }
 
     function fetchInfo(){
@@ -1423,7 +1501,9 @@ const char MAIN_page[] PROGMEM = R"=====(
         if(!data) return;
         var el=function(id){return document.getElementById(id);};
         if(el('dbgSsid')) el('dbgSsid').textContent=data.ssid||'--';
-        if(el('dbgCh')) el('dbgCh').textContent=data.ch||'--';
+        if(el('dbgCh')) el('dbgCh').textContent=data.ch?(data.ch+(data.chSource?' ('+data.chSource+')':'')):'--';
+        var chSel=document.getElementById('chSelect');
+        if(chSel&&typeof data.ch==='number') chSel.value=String(data.ch);
         if(el('dbgIp')) el('dbgIp').textContent=data.ip||'--';
         if(el('dbgChip')) el('dbgChip').textContent=data.chip||'--';
         if(el('dbgCpu')) el('dbgCpu').textContent=data.cpuMhz?data.cpuMhz+' MHz':'--';
@@ -1442,7 +1522,27 @@ const char MAIN_page[] PROGMEM = R"=====(
       }).catch(function(){});
     }
 
-    setInterval(healthCheck,2000);
+    /* ===== CHANNEL SWITCH (Logs page) ===== */
+    function applyChannel(){
+      var sel=document.getElementById('chSelect');
+      var status=document.getElementById('chStatus');
+      if(!sel) return;
+      var ch=parseInt(sel.value,10);
+      if(isNaN(ch)) return;
+      if(status) status.textContent='...';
+      fetch('/setChannel?ch='+ch).then(function(r){
+        if(!r.ok) throw new Error('setChannel '+r.status);
+        return r.json();
+      }).then(function(d){
+        if(!status) return;
+        if(d.live) status.textContent='Kanal '+d.ch+' (canlı geçiş)';
+        else if(d.ch===0) status.textContent='Otomatik — yeniden başlatınca';
+        else status.textContent='Kanal '+d.ch+' — kayıtlı';
+        fetchInfo();
+      }).catch(function(){
+        if(status) status.textContent='Hata — tekrar deneyin';
+      });
+    }
 
     /* ===== AUTO PERIOD INPUT ===== */
     document.getElementById('autoPeriod').addEventListener('input',function(e){
@@ -1476,9 +1576,9 @@ const char MAIN_page[] PROGMEM = R"=====(
       updateAutoDisplay();
       setPhaseDisplay('standby');
       requestAnimationFrame(gamepadLoop);
-      syncState();
       connectWebSocket();
-      healthCheck();
+      fetchState();
+      fetchHealth();
       fetchInfo();
     });
 </script>

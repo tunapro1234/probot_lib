@@ -59,6 +59,14 @@ namespace probot::io {
       __atomic_store_n(&_timeout_ms, timeout_ms, __ATOMIC_SEQ_CST);
     }
 
+    // Raw time of the last received packet — unlike read().ms this is
+    // not rewritten when the data goes stale, so it measures true
+    // joystick frame age for diagnostics.
+    uint32_t lastWriteMs() const {
+      uint32_t idx = __atomic_load_n(&_cur, __ATOMIC_SEQ_CST);
+      return _buf[idx].ms;
+    }
+
     GamepadSnapshot read() const override {
       uint32_t idx = __atomic_load_n(&_cur, __ATOMIC_SEQ_CST);
       GamepadSnapshot s = _buf[idx];

@@ -5,6 +5,8 @@
 #include <esp_http_server.h>
 #include <lwip/sockets.h>
 #include <Arduino.h>
+#include <Preferences.h>
+#include <DNSServer.h>
 #include <probot/robot/state.hpp>
 #include <probot/io/gamepad.hpp>
 #include <probot/telemetry/telemetry.hpp>
@@ -59,6 +61,23 @@ static_assert(PROBOT_WIFI_AP_CHANNEL >= 0 && PROBOT_WIFI_AP_CHANNEL <= 13,
 #define PROBOT_WIFI_PMF_REQUIRED 0
 #endif
 
+// Captive portal: answer every DNS query with the robot's IP and spoof
+// the OS connectivity probes so joining the AP pops a landing page —
+// students never type an IP. Set to 0 to disable.
+#ifndef PROBOT_CAPTIVE_PORTAL
+#define PROBOT_CAPTIVE_PORTAL 1
+#endif
+
+namespace probot::driverstation::esp32::diag {
+  // Written from the WiFi event task, read by the push task / handlers.
+  inline volatile uint8_t  g_last_disc_reason = 0;
+  inline volatile uint32_t g_last_disc_ms     = 0;
+  inline volatile int32_t  g_sta_count        = 0;
+  // Captive-portal redirect target; the 404 error handler has no
+  // user_ctx, so this lives at namespace scope.
+  inline char g_portal_url[48] = "http://192.168.4.1/portal";
+}
+
 namespace probot::driverstation::esp32 {
   class DriverStation {
   public:
@@ -75,10 +94,47 @@ namespace probot::driverstation::esp32 {
 #endif
       ap_ssid_ = ssid;
 
+      // Log STA joins/leaves with the IEEE reason code — the field
+      // answer to "why did it disconnect?".
+      WiFi.onEvent([](WiFiEvent_t, WiFiEventInfo_t info){
+        diag::g_sta_count = diag::g_sta_count + 1;
+        Serial.printf("[DS   ] STA joined: %02X:%02X:%02X:%02X:%02X:%02X (aid %d)\n",
+                      info.wifi_ap_staconnected.mac[0], info.wifi_ap_staconnected.mac[1],
+                      info.wifi_ap_staconnected.mac[2], info.wifi_ap_staconnected.mac[3],
+                      info.wifi_ap_staconnected.mac[4], info.wifi_ap_staconnected.mac[5],
+                      info.wifi_ap_staconnected.aid);
+      }, ARDUINO_EVENT_WIFI_AP_STACONNECTED);
+      WiFi.onEvent([](WiFiEvent_t, WiFiEventInfo_t info){
+        if (diag::g_sta_count > 0) diag::g_sta_count = diag::g_sta_count - 1;
+        diag::g_last_disc_reason = info.wifi_ap_stadisconnected.reason;
+        diag::g_last_disc_ms = millis();
+        Serial.printf("[DS   ] STA left: %02X:%02X:%02X:%02X:%02X:%02X reason=%d\n",
+                      info.wifi_ap_stadisconnected.mac[0], info.wifi_ap_stadisconnected.mac[1],
+                      info.wifi_ap_stadisconnected.mac[2], info.wifi_ap_stadisconnected.mac[3],
+                      info.wifi_ap_stadisconnected.mac[4], info.wifi_ap_stadisconnected.mac[5],
+                      (int)info.wifi_ap_stadisconnected.reason);
+      }, ARDUINO_EVENT_WIFI_AP_STADISCONNECTED);
+
       wifi_country_t country = { .cc = "TR", .schan = 1, .nchan = 13, .policy = WIFI_COUNTRY_POLICY_MANUAL };
 
-      channel_ = PROBOT_WIFI_AP_CHANNEL;
-      if (PROBOT_WIFI_AP_CHANNEL == 0) {
+      // Channel precedence: NVS override (set from the UI) > macro.
+      // 0 means auto-select in either source.
+      int requestedChannel = PROBOT_WIFI_AP_CHANNEL;
+      ch_source_ = "macro";
+      {
+        Preferences prefs;
+        if (prefs.begin("probot", /*readOnly=*/true)) {
+          int nvsCh = prefs.getInt("ch", -1);
+          prefs.end();
+          if (nvsCh >= 0 && nvsCh <= 13) {
+            requestedChannel = nvsCh;
+            ch_source_ = "nvs";
+          }
+        }
+      }
+
+      channel_ = requestedChannel;
+      if (requestedChannel == 0) {
         // Auto-select: scan the band and pick the least congested of the
         // non-overlapping channels. Adds ~2-3 s to boot. Clients find the
         // AP by SSID regardless of channel, so this is transparent to the
@@ -86,6 +142,7 @@ namespace probot::driverstation::esp32 {
         WiFi.mode(WIFI_STA);
         esp_wifi_set_country(&country);
         channel_ = autoSelectChannel();
+        ch_source_ = "auto";
       }
 
       WiFi.mode(WIFI_AP);
@@ -130,7 +187,7 @@ namespace probot::driverstation::esp32 {
       cfg.server_port    = 80;
       cfg.ctrl_port      = 32768;
       cfg.stack_size     = 8192;
-      cfg.max_uri_handlers = 12;
+      cfg.max_uri_handlers = 24;
       cfg.lru_purge_enable = true;
       // Keep all networking on core 0 with the WiFi stack; core 1 stays
       // exclusively for user teleop/autonomous loops.
@@ -160,17 +217,51 @@ namespace probot::driverstation::esp32 {
       registerUri("/",                HTTP_GET,  handleRoot);
       registerUri("/updateController", HTTP_POST, handleUpdateController);
       registerUri("/robotControl",     HTTP_GET,  handleRobotControl);
+      registerUri("/setChannel",       HTTP_GET,  handleSetChannel);
       registerUri("/getState",         HTTP_GET,  handleGetState);
       registerUri("/getBattery",       HTTP_GET,  handleGetBattery);
       registerUri("/telemetry",        HTTP_GET,  handleTelemetry);
       registerUri("/health",           HTTP_GET,  handleHealth);
       registerUri("/info",             HTTP_GET,  handleInfo);
 
+#if PROBOT_CAPTIVE_PORTAL
+      // Captive portal: spoofed OS connectivity probes + catch-all DNS
+      // make the landing page pop when a device joins the AP.
+      snprintf(diag::g_portal_url, sizeof(diag::g_portal_url), "http://%s/portal",
+               WiFi.softAPIP().toString().c_str());
+      registerUri("/portal",              HTTP_GET, handlePortal);
+      registerUri("/generate_204",        HTTP_GET, handleProbeRedirect);  // Android
+      registerUri("/gen_204",             HTTP_GET, handleProbeRedirect);  // Android (alt)
+      registerUri("/hotspot-detect.html", HTTP_GET, handleProbeRedirect);  // iOS/macOS
+      registerUri("/connecttest.txt",     HTTP_GET, handleProbeRedirect);  // Windows
+      registerUri("/ncsi.txt",            HTTP_GET, handleProbeRedirect);  // Windows legacy
+      registerUri("/redirect",            HTTP_GET, handleProbeRedirect);
+      registerUri("/canonical.html",      HTTP_GET, handleProbeRedirect);  // Firefox
+      registerUri("/wpad.dat",            HTTP_GET, handleWpad);           // stop proxy-probe storms
+      httpd_register_err_handler(_server, HTTPD_404_NOT_FOUND, handle404Redirect);
+
+      _dns_started = _dns.start(53, "*", WiFi.softAPIP());
+      Serial.printf("[DS   ] Captive portal %s\n", _dns_started ? "active" : "DNS FAILED");
+#endif
+
       // Attach WebSocket handler (with owner gatekeeper)
       _ws.setOwnerAuthorizer(&DriverStation::wsOwnerAuthorizer, this);
       _ws.attach(_server);
 
+      // Push task: streams state/health/telemetry to WS clients so the
+      // page never has to poll over HTTP. Core 0 with the rest of
+      // networking; user code keeps core 1.
+      xTaskCreatePinnedToCore(pushTaskEntry, "ds_push", 4096, this, 3, &_push_task, 0);
+
       Serial.println("[DS   ] HTTP server started on port 80");
+    }
+
+    // Called from sysloop (~1 kHz): answers pending captive-portal DNS
+    // queries. Non-blocking.
+    void processDns() {
+#if PROBOT_CAPTIVE_PORTAL
+      if (_dns_started) _dns.processNextRequest();
+#endif
     }
 
     void expireOwnerIfIdle(){
@@ -267,6 +358,86 @@ namespace probot::driverstation::esp32 {
       int yes = 1;
       setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
       return ESP_OK;
+    }
+
+    static int8_t readApRssi() {
+      wifi_sta_list_t sta_list;
+      if (esp_wifi_ap_get_sta_list(&sta_list) == ESP_OK && sta_list.num > 0) {
+        return sta_list.sta[0].rssi;
+      }
+      return -100;
+    }
+
+    static uint32_t computeAutoRemainingMs(const robot::StateSnapshot& s, uint32_t now_ms) {
+      if (s.phase != probot::robot::Phase::AUTONOMOUS || !s.autonomousEnabled ||
+          s.autoStartMs == 0 || s.autoPeriodSeconds <= 0) {
+        return 0;
+      }
+      uint32_t total_ms = static_cast<uint32_t>(s.autoPeriodSeconds) * 1000u;
+      uint32_t elapsed = now_ms - s.autoStartMs;
+      return (elapsed >= total_ms) ? 0u : (total_ms - elapsed);
+    }
+
+    // ── WS push task ──
+    // Streams 'S' (state+health JSON, also the heartbeat) and 'T'
+    // (telemetry text) frames so the page never polls over HTTP.
+
+    size_t buildStateHealthJson(char* out, size_t out_size, const robot::StateSnapshot& s, uint32_t now) {
+      uint32_t joyLast = _gs.lastWriteMs();
+      long joyAge = joyLast ? (long)(uint32_t)(now - joyLast) : -1;
+      int n = snprintf(out, out_size,
+        "{\"phase\":%u,\"autonomousEnabled\":%s,\"autoPeriodSeconds\":%d,"
+        "\"autoRemainingMs\":%u,\"rssi\":%d,\"up\":%lu,\"heap\":%lu,\"dm\":%s,"
+        "\"joyAgeMs\":%ld,\"sta\":%ld,\"disc\":%u}",
+        static_cast<unsigned>(s.phase),
+        s.autonomousEnabled ? "true" : "false",
+        (int)s.autoPeriodSeconds,
+        (unsigned)computeAutoRemainingMs(s, now),
+        (int)readApRssi(),
+        (unsigned long)now,
+        (unsigned long)ESP.getFreeHeap(),
+        s.deadlineMiss ? "true" : "false",
+        joyAge,
+        (long)diag::g_sta_count,
+        (unsigned)diag::g_last_disc_reason);
+      if (n < 0) return 0;
+      return ((size_t)n >= out_size) ? out_size - 1 : (size_t)n;
+    }
+
+    static void pushTaskEntry(void* arg) {
+      static_cast<DriverStation*>(arg)->pushTaskLoop();
+    }
+
+    void pushTaskLoop() {
+      uint32_t lastStateSent = 0;
+      uint32_t lastStateSeq = ~0u;
+      uint32_t lastTelemSeq = ~0u;
+      for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(250));
+        if (!_server) continue;
+        uint32_t now = millis();
+
+        // State changes go out on the next tick; otherwise re-sent every
+        // second so the frame doubles as the link heartbeat.
+        auto s = _rs.read();
+        if (s.seq != lastStateSeq || (uint32_t)(now - lastStateSent) >= 1000) {
+          char buf[352];
+          buf[0] = 'S';
+          size_t n = 1 + buildStateHealthJson(buf + 1, sizeof(buf) - 1, s, now);
+          _ws.sendToAll(reinterpret_cast<const uint8_t*>(buf), n);
+          lastStateSent = now;
+          lastStateSeq = s.seq;
+        }
+
+        uint32_t tseq = probot::telemetry::getSeq();
+        if (tseq != lastTelemSeq) {
+          char tbuf[1 + probot::telemetry::detail::BUFFER_SIZE + 1];
+          tbuf[0] = 'T';
+          size_t n = probot::telemetry::copyBuffer(tbuf + 1, sizeof(tbuf) - 1);
+          _ws.sendToAll(reinterpret_cast<const uint8_t*>(tbuf), 1 + n);
+          lastTelemSeq = tseq;
+        }
+      }
     }
 
     // ── Client IP extraction ──
@@ -499,26 +670,70 @@ namespace probot::driverstation::esp32 {
       return ESP_OK;
     }
 
+    static esp_err_t handleSetChannel(httpd_req_t* req) {
+      auto* ds = self(req);
+      if (!ds->enforceOwner(req)) return ESP_OK;
+
+      char query[32] = {0};
+      char chVal[8] = {0};
+      httpd_req_get_url_query_str(req, query, sizeof(query));
+      if (httpd_query_key_value(query, "ch", chVal, sizeof(chVal)) != ESP_OK || chVal[0] == '\0') {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "ch parameter missing");
+        return ESP_OK;
+      }
+      int ch = atoi(chVal);
+      if (ch < 0 || ch > 13) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "ch must be 0-13 (0 = auto at boot)");
+        return ESP_OK;
+      }
+
+      bool saved = false;
+      {
+        Preferences prefs;
+        if (prefs.begin("probot", /*readOnly=*/false)) {
+          saved = prefs.putInt("ch", ch) > 0;
+          prefs.end();
+        }
+      }
+
+      // 1-13: switch live via CSA — beacons announce the migration and
+      // compliant clients follow without disconnecting. 0 (auto) needs a
+      // scan, which would drop clients, so it applies at next boot.
+      bool live = false;
+      if (ch >= 1 && ch <= 13 && ch != ds->channel_) {
+        wifi_config_t cfg;
+        if (esp_wifi_get_config(WIFI_IF_AP, &cfg) == ESP_OK) {
+          cfg.ap.channel = (uint8_t)ch;
+          cfg.ap.csa_count = 3;
+          if (esp_wifi_set_config(WIFI_IF_AP, &cfg) == ESP_OK) {
+            ds->channel_ = ch;
+            ds->ch_source_ = "nvs";
+            live = true;
+            Serial.printf("[DS   ] Channel switching to %d via CSA\n", ch);
+          }
+        }
+      }
+
+      char buf[96];
+      snprintf(buf, sizeof(buf), "{\"ok\":%s,\"ch\":%d,\"live\":%s}",
+               saved ? "true" : "false", ch, live ? "true" : "false");
+      httpd_resp_set_type(req, "application/json");
+      httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
+      return ESP_OK;
+    }
+
     static esp_err_t handleGetState(httpd_req_t* req) {
       auto* ds = self(req);
       if (!ds->enforceOwner(req)) return ESP_OK;
 
       auto s = ds->_rs.read();
-      uint32_t now_ms = millis();
-      uint32_t remaining_ms = 0;
-      if (s.phase == probot::robot::Phase::AUTONOMOUS && s.autonomousEnabled &&
-          s.autoStartMs != 0 && s.autoPeriodSeconds > 0) {
-        uint32_t total_ms = static_cast<uint32_t>(s.autoPeriodSeconds) * 1000u;
-        uint32_t elapsed = now_ms - s.autoStartMs;
-        remaining_ms = (elapsed >= total_ms) ? 0u : (total_ms - elapsed);
-      }
       char buf[128];
       snprintf(buf, sizeof(buf),
                "{\"phase\":%u,\"autonomousEnabled\":%s,\"autoPeriodSeconds\":%d,\"autoRemainingMs\":%u}",
                static_cast<unsigned>(s.phase),
                s.autonomousEnabled ? "true" : "false",
                (int)s.autoPeriodSeconds,
-               (unsigned)remaining_ms);
+               (unsigned)computeAutoRemainingMs(s, millis()));
 
       httpd_resp_set_type(req, "application/json");
       httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
@@ -538,7 +753,9 @@ namespace probot::driverstation::esp32 {
       auto* ds = self(req);
       if (!ds->enforceOwner(req)) return ESP_OK;
 
-      httpd_resp_send(req, probot::telemetry::getBuffer(), HTTPD_RESP_USE_STRLEN);
+      char buf[probot::telemetry::detail::BUFFER_SIZE + 1];
+      probot::telemetry::copyBuffer(buf, sizeof(buf));
+      httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
       return ESP_OK;
     }
 
@@ -548,22 +765,77 @@ namespace probot::driverstation::esp32 {
     static esp_err_t handleHealth(httpd_req_t* req) {
       auto* ds = self(req);
 
-      int8_t rssi = -100;
-      wifi_sta_list_t sta_list;
-      if (esp_wifi_ap_get_sta_list(&sta_list) == ESP_OK && sta_list.num > 0) {
-        rssi = sta_list.sta[0].rssi;
-      }
       auto s = ds->_rs.read();
-      char buf[128];
+      uint32_t now = millis();
+      uint32_t joyLast = ds->_gs.lastWriteMs();
+      long joyAge = joyLast ? (long)(uint32_t)(now - joyLast) : -1;
+      char buf[192];
       snprintf(buf, sizeof(buf),
-        "{\"rssi\":%d,\"up\":%lu,\"heap\":%lu,\"dm\":%s}",
-        (int)rssi,
-        (unsigned long)millis(),
+        "{\"rssi\":%d,\"up\":%lu,\"heap\":%lu,\"dm\":%s,"
+        "\"joyAgeMs\":%ld,\"sta\":%ld,\"disc\":%u}",
+        (int)readApRssi(),
+        (unsigned long)now,
         (unsigned long)ESP.getFreeHeap(),
-        s.deadlineMiss ? "true" : "false");
+        s.deadlineMiss ? "true" : "false",
+        joyAge,
+        (long)diag::g_sta_count,
+        (unsigned)diag::g_last_disc_reason);
 
       httpd_resp_set_type(req, "application/json");
       httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
+      return ESP_OK;
+    }
+
+    // ── Captive portal (all owner-free) ──
+
+    static esp_err_t handleProbeRedirect(httpd_req_t* req) {
+      httpd_resp_set_status(req, "302 Found");
+      httpd_resp_set_hdr(req, "Location", diag::g_portal_url);
+      httpd_resp_send(req, NULL, 0);
+      return ESP_OK;
+    }
+
+    static esp_err_t handle404Redirect(httpd_req_t* req, httpd_err_code_t) {
+      httpd_resp_set_status(req, "302 Found");
+      httpd_resp_set_hdr(req, "Location", diag::g_portal_url);
+      httpd_resp_send(req, NULL, 0);
+      return ESP_OK;
+    }
+
+    // Plain 404 (NOT via httpd_resp_send_err, which would invoke the
+    // redirect above) — stops Windows wpad proxy-probe retry storms.
+    static esp_err_t handleWpad(httpd_req_t* req) {
+      httpd_resp_set_status(req, "404 Not Found");
+      httpd_resp_send(req, NULL, 0);
+      return ESP_OK;
+    }
+
+    // Landing page shown by the OS sign-in sheet. Must not contain the
+    // word "Success" (iOS treats that as "no portal"). The OS mini
+    // browser is throttled and killed when dismissed, so the page sends
+    // users to a real browser instead of hosting the DS itself.
+    static esp_err_t handlePortal(httpd_req_t* req) {
+      auto* ds = self(req);
+      char page[768];
+      snprintf(page, sizeof(page),
+        "<!DOCTYPE html><html lang=\"tr\"><head><meta charset=\"UTF-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+        "<title>Probot</title><style>body{font-family:sans-serif;background:#00204d;"
+        "color:#e5e4e2;display:flex;flex-direction:column;align-items:center;"
+        "justify-content:center;min-height:90vh;text-align:center;gap:24px;margin:0}"
+        "a{background:#28a745;color:#fff;padding:18px 36px;border-radius:14px;"
+        "text-decoration:none;font-size:1.3rem;font-weight:700}"
+        "p{opacity:.85;max-width:34ch;line-height:1.5}</style></head><body>"
+        "<h1>&#129302; %s</h1>"
+        "<a href=\"http://%s/\">Driver Station'&#305; A&#231;</a>"
+        "<p>Buton bu pencerede a&#231;&#305;l&#305;rsa: pencereyi kapat&#305;p "
+        "taray&#305;c&#305;da <b>http://%s</b> adresini a&#231;&#305;n.</p>"
+        "</body></html>",
+        ds->ap_ssid_.c_str(),
+        WiFi.softAPIP().toString().c_str(),
+        WiFi.softAPIP().toString().c_str());
+      httpd_resp_set_type(req, "text/html; charset=utf-8");
+      httpd_resp_send(req, page, HTTPD_RESP_USE_STRLEN);
       return ESP_OK;
     }
 
@@ -575,12 +847,13 @@ namespace probot::driverstation::esp32 {
       // want other teams' monitoring stations harvesting it.
       char buf[512];
       snprintf(buf, sizeof(buf),
-        "{\"ssid\":\"%s\",\"ch\":%d,\"ip\":\"%s\","
+        "{\"ssid\":\"%s\",\"ch\":%d,\"chSource\":\"%s\",\"ip\":\"%s\","
         "\"chip\":\"%s\",\"cpuMhz\":%lu,\"sdk\":\"%s\","
         "\"totalHeap\":%lu,\"totalFlash\":%lu,"
         "\"sketchSize\":%lu,\"freeSketch\":%lu,\"psram\":%lu}",
         ds->ap_ssid_.c_str(),
         ds->channel_,
+        ds->ch_source_,
         WiFi.softAPIP().toString().c_str(),
         ESP.getChipModel(),
         (unsigned long)ESP.getCpuFreqMHz(),
@@ -601,13 +874,19 @@ namespace probot::driverstation::esp32 {
     io::GamepadService&  _gs;
     WsJoystick           _ws;
     httpd_handle_t       _server = nullptr;
+    TaskHandle_t         _push_task = nullptr;
     portMUX_TYPE         _owner_mux = portMUX_INITIALIZER_UNLOCKED;
     bool                 _owner_set = false;
     char                 _owner_str[48] = {0};
     uint32_t             _owner_last_ms = 0;
     uint32_t             _owner_timeout_ms = PROBOT_DS_OWNER_TIMEOUT_MS;
     int                  channel_ = PROBOT_WIFI_AP_CHANNEL;
+    const char*          ch_source_ = "macro";
     String               ap_ssid_;
+#if PROBOT_CAPTIVE_PORTAL
+    DNSServer            _dns;
+    bool                 _dns_started = false;
+#endif
   };
 }
 #endif // ESP32
