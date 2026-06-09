@@ -52,7 +52,7 @@ her seferinde çağırmak normaldir.
 | `getA()`, `getB()`, `getX()`, `getY()` | `bool` | Xbox isimleri |
 | `getCross()`, `getCircle()`, `getSquare()`, `getTriangle()` | `bool` | PlayStation eşdeğerleri |
 | `getLB()`, `getRB()` | `bool` | Omuz butonları |
-| `getBack()`, `getStart()`, `getOptions()` | `bool` | Orta butonlar |
+| `getBack()`, `getStart()`, `getOptions()` | `bool` | Orta butonlar (`getOptions` yalnız `tuna-default` eşlemesinde tanımlı) |
 | `getLeftStickButton()`, `getRightStickButton()` | `bool` | Çubuğa basma (L3/R3) |
 | `getPOV()` | `int` | D-Pad: -1 yok, 0 yukarı, 90 sağ, 180 aşağı, 270 sol |
 | `getDpadUp()/Right()/Down()/Left()` | `bool` | D-Pad tek yön |
@@ -149,7 +149,7 @@ yazacaksanız:
 | `/joystick` | WS | gerekli | Çift yönlü binary kanal (çerçeve formatları aşağıda) |
 | `/updateController` | POST | gerekli | JSON fallback: `{"axes":[...],"buttons":[...]}` — WS koptuğunda |
 | `/robotControl?cmd=init\|start\|stop\|cancelAuto&auto=0\|1&autoLen=N` | GET | gerekli | Faz komutları |
-| `/setChannel?ch=N` | GET | gerekli | Kanalı NVS'e kaydet; 1-13 ise CSA ile **canlı** geçiş, 0 = açılışta otomatik seçim. Dönüş: `{"ok":b,"ch":N,"live":b}` |
+| `/setChannel?ch=N` | GET | gerekli | Kanalı NVS'e kaydet; 1-13 ise CSA ile **canlı** geçiş (zaten o kanaldaysa `live:false`), 0 = açılışta otomatik seçim. Dönüş: `{"ok":b,"ch":N,"live":b}` |
 | `/getState` | GET | gerekli | `{"phase":N,"autonomousEnabled":b,"autoPeriodSeconds":N,"autoRemainingMs":N}` (WS yokken fallback) |
 | `/telemetry` | GET | gerekli | Telemetri tamponunun içeriği (text) (WS yokken fallback) |
 | `/getBattery` | GET | serbest | Pil gerilimi (şu an kullanıcı beslemeli) |
@@ -185,9 +185,9 @@ Sahip düştüğünde gamepad verisi anında sıfırlanır.
 Robot → istemci (push):
 
 ```
-'S' 0x53  durum+sağlık JSON'u — değişiklikte anında, en geç 1 sn'de bir
-          (heartbeat görevi de görür). Alanlar /getState + /health
-          birleşimi.
+'S' 0x53  durum+sağlık JSON'u — değişiklikte bir sonraki tick'te
+          (250 ms), değişiklik yoksa en geç ~1.25 sn'de bir (heartbeat
+          görevi de görür). Alanlar /getState + /health birleşimi.
 'T' 0x54  telemetri tamponu (text) — içerik değiştiğinde
 ```
 
@@ -207,4 +207,5 @@ bağlanmalıdır.
 - Arduino IDE / arduino-cli: `library.properties` ile (`make build EXAMPLE=JoystickTest`)
 - PlatformIO: `lib_deps = https://github.com/probot-studio/probot-core.git`
 - ESP-IDF + Arduino component: `probot::runtime_setup()` çağırın
-- Host unit testleri: `make test` (donanımsız, g++ ile)
+- Host unit testleri (donanımsız, g++ ile):
+  `make tests/control_tests && ./tests/control_tests`

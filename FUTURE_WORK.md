@@ -8,13 +8,17 @@ maddeleri bu listeden çıkarılmıştır (gerekirse git geçmişine bakın).
 - **Saha test kampanyası:** `connection-test/` düzeneği ile C senaryosu
   (30+ dk stabilite) ve B senaryosu (worst-case tek kanal) koşulmadı —
   0.2.8/0.2.9 bağlantı değişikliklerini sahada doğrula.
-- **Kanal değişikliği için NVS:** kanalı yeniden derlemeden değiştirmek
-  için arayüzden seçim + NVS'te saklama (şimdilik `CHANNEL 0` otomatik
-  seçim var).
 - **Donanım doğrulaması:** joystick hattını gerçek robotta 10 ms örnekleme
-  + 20 ms kontrol döngüsüyle ölç (gecikme/jitter karakterizasyonu).
+  + 20 ms kontrol döngüsüyle ölç (gecikme/jitter karakterizasyonu). Ayrıca
+  havadan doğrula: 11b devre dışı bırakma gerçekten beacon'ları 6 Mbps'e
+  taşıyor mu (sniffer ile), CSA kanal geçişini tabletler takip ediyor mu.
 - **Telemetri tamponu:** 256 bayt yarışma sırasında küçük kalabiliyor;
-  WS üzerinden push + daha büyük tampon değerlendir.
+  daha büyük tampon değerlendir (WS push 0.2.9'da geldi).
+- **ESP-NOW el kumandası:** bağlantısız kontrol linki (yeniden bağlanma
+  problemi yapısal olarak yok); ESP32 el kumandası + robot tarafında
+  IGamepadSource implementasyonu.
+- **ESP32-C5 değerlendirmesi:** 5 GHz softAP — kalabalık 2.4 GHz salon
+  sorununun yapısal çözümü.
 
 ---
 
@@ -28,9 +32,14 @@ were dropped from this list (see git history if needed).
 - **Field test campaign:** run connection-test scenario C (30+ min
   stability) and scenario B (worst-case single channel) to validate the
   0.2.8/0.2.9 connectivity changes under real RF load.
-- **NVS channel override:** change the WiFi channel from the UI without
-  reflashing (compile-time `CHANNEL 0` auto-select exists today).
 - **Hardware validation:** measure joystick latency/jitter on a real
-  robot at 10 ms sampling + 20 ms control loop.
-- **Telemetry buffer:** 256 bytes is tight during matches; consider WS
-  push and a larger ring buffer.
+  robot at 10 ms sampling + 20 ms control loop. Also verify over the
+  air: does the 11b disable really move beacons to 6 Mbps (sniffer),
+  and do tablets follow the CSA channel switch.
+- **Telemetry buffer:** 256 bytes is tight during matches; consider a
+  larger ring buffer (WS push shipped in 0.2.9).
+- **ESP-NOW handheld controller:** connectionless control link (the
+  reconnection problem is structurally absent); ESP32 handheld + an
+  IGamepadSource implementation on the robot side.
+- **ESP32-C5 evaluation:** 5 GHz softAP — the structural fix for
+  crowded 2.4 GHz venues.

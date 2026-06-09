@@ -35,6 +35,11 @@ void autonomousLoop();
 
 namespace probot {
   namespace detail {
+    // Task handles are owned EXCLUSIVELY by the sysloop task: workers
+    // never touch them (a worker nulling its own handle while sysloop
+    // reads it was a use-after-free). Completion is signalled through
+    // the atomic flags below; finished workers park in vTaskSuspend and
+    // wait to be reaped.
     struct RuntimeState {
       TaskHandle_t hSysloop = nullptr;
       TaskHandle_t hAuto = nullptr;
@@ -43,6 +48,11 @@ namespace probot {
       TaskHandle_t hEnd = nullptr;
       volatile uint32_t auto_start_ms = 0;
       volatile uint32_t end_start_ms = 0;
+      volatile uint32_t stop_req = 0;       // loop workers exit at the next boundary
+      volatile uint32_t auto_parked = 0;
+      volatile uint32_t teleop_parked = 0;
+      volatile uint32_t init_done = 0;
+      volatile uint32_t end_done = 0;
     };
 
     inline RuntimeState g_state{};
@@ -53,40 +63,69 @@ namespace probot {
       __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, now, __ATOMIC_SEQ_CST);
       probot::robot::state().setAutoStartMs(now, now);
       ::autonomousInit();
-      for(;;){
+      while (!__atomic_load_n(&g_state.stop_req, __ATOMIC_SEQ_CST)){
         ::autonomousLoop();
         __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, millis(), __ATOMIC_SEQ_CST);
         vTaskDelay(pdMS_TO_TICKS(20));
       }
+      __atomic_store_n(&g_state.auto_parked, 1u, __ATOMIC_SEQ_CST);
+      vTaskSuspend(NULL);
     }
 
     inline void teleopWorker(void*){
       __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, millis(), __ATOMIC_SEQ_CST);
       ::teleopInit();
-      for(;;){
+      while (!__atomic_load_n(&g_state.stop_req, __ATOMIC_SEQ_CST)){
         ::teleopLoop();
         __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, millis(), __ATOMIC_SEQ_CST);
         vTaskDelay(pdMS_TO_TICKS(20));
       }
+      __atomic_store_n(&g_state.teleop_parked, 1u, __ATOMIC_SEQ_CST);
+      vTaskSuspend(NULL);
     }
 
     inline void robotInitWorker(void*){
       ::robotInit();
-      g_state.hInit = nullptr;
-      vTaskDelete(NULL);
+      __atomic_store_n(&g_state.init_done, 1u, __ATOMIC_SEQ_CST);
+      vTaskSuspend(NULL);
     }
 
     inline void robotEndWorker(void*){
       __atomic_store_n(&g_state.end_start_ms, millis(), __ATOMIC_SEQ_CST);
       ::robotEnd();
-      __atomic_store_n(&g_state.end_start_ms, 0u, __ATOMIC_SEQ_CST);
-      g_state.hEnd = nullptr;
-      vTaskDelete(NULL);
+      __atomic_store_n(&g_state.end_done, 1u, __ATOMIC_SEQ_CST);
+      vTaskSuspend(NULL);
+    }
+
+    // Wait for a worker to reach its park point. Returns false on
+    // timeout (user code is blocked — caller hard-kills).
+    inline bool waitFlag(volatile uint32_t* flag, uint32_t timeout_ms){
+      uint32_t t0 = millis();
+      while (!__atomic_load_n(flag, __ATOMIC_SEQ_CST)){
+        if ((uint32_t)(millis() - t0) >= timeout_ms) return false;
+        vTaskDelay(pdMS_TO_TICKS(5));
+      }
+      return true;
+    }
+
+    inline void taskCreateFailed(const char* what){
+      probot::telemetry::printf("!! %s task create FAILED\n", what);
+      probot::robot::state().setDeadlineMiss(millis(), true);
     }
 
     inline void stopAutonomous(){
       auto& s = g_state;
-      if (s.hAuto){ vTaskDelete(s.hAuto); s.hAuto = nullptr; }
+      if (s.hAuto){
+        // Cooperative stop: let the worker finish its current loop
+        // iteration (~3 periods grace) so it isn't killed mid-Serial/
+        // Wire transaction; hard-kill only if the user code is blocked.
+        __atomic_store_n(&s.stop_req, 1u, __ATOMIC_SEQ_CST);
+        waitFlag(&s.auto_parked, 60);
+        vTaskDelete(s.hAuto);
+        s.hAuto = nullptr;
+        __atomic_store_n(&s.stop_req, 0u, __ATOMIC_SEQ_CST);
+        __atomic_store_n(&s.auto_parked, 0u, __ATOMIC_SEQ_CST);
+      }
       __atomic_store_n(&s.auto_start_ms, 0u, __ATOMIC_SEQ_CST);
       __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, 0u, __ATOMIC_SEQ_CST);
       probot::robot::state().setAutoStartMs(millis(), 0u);
@@ -94,45 +133,71 @@ namespace probot {
 
     inline void stopTeleop(){
       auto& s = g_state;
-      if (s.hTeleop){ vTaskDelete(s.hTeleop); s.hTeleop = nullptr; }
+      if (s.hTeleop){
+        __atomic_store_n(&s.stop_req, 1u, __ATOMIC_SEQ_CST);
+        waitFlag(&s.teleop_parked, 60);
+        vTaskDelete(s.hTeleop);
+        s.hTeleop = nullptr;
+        __atomic_store_n(&s.stop_req, 0u, __ATOMIC_SEQ_CST);
+        __atomic_store_n(&s.teleop_parked, 0u, __ATOMIC_SEQ_CST);
+      }
       __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, 0u, __ATOMIC_SEQ_CST);
     }
 
     inline void stopInit(){
       auto& s = g_state;
       if (s.hInit){ vTaskDelete(s.hInit); s.hInit = nullptr; }
+      __atomic_store_n(&s.init_done, 0u, __ATOMIC_SEQ_CST);
     }
 
     inline void startAutonomous(){
       auto& s = g_state;
       stopTeleop();
       stopAutonomous();
-      xTaskCreatePinnedToCore(autonomousWorker, "auto", STACK_USER, NULL, PRIO_USER, &s.hAuto, CORE_CTRL);
+      __atomic_store_n(&s.auto_parked, 0u, __ATOMIC_SEQ_CST);
+      if (xTaskCreatePinnedToCore(autonomousWorker, "auto", STACK_USER, NULL, PRIO_USER, &s.hAuto, CORE_CTRL) != pdPASS){
+        s.hAuto = nullptr;
+        taskCreateFailed("autonomous");
+      }
     }
 
     inline void startTeleop(){
       auto& s = g_state;
       stopAutonomous();
       stopTeleop();
-      xTaskCreatePinnedToCore(teleopWorker, "teleop", STACK_USER, NULL, PRIO_USER, &s.hTeleop, CORE_CTRL);
+      __atomic_store_n(&s.teleop_parked, 0u, __ATOMIC_SEQ_CST);
+      if (xTaskCreatePinnedToCore(teleopWorker, "teleop", STACK_USER, NULL, PRIO_USER, &s.hTeleop, CORE_CTRL) != pdPASS){
+        s.hTeleop = nullptr;
+        taskCreateFailed("teleop");
+      }
     }
 
     inline void startInit(){
       auto& s = g_state;
       if (s.hInit) return;
-      xTaskCreatePinnedToCore(robotInitWorker, "init", STACK_USER, NULL, PRIO_USER, &s.hInit, CORE_CTRL);
+      __atomic_store_n(&s.init_done, 0u, __ATOMIC_SEQ_CST);
+      if (xTaskCreatePinnedToCore(robotInitWorker, "init", STACK_USER, NULL, PRIO_USER, &s.hInit, CORE_CTRL) != pdPASS){
+        s.hInit = nullptr;
+        taskCreateFailed("robotInit");
+      }
     }
 
     inline void startRobotEnd(){
       auto& s = g_state;
       if (s.hEnd) return;
-      xTaskCreatePinnedToCore(robotEndWorker, "end", STACK_USER, NULL, PRIO_USER, &s.hEnd, CORE_CTRL);
+      __atomic_store_n(&s.end_done, 0u, __ATOMIC_SEQ_CST);
+      __atomic_store_n(&s.end_start_ms, 0u, __ATOMIC_SEQ_CST);
+      if (xTaskCreatePinnedToCore(robotEndWorker, "end", STACK_USER, NULL, PRIO_USER, &s.hEnd, CORE_CTRL) != pdPASS){
+        s.hEnd = nullptr;
+        taskCreateFailed("robotEnd");
+      }
     }
 
     inline void stopRobotEnd(){
       auto& s = g_state;
       if (s.hEnd){ vTaskDelete(s.hEnd); s.hEnd = nullptr; }
       __atomic_store_n(&s.end_start_ms, 0u, __ATOMIC_SEQ_CST);
+      __atomic_store_n(&s.end_done, 0u, __ATOMIC_SEQ_CST);
     }
 
     inline void updateLed(){
@@ -175,12 +240,35 @@ namespace probot {
     inline void sysloopTask(){
       using probot::robot::Status;
       using probot::robot::Phase;
+#ifdef ESP32
+      // Subscribe to the task watchdog — without at least one
+      // subscribed task the TWDT never fires and a wedged sysloop
+      // (the task that supervises everything else) goes unnoticed.
+      esp_task_wdt_add(NULL);
+#endif
       Status lastStatus = Status::STOP;
       int32_t autoLen = 0;
       uint32_t lastLed = 0;
       for(;;){
+#ifdef ESP32
+        esp_task_wdt_reset();
+#endif
         auto s = probot::robot::state().read();
         uint32_t now = millis();
+
+        // Reap finished init/end workers (they park in vTaskSuspend).
+        // INITED is reported only when robotInit() actually completed —
+        // pressing Start mid-init no longer runs teleop on
+        // half-initialized hardware.
+        if (detail::g_state.hInit &&
+            __atomic_load_n(&detail::g_state.init_done, __ATOMIC_SEQ_CST)){
+          stopInit();
+          probot::robot::state().setPhase(now, Phase::INITED);
+        }
+        if (detail::g_state.hEnd &&
+            __atomic_load_n(&detail::g_state.end_done, __ATOMIC_SEQ_CST)){
+          stopRobotEnd();
+        }
 
         bool endRunning = (detail::g_state.hEnd != nullptr);
         uint32_t endStart = __atomic_load_n(&detail::g_state.end_start_ms, __ATOMIC_SEQ_CST);
@@ -195,7 +283,6 @@ namespace probot {
             stopTeleop();
             stopRobotEnd();
             startInit();
-            probot::robot::state().setPhase(now, Phase::INITED);
           } else if (s.status == Status::START){
             stopInit();
             stopRobotEnd();
@@ -235,11 +322,14 @@ namespace probot {
           startTeleop();
         }
 
-        // Deadline miss: warn on teleop, kill autonomous
+        // Deadline miss: warn on teleop, kill autonomous. The
+        // !s.deadlineMiss gate keeps this one-shot per episode —
+        // without it the telemetry println fires every 1 ms iteration
+        // and wipes the 256-byte ring exactly when it matters most.
         {
           bool taskRunning = (s.phase == Phase::TELEOP || s.phase == Phase::AUTONOMOUS);
           uint32_t hb = __atomic_load_n(&probot::robot::g_loop_heartbeat_ms, __ATOMIC_SEQ_CST);
-          if (taskRunning && hb != 0 && (int32_t)(now - hb) > 2000){
+          if (taskRunning && !s.deadlineMiss && hb != 0 && (int32_t)(now - hb) > 2000){
             probot::robot::state().setDeadlineMiss(now, true);
             if (s.phase == Phase::AUTONOMOUS){
               probot::telemetry::println("!! DEADLINE MISS — auto blocked, switching to teleop");
@@ -261,8 +351,10 @@ namespace probot {
             Serial.printf("[SYS  ] DS timeout: no activity for %lu ms\n", (unsigned long)(now - dsAct));
 #if PROBOT_DS_TIMEOUT_FORCE_STOP
             probot::telemetry::println("!! DS CONNECTION LOST — stopping robot");
+            // Only set the status — the transition block above must see
+            // status != lastStatus on the next iteration to actually
+            // tear down teleop/auto and run robotEnd.
             probot::robot::state().setStatus(now, Status::STOP);
-            lastStatus = Status::STOP;
 #else
             probot::telemetry::println("!! DS CONNECTION LOST — joystick neutral, waiting reconnect");
 #endif

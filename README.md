@@ -68,7 +68,7 @@ Hepsi `#include <probot.h>` satırından **önce** tanımlanır:
 
 | Makro | Varsayılan | Açıklama |
 |---|---|---|
-| `PROBOT_WIFI_AP_SSID` | `"Probot"` | AP adı (1-32 karakter) |
+| `PROBOT_WIFI_AP_SSID` | `Probot-XXXXXX` | AP adı. Tanımsız bırakılırsa MAC eki otomatik açılır. Ek açıkken en fazla 25, kapalıyken 32 karakter |
 | `PROBOT_WIFI_AP_PASSWORD` | — (zorunlu) | AP şifresi (≥8 karakter) |
 | `PROBOT_WIFI_AP_CHANNEL` | — (zorunlu) | 1-13, veya **0 = açılışta en boş kanalı otomatik seç** |
 | `PROBOT_WIFI_AP_SSID_MAC_SUFFIX` | kapalı | SSID sonuna `-XXXXXX` (MAC) ekler |

@@ -4,13 +4,12 @@ on:
   push:
     branches:
       - stable
-      - main
-      - master
+      - dev
+      - dev-*
   pull_request:
     branches:
       - stable
-      - main
-      - master
+      - dev
 
 jobs:
   test:
@@ -71,5 +70,7 @@ jobs:
             make tests/control_tests
             ./tests/control_tests
           else
-            make test
+            make build EXAMPLE=all
+            make tests/control_tests
+            ./tests/control_tests
           fi

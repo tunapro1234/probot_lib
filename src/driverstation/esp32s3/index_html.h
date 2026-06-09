@@ -99,7 +99,10 @@ const char MAIN_page[] PROGMEM = R"=====(
       letter-spacing:0.14em;
     }
     .app-header .header-status .status-detail{
-      display:none;
+      font-size:0.7rem;
+      letter-spacing:0.08em;
+      opacity:0.7;
+      text-transform:none;
     }
 
     @media(max-width:900px){
@@ -768,8 +771,8 @@ const char MAIN_page[] PROGMEM = R"=====(
         </div>
         <div class="control" style="margin-top:12px;">
           <label>Kanal Değiştir (CSA — bağlantı korunur)</label>
-          <div style="display:flex;gap:10px;align-items:center;">
-            <select id="chSelect" style="flex:1;">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <select id="chSelect" style="flex:1;min-width:0;font-size:1rem;padding:10px;">
               <option value="0">Otomatik (açılışta)</option>
               <option value="1">1</option><option value="5">5</option>
               <option value="9">9</option><option value="13">13</option>
@@ -991,9 +994,14 @@ const char MAIN_page[] PROGMEM = R"=====(
     }
 
     /* ===== STATE RENDER ===== */
-    /* Fed by 'S' WS frames normally; by the HTTP fallback when WS is down. */
+    /* Fed by 'S' WS frames normally; by the HTTP fallback when WS is down.
+       After a button press we ignore incoming state briefly: an 'S' frame
+       generated BEFORE the command was applied would revert the optimistic
+       UI and a second click would then send the wrong command. */
+    var lastCmdMs=-10000;
     function applyState(data){
         if(!data) return;
+        if(performance.now()-lastCmdMs<600) return;
         var btn=document.getElementById('robotButton');
         if(!btn) return;
 
@@ -1087,6 +1095,7 @@ const char MAIN_page[] PROGMEM = R"=====(
         default: cmd="stop"; break;
       }
 
+      lastCmdMs=performance.now();
       var url='/robotControl?cmd='+cmd+'&auto='+(enableAuto?1:0)+'&autoLen='+autoLen;
       var ac=new AbortController();
       var tid=setTimeout(function(){ac.abort();},3000);
@@ -1134,10 +1143,18 @@ const char MAIN_page[] PROGMEM = R"=====(
         if(gp) gamepads[gp.index]=gp;
       }
     }
+    /* Runs from gamepadLoop at ~60Hz — only touch the DOM when the set
+       of gamepads actually changed, and always restore the selection
+       afterwards (removing the selected option silently resets a
+       <select> to its first entry). */
+    var lastGamepadSig=null;
     function rebuildGamepadSelect(){
       var selectEl=document.getElementById('joystickSelect');
-      while(selectEl.options.length>1) selectEl.remove(1);
       var keys=Object.keys(gamepads);
+      var sig=keys.map(function(k){return k+':'+gamepads[k].id;}).join('|');
+      if(sig===lastGamepadSig) return;
+      lastGamepadSig=sig;
+      while(selectEl.options.length>1) selectEl.remove(1);
       keys.forEach(function(idx){
         var gp=gamepads[idx];
         var option=document.createElement('option');
@@ -1145,15 +1162,13 @@ const char MAIN_page[] PROGMEM = R"=====(
         option.text=gp.id+' (idx '+gp.index+')';
         selectEl.add(option);
       });
-      if(keys.length>0&&selectedGamepadIndex<0){
-        var firstIdx=keys[0];
-        selectEl.value=firstIdx;
-        selectedGamepadIndex=parseInt(firstIdx,10);
-      }
-      if(keys.length===0){
+      if(selectedGamepadIndex>=0&&!gamepads[selectedGamepadIndex]){
         selectedGamepadIndex=-1;
-        selectEl.value="-1";
       }
+      if(keys.length>0&&selectedGamepadIndex<0){
+        selectedGamepadIndex=parseInt(keys[0],10);
+      }
+      selectEl.value=String(selectedGamepadIndex);
     }
     function changeSelectedGamepad(){
       var val=document.getElementById('joystickSelect').value;
@@ -1221,7 +1236,9 @@ const char MAIN_page[] PROGMEM = R"=====(
     function linkSupervisor(){
       if(wsJoystick){
         if(wsJoystick.readyState>1){
-          wsConnected=false;wsJoystick=null;scheduleReconnect();
+          /* killWs (not a bare null-out): detaches handlers so a late
+             onclose from the dying socket can't clobber the next one. */
+          killWs();scheduleReconnect();
         }else if(wsConnected&&performance.now()-wsLastActivity>5000){
           console.log('[WS] Stale, reconnecting');
           killWs();scheduleReconnect();
@@ -1245,8 +1262,11 @@ const char MAIN_page[] PROGMEM = R"=====(
     },2000);
 
     function packJoystickBinary(gp){
-      var nA=gp.axes.length;
-      var nB=gp.buttons.length;
+      /* Protocol caps at 20/20 — the robot rejects larger frames, so a
+         HOTAS/button-box with more inputs must be clamped, not sent
+         whole (it would silently disconnect the controls). */
+      var nA=Math.min(gp.axes.length,20);
+      var nB=Math.min(gp.buttons.length,20);
       var btnBytes=Math.ceil(nB/8);
       var buf=new ArrayBuffer(4+nA*2+btnBytes);
       var view=new DataView(buf);
@@ -1277,7 +1297,7 @@ const char MAIN_page[] PROGMEM = R"=====(
           wsJoystick.send(packJoystickBinary(gp));
           gamepadSending=false;
           return;
-        }catch(e){wsConnected=false;wsJoystick=null;scheduleReconnect();}
+        }catch(e){killWs();scheduleReconnect();}
       }
       var ac=new AbortController();
       var tid=setTimeout(function(){ac.abort();},2000);
@@ -1388,6 +1408,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 
     /* Fed by 'S' WS frames normally; by fetchHealth over HTTP otherwise. */
     function applyHealth(data){
+      healthFailCount=0;
       lastRssi=(typeof data.rssi==='number')?data.rssi:-100;
       lastHeap=(typeof data.heap==='number')?data.heap:0;
       lastUpMs=(typeof data.up==='number')?data.up:0;

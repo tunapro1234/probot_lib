@@ -146,12 +146,19 @@ namespace probot::driverstation::esp32 {
       }
 
       WiFi.mode(WIFI_AP);
-      esp_wifi_set_country(&country);
 #if !PROBOT_WIFI_ENABLE_11B
+      // esp_wifi_config_11b_rate is documented to run between init and
+      // start; WiFi.mode() already started the driver, so bounce it
+      // once at boot (no clients yet — harmless).
+      esp_wifi_stop();
+      esp_wifi_set_country(&country);
       esp_err_t rate_err = esp_wifi_config_11b_rate(WIFI_IF_AP, true);
       if (rate_err != ESP_OK) {
         Serial.printf("[DS   ] 11b rate disable failed: 0x%x\n", rate_err);
       }
+      esp_wifi_start();
+#else
+      esp_wifi_set_country(&country);
 #endif
       WiFi.softAP(ssid.c_str(), pw, channel_);
       esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20);
@@ -244,8 +251,11 @@ namespace probot::driverstation::esp32 {
       Serial.printf("[DS   ] Captive portal %s\n", _dns_started ? "active" : "DNS FAILED");
 #endif
 
-      // Attach WebSocket handler (with owner gatekeeper)
+      // Attach WebSocket handler (with owner gatekeeper). The peer
+      // filter additionally re-checks every broadcast recipient — the
+      // handshake-time check stops being invoked on newer IDF releases.
       _ws.setOwnerAuthorizer(&DriverStation::wsOwnerAuthorizer, this);
+      _ws.setPeerFilter(&DriverStation::wsPeerFilter, this);
       _ws.attach(_server);
 
       // Push task: streams state/health/telemetry to WS clients so the
@@ -384,7 +394,11 @@ namespace probot::driverstation::esp32 {
 
     size_t buildStateHealthJson(char* out, size_t out_size, const robot::StateSnapshot& s, uint32_t now) {
       uint32_t joyLast = _gs.lastWriteMs();
-      long joyAge = joyLast ? (long)(uint32_t)(now - joyLast) : -1;
+      long joyAge = -1;
+      if (joyLast) {
+        int32_t d = (int32_t)(now - joyLast);
+        joyAge = d < 0 ? 0 : d;   // a frame can land between the two reads
+      }
       int n = snprintf(out, out_size,
         "{\"phase\":%u,\"autonomousEnabled\":%s,\"autoPeriodSeconds\":%d,"
         "\"autoRemainingMs\":%u,\"rssi\":%d,\"up\":%lu,\"heap\":%lu,\"dm\":%s,"
@@ -443,7 +457,10 @@ namespace probot::driverstation::esp32 {
     // ── Client IP extraction ──
 
     static bool getClientIP(httpd_req_t* req, char* out, size_t out_len) {
-      int sockfd = httpd_req_to_sockfd(req);
+      return getPeerIP(httpd_req_to_sockfd(req), out, out_len);
+    }
+
+    static bool getPeerIP(int sockfd, char* out, size_t out_len) {
       struct sockaddr_in6 addr;
       socklen_t addr_len = sizeof(addr);
       if (getpeername(sockfd, (struct sockaddr*)&addr, &addr_len) != 0) {
@@ -537,6 +554,19 @@ namespace probot::driverstation::esp32 {
       return ds->enforceOwner(req, /*sendHttpError=*/false);
     }
 
+    // Broadcast-time check used by WsJoystick::sendToAll: only the
+    // owner's IP (or anyone, while no owner is set) may receive state/
+    // telemetry pushes. Read-only — never acquires the slot.
+    static bool wsPeerFilter(void* ctx, int sockfd) {
+      auto* ds = static_cast<DriverStation*>(ctx);
+      char ip[48];
+      if (!getPeerIP(sockfd, ip, sizeof(ip))) return false;
+      portENTER_CRITICAL(&ds->_owner_mux);
+      bool ok = !ds->_owner_set || (strcmp(ip, ds->_owner_str) == 0);
+      portEXIT_CRITICAL(&ds->_owner_mux);
+      return ok;
+    }
+
     // Clears the owner slot. Caller must hold _owner_mux.
     void releaseOwnerLocked() {
       _owner_set = false;
@@ -548,7 +578,27 @@ namespace probot::driverstation::esp32 {
     // stale values (last-command runaway when the link dies).
     void onOwnerReleased(uint32_t now_ms) {
       _gs.write(now_ms, nullptr, 0, nullptr, 0);
-      _rs.setClientCount(now_ms, 0);
+      // Another client may have legitimately taken the slot between the
+      // release (inside the mux) and here — don't clobber its count.
+      portENTER_CRITICAL(&_owner_mux);
+      bool hasOwner = _owner_set;
+      portEXIT_CRITICAL(&_owner_mux);
+      _rs.setClientCount(now_ms, hasOwner ? 1 : 0);
+    }
+
+    // Replace JSON/HTML-breaking characters for safe embedding of the
+    // user-defined SSID into /info JSON and the portal page.
+    static void sanitizeSsid(const char* in, char* out, size_t out_size) {
+      size_t j = 0;
+      for (size_t i = 0; in[i] && j + 1 < out_size; i++) {
+        char c = in[i];
+        if (c == '"' || c == '\\' || c == '<' || c == '>' || c == '&' ||
+            (unsigned char)c < 0x20) {
+          c = '_';
+        }
+        out[j++] = c;
+      }
+      out[j] = '\0';
     }
 
     // ── Parsers (unchanged) ──
@@ -620,12 +670,22 @@ namespace probot::driverstation::esp32 {
       if (!ds->enforceOwner(req)) return ESP_OK;
 
       char body[512];
-      int len = httpd_req_recv(req, body, sizeof(body) - 1);
-      if (len <= 0) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Empty body");
+      int total = (int)req->content_len;
+      if (total <= 0 || total > (int)sizeof(body) - 1) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Bad body size");
         return ESP_OK;
       }
-      body[len] = '\0';
+      // A body can arrive split across TCP segments — read all of it.
+      int got = 0;
+      while (got < total) {
+        int r = httpd_req_recv(req, body + got, total - got);
+        if (r <= 0) {
+          httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Body recv failed");
+          return ESP_OK;
+        }
+        got += r;
+      }
+      body[got] = '\0';
 
       float axes[20]; bool buttons[20]; uint32_t nA = 0, nB = 0;
       parseFloatArray(body, "axes", axes, 20, nA);
@@ -652,6 +712,9 @@ namespace probot::driverstation::esp32 {
 
       bool enAuto = atoi(autoVal) != 0;
       int autoLen = atoi(autoLenVal);
+      // autoLen*1000 happens in the sysloop — clamp to avoid signed
+      // overflow on hostile/typo'd input.
+      if (autoLen > 3600) autoLen = 3600;
 
       if (strcmp(cmd, "init") == 0) {
         ds->_rs.setStatus(millis(), robot::Status::INIT);
@@ -768,7 +831,11 @@ namespace probot::driverstation::esp32 {
       auto s = ds->_rs.read();
       uint32_t now = millis();
       uint32_t joyLast = ds->_gs.lastWriteMs();
-      long joyAge = joyLast ? (long)(uint32_t)(now - joyLast) : -1;
+      long joyAge = -1;
+      if (joyLast) {
+        int32_t d = (int32_t)(now - joyLast);
+        joyAge = d < 0 ? 0 : d;
+      }
       char buf[192];
       snprintf(buf, sizeof(buf),
         "{\"rssi\":%d,\"up\":%lu,\"heap\":%lu,\"dm\":%s,"
@@ -816,7 +883,9 @@ namespace probot::driverstation::esp32 {
     // users to a real browser instead of hosting the DS itself.
     static esp_err_t handlePortal(httpd_req_t* req) {
       auto* ds = self(req);
-      char page[768];
+      char ssid[40];
+      sanitizeSsid(ds->ap_ssid_.c_str(), ssid, sizeof(ssid));
+      char page[1024];
       snprintf(page, sizeof(page),
         "<!DOCTYPE html><html lang=\"tr\"><head><meta charset=\"UTF-8\">"
         "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
@@ -831,7 +900,7 @@ namespace probot::driverstation::esp32 {
         "<p>Buton bu pencerede a&#231;&#305;l&#305;rsa: pencereyi kapat&#305;p "
         "taray&#305;c&#305;da <b>http://%s</b> adresini a&#231;&#305;n.</p>"
         "</body></html>",
-        ds->ap_ssid_.c_str(),
+        ssid,
         WiFi.softAPIP().toString().c_str(),
         WiFi.softAPIP().toString().c_str());
       httpd_resp_set_type(req, "text/html; charset=utf-8");
@@ -845,13 +914,15 @@ namespace probot::driverstation::esp32 {
       // /info is now open (no owner check) so the password field is
       // omitted — anyone connected already has the password; we don't
       // want other teams' monitoring stations harvesting it.
+      char ssid[40];
+      sanitizeSsid(ds->ap_ssid_.c_str(), ssid, sizeof(ssid));
       char buf[512];
       snprintf(buf, sizeof(buf),
         "{\"ssid\":\"%s\",\"ch\":%d,\"chSource\":\"%s\",\"ip\":\"%s\","
         "\"chip\":\"%s\",\"cpuMhz\":%lu,\"sdk\":\"%s\","
         "\"totalHeap\":%lu,\"totalFlash\":%lu,"
         "\"sketchSize\":%lu,\"freeSketch\":%lu,\"psram\":%lu}",
-        ds->ap_ssid_.c_str(),
+        ssid,
         ds->channel_,
         ds->ch_source_,
         WiFi.softAPIP().toString().c_str(),

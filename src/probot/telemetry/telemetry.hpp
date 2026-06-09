@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
+#include <probot/core/lock.hpp>
 
 namespace probot::telemetry {
 
@@ -18,24 +19,14 @@ namespace detail {
 
   inline TelemetryBuffer g_buffer{};
 
-  // Writers run on the user core, readers on the network core — a
-  // spinlock keeps head/len/data consistent. Sections are short
-  // (memcpy of <=256 bytes), so spinning is fine.
-  inline volatile uint32_t g_lock = 0;
-
-  inline void lock() {
-    uint32_t expected = 0;
-    while (!__atomic_compare_exchange_n(&g_lock, &expected, 1u, false,
-                                        __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
-      expected = 0;
-    }
-  }
-
-  inline void unlock() { __atomic_store_n(&g_lock, 0u, __ATOMIC_RELEASE); }
+  // Writers run on the user core, readers on the network core — one
+  // short critical section keeps head/len/data consistent (see
+  // lock.hpp for why this must not be a raw spinlock on ESP32).
+  inline probot::core::Mux g_mux{};
 
   struct LockGuard {
-    LockGuard() { lock(); }
-    ~LockGuard() { unlock(); }
+    LockGuard() { g_mux.lock(); }
+    ~LockGuard() { g_mux.unlock(); }
   };
 }
 

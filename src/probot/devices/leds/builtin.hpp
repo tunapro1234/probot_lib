@@ -4,6 +4,10 @@
 #if defined(ARDUINO)
 #include <Adafruit_NeoPixel.h>
 #endif
+#if defined(ESP32)
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+#endif
 
 #ifndef NEOPIXEL_PIN
 #define NEOPIXEL_PIN 3
@@ -19,8 +23,24 @@ namespace probot::builtinled {
       Adafruit_NeoPixel pixel;
       uint8_t brightness = 32;
       bool initialized = false;
+#if defined(ESP32)
+      // The sysloop blinks the status LED while user code may also call
+      // setColor — NeoPixel show() is not reentrant (shared RMT).
+      SemaphoreHandle_t mtx = xSemaphoreCreateMutex();
+#endif
 
       BuiltinLedState() : pixel(NEOPIXEL_COUNT, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800) {}
+
+      void lock(){
+#if defined(ESP32)
+        if (mtx) xSemaphoreTake(mtx, portMAX_DELAY);
+#endif
+      }
+      void unlock(){
+#if defined(ESP32)
+        if (mtx) xSemaphoreGive(mtx);
+#endif
+      }
     };
 
     inline BuiltinLedState& state(){
@@ -28,8 +48,8 @@ namespace probot::builtinled {
       return s;
     }
 
-    inline void ensureInit(){
-      auto& s = state();
+    // Caller must hold the lock.
+    inline void ensureInitLocked(BuiltinLedState& s){
       if (!s.initialized){
         s.pixel.begin();
         s.pixel.setBrightness(s.brightness);
@@ -42,26 +62,32 @@ namespace probot::builtinled {
 
   inline void setBrightness(uint8_t brightness){
     auto& s = detail::state();
+    s.lock();
     s.brightness = brightness;
     if (s.initialized){
       s.pixel.setBrightness(s.brightness);
       s.pixel.show();
     }
+    s.unlock();
   }
 
   inline void set(bool on){
-    detail::ensureInit();
     auto& s = detail::state();
+    s.lock();
+    detail::ensureInitLocked(s);
     if (on){ s.pixel.setPixelColor(0, s.pixel.Color(0, 0, 255)); }
     else { s.pixel.setPixelColor(0, 0); }
     s.pixel.show();
+    s.unlock();
   }
 
   inline void setColor(uint8_t r, uint8_t g, uint8_t b){
-    detail::ensureInit();
     auto& s = detail::state();
+    s.lock();
+    detail::ensureInitLocked(s);
     s.pixel.setPixelColor(0, s.pixel.Color(r, g, b));
     s.pixel.show();
+    s.unlock();
   }
 #elif defined(PROBOT_BUILTINLED_EXTERNAL)
   void set(bool on);

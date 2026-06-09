@@ -42,12 +42,17 @@ public:
   static constexpr uint32_t DUTY_MAX   = (1u << RESOLUTION) - 1;
 
   // Returns false if the pin is invalid or no LEDC channel is free.
+  // Each Servo instance claims its channel ONCE and keeps it for life —
+  // robotInit() re-runs on every DS Init press, so re-attach must reuse
+  // the same channel instead of burning a new one each time.
   bool attach(uint8_t pin, uint16_t minUs = 500, uint16_t maxUs = 2500) {
     if (_attached) detach();
     if (minUs >= maxUs) return false;
-    int8_t ch = claimChannel();
-    if (ch < 0) return false;
-    if (!ledcAttachChannel(pin, FREQ_HZ, RESOLUTION, (uint8_t)ch)) {
+    if (_ch < 0) {
+      _ch = claimChannel();
+      if (_ch < 0) return false;
+    }
+    if (!ledcAttachChannel(pin, FREQ_HZ, RESOLUTION, (uint8_t)_ch)) {
       return false;
     }
     _pin = pin;
@@ -78,8 +83,8 @@ public:
   uint16_t readMicroseconds() const { return _last_us; }
   bool attached() const { return _attached; }
 
-  // Stops the pulse train (servo goes limp) and frees the pin. The LEDC
-  // channel itself is not recycled — channels are claimed once, top-down.
+  // Stops the pulse train (servo goes limp) and frees the pin. The
+  // instance keeps its LEDC channel for the next attach().
   void detach() {
     if (!_attached) return;
     ledcDetach(_pin);
@@ -89,6 +94,7 @@ public:
 private:
   // analogWrite() hands out channels from 0 upward; we hand out from the
   // top downward so servo timers (50 Hz) never pair with motor timers.
+  // Only called from user hooks (single user task) — no locking needed.
   static int8_t claimChannel() {
 #ifdef LEDC_CHANNELS
     static int8_t next = LEDC_CHANNELS - 1;
@@ -100,6 +106,7 @@ private:
   }
 
   uint8_t  _pin = 255;
+  int8_t   _ch = -1;
   uint16_t _min_us = 500;
   uint16_t _max_us = 2500;
   uint16_t _last_us = 1500;

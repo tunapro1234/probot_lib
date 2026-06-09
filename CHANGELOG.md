@@ -57,24 +57,67 @@ Bağlantı sağlamlaştırma (devam), servo desteği ve doküman yenileme.
 - Telemetri halka tamponu için host unit testleri.
 
 ### Değişti
-- **WS ping yerine görünür heartbeat** (`ws_joystick.hpp`): sunucu artık
-  WS PING yerine 2 baytlık BINARY çerçeve (`'H'`, seq) yolluyor.
-  Tarayıcılar PING'i JS'e göstermediği için istemci ölü linki ayırt
-  edemiyordu; şimdi `onmessage` ile gerçek canlılık sinyali var.
-  Sunucu tarafındaki 3-fail kapatma mantığı aynen korundu.
+- **WS PING yerine görünür heartbeat:** tarayıcılar PING/PONG'u JS'e
+  göstermediği için istemci ölü linki ayırt edemiyordu. Sunucunun
+  ≥1 Hz `'S'` (durum+sağlık) push çerçevesi artık heartbeat görevini
+  görüyor; `onmessage` gerçek canlılık sinyali. Sunucu tarafındaki
+  ardışık-3-fail kapatma mantığı `sendToAll` içinde korundu.
 - **Web UI ölü-link tespiti düzeltildi:** kendi gönderimleri artık
   aktivite sayılmıyor (ölü TCP soketine `ws.send()` sessizce başarılı
   olur — sürüş sırasında kopan bağlantı hiç fark edilmiyordu). Stale
-  eşiği 3 sn → 5 sn (2 kaçan heartbeat). Boştayken yaşanan sürekli
+  eşiği 5 sn (≈5 kaçırılmış `'S'` çerçevesi). Boştayken yaşanan sürekli
   kopma/yeniden bağlanma döngüsü de bu sayede bitti.
-- **Web UI HTTP sağlamlaştırma:** telemetri 50 ms → 150 ms; telemetri ve
-  durum sorgularına eşzamanlılık kilidi + zaman aşımı eklendi (tıkanan
-  hatta istek yığılması önlenir); arka plandaki sekme sorgulamaz.
+- **Web UI HTTP sağlamlaştırma:** durum/sağlık sorgularına eşzamanlılık
+  kilidi + zaman aşımı eklendi (tıkanan hatta istek yığılması önlenir);
+  HTTP artık yalnızca WS koptuğunda (1 Hz fallback) ve 10 sn'de bir RTT
+  ölçümü için kullanılır.
 - **httpd core 0'a sabitlendi** — core 1 tamamen kullanıcı koduna kaldı.
 - `/info` artık makro yerine gerçek (otomatik seçilmiş olabilecek)
   kanalı döndürür. Logs sayfasındaki anlamsız "Password" satırı kalktı.
 
 ### Düzeltildi
+- **KRİTİK — DS timeout'u robotu gerçekten durdurmuyordu (0.2.8
+  hatası):** FORCE_STOP yolu status'u STOP yaparken `lastStatus`'u da
+  STOP'a çekiyordu; geçiş bloğu değişikliği hiç görmüyor, teleop/auto
+  task'ları çalışmaya devam ediyor, `robotEnd()` hiç koşmuyordu.
+- **Aynı çekirdekte öncelik tersinmesi kilitlenmesi:** state/gamepad/
+  telemetri spinlock'ları farklı öncelikli task'lar arasında
+  paylaşılıyordu — yüksek öncelikli task spin'e girince kilidi tutan
+  düşük öncelikli task bir daha hiç koşamıyordu. Üçü de kısa portMUX
+  kritik bölgesine çevrildi (okuyucular dahil — yırtık snapshot da
+  kapandı).
+- **Görev yaşam döngüsü:** init/end worker'larının kendi handle'larını
+  silmesi use-after-free yaratabiliyordu (handle'lar artık yalnız
+  sysloop'a ait, worker'lar bayrakla park ediyor); teleop/auto artık
+  önce kooperatif durduruluyor (60 ms), Serial/Wire ortasında
+  öldürülme riski büyük ölçüde kalktı; INITED fazı artık `robotInit()`
+  gerçekten bitince raporlanıyor; task yaratma hataları loglanıyor.
+- **Watchdog hiçbir görevi izlemiyordu** — sysloop artık TWDT'ye abone
+  (3 sn panik, kilitlenmede yeniden başlatma).
+- **Deadline-miss telemetri seli:** uyarı saniyede ~1000 kez basılıp
+  256 baytlık tamponu tam ihtiyaç anında siliyordu — artık bölüm
+  başına tek atış.
+- **Servo kanal tükenmesi:** her DS Init'i `robotInit()`'i yeniden
+  çalıştırır; `attach()` her seferinde yeni LEDC kanalı yakıyordu —
+  birkaç Init sonrası tüm servolar ölüyordu. Kanal artık nesneye bir
+  kez tahsis ediliyor.
+- **WS yayını 8+ sokette tamamen duruyordu:** `httpd_get_client_list`
+  küçük diziyle çağrılınca hata veriyor, tüm push/heartbeat kesiliyordu
+  (dizi 13'e çıkarıldı). Yayın alıcıları artık owner IP'siyle de
+  süzülüyor (ikinci cihaz state/telemetri dinleyemez).
+- **WS akış hizası:** payload'lı PING/PONG ve boyut aşan çerçeveler
+  TCP akışını kaydırabiliyordu — PING payload'u artık RFC'ye uygun
+  yankılanıyor, aşırı boyut oturumu temiz kapatıyor; 20'den fazla
+  eksen bildiren çerçeveler hayalet buton üretmek yerine reddediliyor
+  (istemci de 20/20'ye kırpıyor).
+- **TankDrive otonom örneği** her çalıştırmada deadline-miss
+  tetikliyordu (2 sn'lik blocking delay) — zaman damgalı kalıba
+  çevrildi.
+- Web UI: gamepad listesi 60 Hz'de yeniden kurulup seçimi sıfırlıyordu;
+  optimistic buton güncellemesi eski 'S' çerçevesiyle çakışabiliyordu
+  (600 ms komut penceresi); kapanan soketin geç `onclose`'u yeni soketi
+  düşürebiliyordu; SSID artık /info JSON'una ve portal HTML'ine
+  süzülerek gömülüyor.
 - **Owner state yarışı:** owner alanlarına httpd task'ı ile sysloop
   task'ı eşzamanlı erişiyordu; tüm erişimler `portMUX` kritik bölgesine
   alındı (log/G-Ç kritik bölge dışında).
@@ -207,25 +250,65 @@ Continued link hardening, servo support, documentation overhaul.
 - Host unit tests for the telemetry ring buffer.
 
 ### Changed
-- **Visible heartbeat instead of WS ping** (`ws_joystick.hpp`): the
-  server now sends a 2-byte BINARY frame (`'H'`, seq) instead of a WS
-  PING. Browsers auto-pong pings invisibly to JS, so the client could
-  never tell a live link from a dead one; a data frame fires
-  `onmessage` and gives a real liveness signal. The server-side
-  3-consecutive-failure close logic is unchanged.
+- **Visible heartbeat instead of WS PING:** browsers auto-pong pings
+  invisibly to JS, so the client could never tell a live link from a
+  dead one. The server's ≥1 Hz `'S'` (state+health) push frame now
+  doubles as the heartbeat — `onmessage` is a real liveness signal.
+  The server-side 3-consecutive-failure close logic lives on inside
+  `sendToAll`.
 - **Web UI dead-link detection fixed:** the client no longer counts its
   own sends as link activity (`ws.send()` into a dead TCP socket
   succeeds silently — a link dying mid-drive was never detected). Stale
-  threshold 3 s → 5 s (2 missed heartbeats). This also ends the
-  reconnect churn loop the UI used to enter while idle.
-- **Web UI HTTP hardening:** telemetry polling 50 ms → 150 ms; in-flight
-  guards + timeouts on the telemetry and state pollers (no request
-  pile-up on a congested link); hidden tabs stop polling.
+  threshold 5 s (≈5 missed `'S'` frames). This also ends the reconnect
+  churn loop the UI used to enter while idle.
+- **Web UI HTTP hardening:** in-flight guards + timeouts on the state
+  and health fetches (no request pile-up on a congested link); HTTP is
+  now used only while the WS is down (1 Hz fallback) and for a 10 s
+  RTT sample.
 - **httpd pinned to core 0** — core 1 is now exclusively user code.
 - `/info` reports the actual (possibly auto-selected) channel instead of
   the macro. The meaningless "Password" row was removed from Logs.
 
 ### Fixed
+- **CRITICAL — DS timeout never actually stopped the robot (0.2.8
+  bug):** the FORCE_STOP path set `lastStatus` together with the
+  status, so the transition block never saw the change — teleop/auto
+  kept running and `robotEnd()` never ran.
+- **Same-core priority-inversion livelock:** the state/gamepad/
+  telemetry spinlocks were shared between different-priority tasks on
+  one core — a spinning high-priority task starved the lock holder
+  forever. All three are now short portMUX critical sections (readers
+  included, which also closes the torn-snapshot window).
+- **Task lifecycle:** init/end workers deleting their own handles could
+  use-after-free (handles are now owned solely by the sysloop; workers
+  park on a flag); teleop/auto now stop cooperatively (60 ms grace)
+  before a hard kill; INITED is reported only when `robotInit()`
+  actually finished; task-creation failures are logged.
+- **The watchdog supervised zero tasks** — the sysloop now subscribes
+  to the TWDT (3 s panic, reboots out of livelocks).
+- **Deadline-miss telemetry flood:** the warning printed ~1000×/s and
+  wiped the 256-byte buffer exactly when needed — now one-shot per
+  episode.
+- **Servo channel exhaustion:** every DS Init re-runs `robotInit()`;
+  `attach()` burned a fresh LEDC channel each time — a few Inits killed
+  all servos. Channels are now claimed once per instance.
+- **WS broadcast died entirely above 8 sockets:** `httpd_get_client_list`
+  fails outright with a too-small array, stopping all push/heartbeat
+  frames (array now 13). Broadcast recipients are also filtered by the
+  owner IP (a second device can no longer eavesdrop state/telemetry).
+- **WS stream alignment:** PING/PONG with payloads and oversize frames
+  could desync the TCP stream — ping payloads are now echoed per RFC,
+  oversize closes the session cleanly, and frames declaring >20 axes
+  are rejected instead of misparsed into phantom buttons (the client
+  also clamps to 20/20).
+- **TankDrive autonomous example** tripped the deadline-miss kill on
+  every run (2 s blocking delay) — rewritten with the timestamp
+  pattern.
+- Web UI: the gamepad list rebuilt at 60 Hz resetting the selection;
+  optimistic button updates raced stale 'S' frames (600 ms command
+  grace window); a dying socket's late `onclose` could drop the new
+  socket; the SSID is now sanitized before embedding in /info JSON and
+  the portal HTML.
 - **Owner-state race:** owner fields were accessed concurrently from the
   httpd task and sysloop; all access now goes through a `portMUX`
   critical section (logging/I-O kept outside).

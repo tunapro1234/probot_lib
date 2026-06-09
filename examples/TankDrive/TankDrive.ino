@@ -60,17 +60,21 @@ void teleopLoop() {
   delay(20);
 }
 
-void autonomousInit() {}
+// Otonom örneği: 2 saniye ileri git, dur.
+// ÖNEMLİ: autonomousLoop kısa sürede dönmeli — 2 saniyeden uzun bloke
+// olan loop "deadline miss" sayılır ve görev sonlandırılır. Bu yüzden
+// delay(2000) yerine zaman damgasıyla durum takibi yapılır.
+uint32_t autoStartTime = 0;
+
+void autonomousInit() {
+  autoStartTime = millis();
+  setMotor(LEFT_RPWM,  LEFT_LPWM,  0.4f, LEFT_INVERTED);
+  setMotor(RIGHT_RPWM, RIGHT_LPWM, 0.4f, RIGHT_INVERTED);
+}
 
 void autonomousLoop() {
-  // Örnek: 2 saniye ileri git, dur.
-  static bool done = false;
-  if (!done) {
-    setMotor(LEFT_RPWM,  LEFT_LPWM,  0.4f, LEFT_INVERTED);
-    setMotor(RIGHT_RPWM, RIGHT_LPWM, 0.4f, RIGHT_INVERTED);
-    delay(2000);
+  if (millis() - autoStartTime >= 2000) {
     stopMotors();
-    done = true;
   }
-  delay(100);
+  delay(20);
 }

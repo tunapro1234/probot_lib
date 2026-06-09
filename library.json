@@ -20,7 +20,7 @@
     "websocket",
     "telemetry"
   ],
-  "name": "Probot Lib",
+  "name": "probot",
   "platforms": [
     "espressif32"
   ],
