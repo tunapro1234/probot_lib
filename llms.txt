@@ -4,7 +4,7 @@
 > Ministry of Education / MEB). The robot hosts a WiFi access point and a
 > browser-based driver station; joystick input streams to the robot over a
 > binary WebSocket at 50 Hz. Library name in the Arduino Library Manager:
-> "probot". Repository: https://github.com/nfrproducts/probot-lib
+> "probot". Repository: https://github.com/probot-studio/probot-core
 
 Rules that generated code MUST follow:
 
@@ -29,11 +29,11 @@ Rules that generated code MUST follow:
 
 ## Docs
 
-- [API reference](https://raw.githubusercontent.com/nfrproducts/probot-lib/stable/API.md): complete API, lifecycle, HTTP/WS protocol
-- [README](https://raw.githubusercontent.com/nfrproducts/probot-lib/stable/README.md): install, configuration macros, competition channel planning, servo jitter guide
+- [API reference](https://raw.githubusercontent.com/probot-studio/probot-core/stable/API.md): complete API, lifecycle, HTTP/WS protocol
+- [README](https://raw.githubusercontent.com/probot-studio/probot-core/stable/README.md): install, configuration macros, competition channel planning, servo jitter guide
 
 ## Examples
 
-- [JoystickTest](https://raw.githubusercontent.com/nfrproducts/probot-lib/stable/examples/JoystickTest/JoystickTest.ino): read axes/buttons, print telemetry
-- [TankDrive](https://raw.githubusercontent.com/nfrproducts/probot-lib/stable/examples/TankDrive/TankDrive.ino): two-motor drive with an H-bridge (BTS7960-style)
-- [ServoTest](https://raw.githubusercontent.com/nfrproducts/probot-lib/stable/examples/ServoTest/ServoTest.ino): jitter-free servo control from the joystick
+- [JoystickTest](https://raw.githubusercontent.com/probot-studio/probot-core/stable/examples/JoystickTest/JoystickTest.ino): read axes/buttons, print telemetry
+- [TankDrive](https://raw.githubusercontent.com/probot-studio/probot-core/stable/examples/TankDrive/TankDrive.ino): two-motor drive with an H-bridge (BTS7960-style)
+- [ServoTest](https://raw.githubusercontent.com/probot-studio/probot-core/stable/examples/ServoTest/ServoTest.ino): jitter-free servo control from the joystick

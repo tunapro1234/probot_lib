@@ -26,7 +26,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/nfrproducts/probot-lib"
+    "url": "https://github.com/probot-studio/probot-core"
   },
   "version": "0.2.9"
 }

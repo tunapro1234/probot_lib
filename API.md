@@ -185,6 +185,6 @@ Robot → istemci: 2 saniyede bir 2 baytlık heartbeat `[0x48, seq]`.
 ## Derleme hedefleri
 
 - Arduino IDE / arduino-cli: `library.properties` ile (`make build EXAMPLE=JoystickTest`)
-- PlatformIO: `lib_deps = https://github.com/nfrproducts/probot-lib.git`
+- PlatformIO: `lib_deps = https://github.com/probot-studio/probot-core.git`
 - ESP-IDF + Arduino component: `probot::runtime_setup()` çağırın
 - Host unit testleri: `make test` (donanımsız, g++ ile)

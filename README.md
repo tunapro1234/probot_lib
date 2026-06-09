@@ -14,7 +14,7 @@ ve joystick verisini WebSocket ile düşük gecikmeyle robota taşır.
 1. **Kütüphane:** Arduino IDE → Library Manager → **"probot"** ara → Install.
    Ya da en güncel sürüm için:
    ```bash
-   git clone https://github.com/nfrproducts/probot-lib ~/Arduino/libraries/probot-core
+   git clone https://github.com/probot-studio/probot-core ~/Arduino/libraries/probot-core
    ```
 2. **ESP32 core:** Boards Manager → "esp32" (Espressif) → **3.x** kurulu olmalı.
 3. **Kart:** `ESP32S3 Dev Module` (veya `ESP32 Dev Module`).
@@ -138,7 +138,7 @@ prompt'unuzun başına ekleyin:
 ```text
 ESP32 için "probot" kütüphanesiyle (0.2.9) Arduino kodu yaz.
 Önce API referansını oku:
-https://raw.githubusercontent.com/nfrproducts/probot-lib/stable/API.md
+https://raw.githubusercontent.com/probot-studio/probot-core/stable/API.md
 Kurallar:
 - setup()/loop() TANIMLAMA; robotInit, robotEnd, teleopInit, teleopLoop,
   autonomousInit, autonomousLoop — altısı da tanımlı olacak.
@@ -164,7 +164,7 @@ Makine-okur özet: [`llms.txt`](llms.txt) · Tam referans: [`API.md`](API.md)
 
 ## Destek ve lisans
 
-- Hata bildirimi: https://github.com/nfrproducts/probot-lib/issues
+- Hata bildirimi: https://github.com/probot-studio/probot-core/issues
 - WhatsApp: +90 538 040 81 48
 - Lisans: MIT + Commons Clause — eğitim ve yarışma kullanımı ücretsiz,
   ticari lisans için tunagul54@gmail.com
@@ -179,7 +179,7 @@ input streams over a binary WebSocket at 50 Hz with automatic failsafes
 (input zeroing after 500 ms, robot stop after 10 s of DS silence).
 
 **Install:** Arduino IDE Library Manager → "probot", or clone
-https://github.com/nfrproducts/probot-lib into `~/Arduino/libraries/`.
+https://github.com/probot-studio/probot-core into `~/Arduino/libraries/`.
 Requires arduino-esp32 core 3.x and the **Huge APP (3MB No OTA)**
 partition scheme.
 
