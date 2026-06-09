@@ -5,8 +5,6 @@ Katkınız için teşekkürler! Aşağıdaki rehber; nasıl çalıştığımız�
 ## Çalışma Akışı ve Dallar
 - `dev`: Aktif geliştirme dalı. Tüm değişiklikler önce buraya gelir.
 - `stable`: Yayınlanan sürüm. Doğrudan commit yapılmaz; `dev` → PR/merge ile güncellenir.
-- `gh-pages`: Dokümantasyon sitesi (https://docs.probotstudio.com/) bu daldan yayınlanır.
-- `legacy`: Eski kütüphane yapısı, yalnızca inceleme amaçlı.
 
 Önerilen akış:
 1) `dev` üzerinden bir feature dalı açın: `feature/…`, `fix/…`, `docs/…`
@@ -14,7 +12,7 @@ Katkınız için teşekkürler! Aşağıdaki rehber; nasıl çalıştığımız�
 3) PR’ı `dev` hedefine açın; kısa açıklama, test adımları ve ekran çıktısı ekleyin
 4) Onay sonrası `dev`’e birleştirilir; yayın döngüsünde `stable` güncellenir
 
-Dokümantasyon katkıları için: İçerik `gh-pages` dalında tutulur. Doküman PR’larını `gh-pages` hedefine açın.
+Dokümantasyon (README, API.md, llms.txt) bu repodadır — doküman PR'larını da `dev` hedefine açın.
 
 ## Geliştirme Ön Koşulları
 - Arduino IDE 2.x veya `arduino-cli`
@@ -27,9 +25,10 @@ Dokümantasyon katkıları için: İçerik `gh-pages` dalında tutulur. Doküman
 
 ## Örnekleri Derlemek (Makefile)
 - Listele: `make list`
-- Derle: `make build EXAMPLE=ClosedLoopDemo`
-- Yükle: `make upload EXAMPLE=ClosedLoopDemo PORT=/dev/ttyACM0`
+- Derle: `make build EXAMPLE=JoystickTest` (veya `EXAMPLE=all`)
+- Yükle: `make upload EXAMPLE=JoystickTest PORT=/dev/ttyACM0`
 - Seri monitör: `make serial` (115200 baud)
+- Host unit testleri (donanımsız): `make tests/control_tests && ./tests/control_tests`
 
 ## Kod Stili ve İlkeler
 - Anlamlı isimler; 1–2 harfli değişkenlerden kaçının
@@ -42,7 +41,8 @@ Dokümantasyon katkıları için: İçerik `gh-pages` dalında tutulur. Doküman
 Commit mesajları (öneri): `feat: …`, `fix: …`, `docs: …`, `refactor: …`, `chore: …`
 
 ## Test Beklentileri
-- En az bir örneği derleyip çalıştırın (örn. `ClosedLoopDemo`, `BasicTankDrive`)
+- En az bir örneği derleyip çalıştırın (örn. `JoystickTest`, `TankDrive`)
+- Host unit testlerinin geçtiğini doğrulayın
 - Seri loglarıyla temel akışı doğrulayın (115200 baud)
 - Sürücü istasyonu/joystick varsa kısa bir manuel senaryo ekleyin
 
@@ -69,8 +69,6 @@ Thanks for contributing! This guide summarizes the workflow, branches, and what 
 ## Workflow and Branches
 - `dev`: Active development. Open PRs against this branch.
 - `stable`: Release branch. Updated via merges from `dev`.
-- `gh-pages`: Documentation site (https://docs.probotstudio.com/) is published from here.
-- `legacy`: Previous library layout for reference only.
 
 Recommended flow:
 1) Branch off `dev`: `feature/...`, `fix/...`, `docs/...`
@@ -78,7 +76,7 @@ Recommended flow:
 3) Open a PR to `dev` with clear description and test steps
 4) After review, merge into `dev`; `stable` is updated in the release cycle
 
-Documentation contributions: open PRs targeting `gh-pages`.
+Documentation (README, API.md, llms.txt) lives in this repo — open documentation PRs against `dev` too.
 
 ## Prerequisites
 - Arduino IDE 2.x or `arduino-cli`
@@ -91,9 +89,10 @@ Documentation contributions: open PRs targeting `gh-pages`.
 
 ## Building Examples (Makefile)
 - List: `make list`
-- Build: `make build EXAMPLE=ClosedLoopDemo`
-- Upload: `make upload EXAMPLE=ClosedLoopDemo PORT=/dev/ttyACM0`
+- Build: `make build EXAMPLE=JoystickTest` (or `EXAMPLE=all`)
+- Upload: `make upload EXAMPLE=JoystickTest PORT=/dev/ttyACM0`
 - Serial monitor: `make serial` (115200 baud)
+- Host unit tests (no hardware): `make tests/control_tests && ./tests/control_tests`
 
 ## Code Style and Principles
 - Clear, descriptive names; avoid 1–2 letter identifiers
@@ -106,7 +105,8 @@ Documentation contributions: open PRs targeting `gh-pages`.
 Commit message convention (suggested): `feat: …`, `fix: …`, `docs: …`, `refactor: …`, `chore: …`
 
 ## Testing Expectations
-- Compile and run at least one example (e.g., `ClosedLoopDemo`, `BasicTankDrive`)
+- Compile and run at least one example (e.g., `JoystickTest`, `TankDrive`)
+- Make sure the host unit tests pass
 - Validate basic flow via serial logs (115200 baud)
 - If applicable, include a short manual scenario for driver station/joystick
 

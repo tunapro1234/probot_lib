@@ -6,6 +6,63 @@ Biçim [Keep a Changelog](https://keepachangelog.com/), sürümler
 
 ---
 
+## [0.2.9] — Yarışma Hazırlığı
+
+Bağlantı sağlamlaştırma (devam), servo desteği ve doküman yenileme.
+
+### Eklendi
+- **`probot::devices::Servo`** (`devices/servo/servo.hpp`): 50 Hz LEDC
+  donanım PWM ile servo sınıfı. Kanalları üstten ayırır — `analogWrite`
+  motor PWM'iyle timer çakışması (servo titremesinin 1 numaralı yazılım
+  nedeni) yapısal olarak imkânsız. `attach/write/writeMicroseconds/detach`.
+- **`PROBOT_WIFI_AP_CHANNEL 0` = otomatik kanal seçimi.** Açılışta band
+  taranır, 1/5/9/13 içinden en boş kanal seçilir (~2-3 sn ek açılış).
+  Seçilen kanal Serial'de ve `/info`'da raporlanır.
+- **`PROBOT_DS_OWNER_TIMEOUT_MS`** makrosu (varsayılan 5000) — owner
+  slotunun boşalma süresi artık yapılandırılabilir.
+- **Yeni örnekler:** `TankDrive` (BTS7960 tarzı çift motor) ve
+  `ServoTest` (joystick ile servo).
+- **Doküman seti:** README yeniden yazıldı (derlenen quick-start, kanal
+  planı, servo rehberi); `API.md` tek sayfa tam referans; `llms.txt`
+  (yapay zekâ araçları için kurallar + ham linkler); `keywords.txt`.
+- Telemetri halka tamponu için host unit testleri.
+
+### Değişti
+- **WS ping yerine görünür heartbeat** (`ws_joystick.hpp`): sunucu artık
+  WS PING yerine 2 baytlık BINARY çerçeve (`'H'`, seq) yolluyor.
+  Tarayıcılar PING'i JS'e göstermediği için istemci ölü linki ayırt
+  edemiyordu; şimdi `onmessage` ile gerçek canlılık sinyali var.
+  Sunucu tarafındaki 3-fail kapatma mantığı aynen korundu.
+- **Web UI ölü-link tespiti düzeltildi:** kendi gönderimleri artık
+  aktivite sayılmıyor (ölü TCP soketine `ws.send()` sessizce başarılı
+  olur — sürüş sırasında kopan bağlantı hiç fark edilmiyordu). Stale
+  eşiği 3 sn → 5 sn (2 kaçan heartbeat). Boştayken yaşanan sürekli
+  kopma/yeniden bağlanma döngüsü de bu sayede bitti.
+- **Web UI HTTP sağlamlaştırma:** telemetri 50 ms → 150 ms; telemetri ve
+  durum sorgularına eşzamanlılık kilidi + zaman aşımı eklendi (tıkanan
+  hatta istek yığılması önlenir); arka plandaki sekme sorgulamaz.
+- **httpd core 0'a sabitlendi** — core 1 tamamen kullanıcı koduna kaldı.
+- `/info` artık makro yerine gerçek (otomatik seçilmiş olabilecek)
+  kanalı döndürür. Logs sayfasındaki anlamsız "Password" satırı kalktı.
+
+### Düzeltildi
+- **Owner state yarışı:** owner alanlarına httpd task'ı ile sysloop
+  task'ı eşzamanlı erişiyordu; tüm erişimler `portMUX` kritik bölgesine
+  alındı (log/G-Ç kritik bölge dışında).
+- **Gamepad çift yazar yarışı:** `GamepadService::write` hem WS/HTTP
+  handler'larından hem owner release yolundan çağrılıyor; yazarlar artık
+  spinlock ile sıralanıyor (okuyucular kilitsiz kalır).
+- Kullanılmayan sabitler temizlendi (`INIT_KILL_TIMEOUT_MS`, `PRIO_STATE`,
+  `PRIO_UI`, `STACK_UI`).
+
+### Yükseltme notları
+- Davranış kıran API değişikliği yok; mevcut sketch'ler aynen derlenir.
+- Servo kullanan takımlar `ESP32Servo` yerine `probot::devices::Servo`'ya
+  geçmeli (README "Servo kullanımı").
+- Kalabalık RF ortamında `#define PROBOT_WIFI_AP_CHANNEL 0` deneyin.
+
+---
+
 ## [0.2.8] — Bağlantı Güvenilirliği
 
 Tek odak: **link-layer dayanıklılığı**. Davranış değiştiren API yok;
@@ -67,6 +124,65 @@ mevcut sketch'ler değişiklik gerektirmeden derlenir ve çalışır.
 All notable changes are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/).
 Versioning: [Semantic Versioning](https://semver.org/).
+
+---
+
+## [0.2.9] — Competition Readiness
+
+Continued link hardening, servo support, documentation overhaul.
+
+### Added
+- **`probot::devices::Servo`** (`devices/servo/servo.hpp`): hobby-servo
+  class on 50 Hz LEDC hardware PWM. Channels are allocated from the top
+  of the range downward, so a timer collision with `analogWrite` motor
+  PWM (the #1 software cause of servo jitter) is structurally
+  impossible. `attach/write/writeMicroseconds/detach`.
+- **`PROBOT_WIFI_AP_CHANNEL 0` = auto channel select.** Scans the band
+  at boot and picks the least congested of 1/5/9/13 (~2-3 s added boot
+  time). The chosen channel is reported on Serial and `/info`.
+- **`PROBOT_DS_OWNER_TIMEOUT_MS`** macro (default 5000) — the owner-slot
+  idle timeout is now configurable.
+- **New examples:** `TankDrive` (BTS7960-style dual motor) and
+  `ServoTest` (servo from joystick).
+- **Documentation set:** rewritten README (a quick-start that actually
+  compiles, channel planning, servo guide); `API.md` single-page full
+  reference; `llms.txt` (rules + raw links for AI tools); `keywords.txt`.
+- Host unit tests for the telemetry ring buffer.
+
+### Changed
+- **Visible heartbeat instead of WS ping** (`ws_joystick.hpp`): the
+  server now sends a 2-byte BINARY frame (`'H'`, seq) instead of a WS
+  PING. Browsers auto-pong pings invisibly to JS, so the client could
+  never tell a live link from a dead one; a data frame fires
+  `onmessage` and gives a real liveness signal. The server-side
+  3-consecutive-failure close logic is unchanged.
+- **Web UI dead-link detection fixed:** the client no longer counts its
+  own sends as link activity (`ws.send()` into a dead TCP socket
+  succeeds silently — a link dying mid-drive was never detected). Stale
+  threshold 3 s → 5 s (2 missed heartbeats). This also ends the
+  reconnect churn loop the UI used to enter while idle.
+- **Web UI HTTP hardening:** telemetry polling 50 ms → 150 ms; in-flight
+  guards + timeouts on the telemetry and state pollers (no request
+  pile-up on a congested link); hidden tabs stop polling.
+- **httpd pinned to core 0** — core 1 is now exclusively user code.
+- `/info` reports the actual (possibly auto-selected) channel instead of
+  the macro. The meaningless "Password" row was removed from Logs.
+
+### Fixed
+- **Owner-state race:** owner fields were accessed concurrently from the
+  httpd task and sysloop; all access now goes through a `portMUX`
+  critical section (logging/I-O kept outside).
+- **Gamepad dual-writer race:** `GamepadService::write` is called from
+  both WS/HTTP handlers and the owner-release path; writers are now
+  serialized with a spinlock (readers stay lock-free).
+- Removed dead constants (`INIT_KILL_TIMEOUT_MS`, `PRIO_STATE`,
+  `PRIO_UI`, `STACK_UI`).
+
+### Upgrade notes
+- No breaking API changes; existing sketches compile unchanged.
+- Teams using servos should switch from `ESP32Servo` to
+  `probot::devices::Servo` (see README "Servo kullanımı").
+- In crowded RF environments try `#define PROBOT_WIFI_AP_CHANNEL 0`.
 
 ---
 

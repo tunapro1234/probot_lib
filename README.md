@@ -1,282 +1,194 @@
-# Probot Lib
+# Probot
 
-MEB robot yarışmaları için ESP32 tabanlı Arduino kütüphanesi. Kablosuz
-driver station, WiFi AP, WebSocket üzerinden düşük gecikmeli joystick
-aktarımı ve FreeRTOS tabanlı çift çekirdek görev yönetimi sunar.
+ESP32 tabanlı robot yarışması iletişim kütüphanesi. Robot bir WiFi
+erişim noktası açar, tarayıcıdan çalışan Driver Station arayüzü sunar
+ve joystick verisini WebSocket ile düşük gecikmeyle robota taşır.
 
-**Dokümantasyon:** https://docs.probotstudio.com/yazilim/
-
-> **0.2.8** bir **bağlantı güvenilirliği** sürümüdür. Tam liste için
-> aşağıdaki "Bu sürümde neler değişti" bölümüne ve `CHANGELOG.md`
-> dosyasına bakın.
+**Sürüm 0.2.9** · ESP32 / ESP32-S3 · [API Referansı](API.md) ·
+[English summary below](#probot-en)
 
 ---
 
-## Hızlı Başlangıç
+## Kurulum
 
-**Kurulum (Arduino IDE):** Library Manager'dan "Probot Lib" arayıp yükleyin.
+1. **Kütüphane:** Arduino IDE → Library Manager → **"probot"** ara → Install.
+   Ya da en güncel sürüm için:
+   ```bash
+   git clone https://github.com/nfrproducts/probot-lib ~/Arduino/libraries/probot-core
+   ```
+2. **ESP32 core:** Boards Manager → "esp32" (Espressif) → **3.x** kurulu olmalı.
+3. **Kart:** `ESP32S3 Dev Module` (veya `ESP32 Dev Module`).
+4. **Partition:** Tools → Partition Scheme → **Huge APP (3MB No OTA)**.
+   Bu ayar şart — varsayılan bölüm yetersiz, derleme sığmaz.
 
-**Kurulum (arduino-cli):**
-```bash
-arduino-cli lib install "Probot Lib"
-# veya doğrudan git deposundan:
-git clone https://github.com/probot-studio/probot-core ~/Arduino/libraries/probot-core
-```
+## İlk robot (5 dakika)
 
-**Kart ayarı:** `ESP32 Dev Module` veya `ESP32S3 Dev Module`, partition
-şeması **`Huge APP (3MB No OTA)`** seçin — varsayılan 1.2MB bölümü
-yetersizdir.
-
-**İlk sketch:**
 ```cpp
 #define PROBOT_WIFI_AP_SSID     "MyRobot"
-#define PROBOT_WIFI_AP_PASSWORD "robot1234"
-#define PROBOT_WIFI_AP_CHANNEL  1
+#define PROBOT_WIFI_AP_PASSWORD "robot1234"   // en az 8 karakter
+#define PROBOT_WIFI_AP_CHANNEL  1             // 1-13, veya 0 = otomatik seç
 #include <probot.h>
 
-void robotInit()       {}
-void robotEnd()        {}
-void teleopInit()      {}
-void teleopLoop() {
-  auto& gp = probot::io::gamepad();
-  // gp.getLeftX(), gp.getA(), … ile motor kodunu buraya yaz
+void robotInit() {}                // Init'e basınca 1 kez
+void robotEnd() {}                 // Stop'ta 1 kez — motorları burada durdur
+void teleopInit() {}               // teleop başlarken 1 kez
+
+void teleopLoop() {                // ~50 Hz tekrar çağrılır
+  auto js = probot::io::joystick_api::makeDefault();
+  float ileri = js.getLeftY();     // -1..+1 (ileri pozitif)
+  bool  buton = js.getA();
+  // motor kodun burada
+  delay(20);
 }
-void autonomousInit()  {}
-void autonomousLoop()  { delay(100); }
+
+void autonomousInit() {}
+void autonomousLoop() { delay(100); }
 ```
 
-ESP'ye yükle → `MyRobot` WiFi ağına bağlan → `http://192.168.4.1`'i aç
-→ joystick'le kontrol et.
+> `setup()` ve `loop()` **tanımlamayın** — kütüphane kendisi tanımlar.
+> Altı fonksiyonun altısı da sketch'te bulunmak zorundadır.
 
----
+1. Yükle → Serial monitörde IP'yi gör (`192.168.4.1`).
+2. Tablet/telefonu `MyRobot` WiFi ağına bağla.
+3. Tarayıcıda `http://192.168.4.1` aç.
+4. Kumandayı tablete bağla (USB/Bluetooth) → **Init** → **Start**.
 
 ## Örnekler
 
-`examples/JoystickTest/` — joystick eksenlerini ve butonlarını seri
-porta ve telemetri paneline yazdırır. API'yı öğrenmek için başlangıç
-noktası.
+| Örnek | Ne yapar |
+|---|---|
+| `JoystickTest` | Eksen/buton değerlerini Serial'e ve telemetri paneline basar. İlk deneme için. |
+| `TankDrive` | Çift motor tank sürüşü (BTS7960/IBT-2 tarzı sürücü). Motor kodunun şablonu. |
+| `ServoTest` | Joystick ile servo kontrolü — titreşimsiz servo kullanımının doğru yolu. |
 
-Motor sürücü entegrasyonları (tank drive, mecanum, PID, kapalı çevrim)
-bu sürümde kullanıcı tarafında yazılır; referans implementasyonlar
-ileriki sürümlerde gelecek.
+## Ayar makroları
 
----
+Hepsi `#include <probot.h>` satırından **önce** tanımlanır:
 
-## Bu sürümde neler değişti (0.2.8)
+| Makro | Varsayılan | Açıklama |
+|---|---|---|
+| `PROBOT_WIFI_AP_SSID` | `"Probot"` | AP adı (1-32 karakter) |
+| `PROBOT_WIFI_AP_PASSWORD` | — (zorunlu) | AP şifresi (≥8 karakter) |
+| `PROBOT_WIFI_AP_CHANNEL` | — (zorunlu) | 1-13, veya **0 = açılışta en boş kanalı otomatik seç** |
+| `PROBOT_WIFI_AP_SSID_MAC_SUFFIX` | kapalı | SSID sonuna `-XXXXXX` (MAC) ekler |
+| `PROBOT_DS_TIMEOUT_MS` | `10000` | DS'ten veri kesilirse timeout (ms) |
+| `PROBOT_DS_TIMEOUT_FORCE_STOP` | `1` | `1`: timeout'ta robot STOP. `0`: loop sürer, joystick nötr, bağlantı dönünce devam |
+| `PROBOT_DS_OWNER_TIMEOUT_MS` | `5000` | Sahip client sessiz kalırsa slotun boşalma süresi |
+| `NEOPIXEL_PIN` / `NEOPIXEL_COUNT` | `3` / `1` | Durum LED'i pini/adedi |
 
-Tümü bağlantı dayanıklılığına odaklı:
+## Yarışma günü: kanal planı
 
-1. **WS ping 3-fail toleransı** — Tek başarısız ping'de kapatma
-   yerine ardışık 3 fail'de kapat. Gürültülü RF ortamında sahte
-   kopmaları ortadan kaldırır.
-2. **`/health` ve `/info` owner'sız** — Hakem/izleme cihazları, aktif
-   sürücünün sahiplik slotunu çalmadan robot sağlığını görebilir.
-3. **Owner release'de gamepad nötr** — Bağlantı kopunca son eksen/buton
-   state'i buffer'dan sıfırlanır. Kullanıcı kodu stale input okuyup
-   motorları sürmez.
-4. **`PROBOT_DS_TIMEOUT_FORCE_STOP`** — Varsayılan `1` (güvenli,
-   bağlantı kopunca robot STOP). `0` yaparsan loop çalışmaya devam
-   eder, joystick nötrlenir, bağlantı dönünce restart gerekmez.
-5. **`/joystick` WS handshake'de owner kontrolü** — Handshake ve her
-   frame'de yeniden doğrulama. İkinci bir client slot'u ele geçiremez.
+- 2.4 GHz'te birbirini **ezmeyen** kanallar: **1, 5, 9, 13**. Aynı anda
+  çalışan robotlar bu dörtlüden farklı kanallara dağıtılmalı.
+- `PROBOT_WIFI_AP_CHANNEL 0` → robot açılışta ortamı tarar, en boş
+  kanalı kendisi seçer (açılışa ~2-3 sn ekler). Pit alanı gibi kalabalık
+  RF ortamında en pratik çözüm; seçilen kanal Serial'de ve arayüzün
+  Logs sayfasında görünür.
+- Telefon hotspot'ları ve seyirci cihazları da 2.4 GHz'i doldurur —
+  maç sırasında robot çevresinde hotspot açtırmayın.
+- Sinyal sorunlarını sahada ayıklamak için `/health` endpoint'i RSSI
+  verir; -70 dBm'den kötüyse mesafe/anten sorununa bakın.
 
-Detay: `CHANGELOG.md`.
+## Servo kullanımı (titreme çözümü)
 
----
+Servo titremesinin iki yaygın sebebi var; ikisi de kütüphane dışında:
 
-## Yapılandırma makroları
+1. **Timer çakışması:** `analogWrite` (motorlar, 1 kHz) ile servo
+   kütüphaneleri (50 Hz) aynı LEDC timer'ına düşerse biri diğerinin
+   frekansını bozar. Çözüm: `probot::devices::Servo` kullanın — kanalları
+   üstten ayırır, motor PWM'iyle asla çakışmaz:
+   ```cpp
+   probot::devices::Servo kol;
+   void robotInit() { kol.attach(4); }      // GPIO 4
+   void teleopLoop() { kol.write(90); ... } // 0-180°
+   ```
+2. **Güç:** Servoyu ESP32'nin 5V/3V3 pininden beslemeyin. WiFi anlık
+   akım çekişleri gerilimi düşürür, servo seğirir. Servoya **ayrı 5-6V
+   kaynak (BEC/UBEC)** verin, toprakları ortak bağlayın.
 
-`probot.h`'yi include etmeden önce tanımla:
+PCA9685 kullanıyorsanız: servo çıkışları için PWM frekansı **50 Hz**
+olmalı (1 kHz'te servo darbe genişliği fiziksel olarak üretilemez).
 
-```cpp
-#define PROBOT_WIFI_AP_SSID     "RobotAdi"    // 1-32 karakter
-#define PROBOT_WIFI_AP_PASSWORD "en-az-8-char" // en az 8 karakter
-#define PROBOT_WIFI_AP_CHANNEL  1             // 1-13
-// isteğe bağlı:
-#define PROBOT_WIFI_AP_SSID_MAC_SUFFIX        // SSID'ye -XXXXXX ekle
-#define PROBOT_DS_TIMEOUT_MS    10000         // DS aktivite timeout
-#define PROBOT_DS_TIMEOUT_FORCE_STOP 1        // 0 = soft, 1 = STOP
+## Durum LED'i
+
+| Renk | Anlam |
+|---|---|
+| Mavi sabit | Açık, DS bağlı değil |
+| Mavi yanıp sönüyor | DS bağlı, Init bekleniyor |
+| Sarı sabit | Init tamam, Start bekleniyor |
+| Turuncu yanıp sönüyor | Otonom çalışıyor |
+| Yeşil yanıp sönüyor | Teleop çalışıyor |
+| Kırmızı yanıp sönüyor | Deadline miss — loop 2 sn'den uzun bloke oldu |
+
+## Bağlantı davranışı (güvenlik)
+
+- Joystick verisi **500 ms** kesilirse eksen/butonlar otomatik sıfırlanır
+  → motorlar son komutla kaçmaz.
+- DS **10 sn** tamamen sessiz kalırsa robot STOP'a geçer
+  (`PROBOT_DS_TIMEOUT_FORCE_STOP 0` ile yumuşak moda alınabilir).
+- Aynı anda **tek client** kontrol edebilir (ilk bağlanan IP sahip olur).
+  İkinci cihaz arayüzü açarsa `403` alır. `/health` ve `/info` ise
+  sahiplik gerektirmez — hakem/izleme cihazları serbestçe okuyabilir.
+
+## Yapay zeka ile kod yazma
+
+Gemini / ChatGPT / Claude'a robot kodu yazdırırken bu satırları
+prompt'unuzun başına ekleyin:
+
+```text
+ESP32 için "probot" kütüphanesiyle (0.2.9) Arduino kodu yaz.
+Önce API referansını oku:
+https://raw.githubusercontent.com/nfrproducts/probot-lib/stable/API.md
+Kurallar:
+- setup()/loop() TANIMLAMA; robotInit, robotEnd, teleopInit, teleopLoop,
+  autonomousInit, autonomousLoop — altısı da tanımlı olacak.
+- Joystick: auto js = probot::io::joystick_api::makeDefault();
+  js.getLeftY() vb. (-1..+1). probot::io::gamepad() üzerinde getLeftX gibi
+  metodlar YOKTUR.
+- Servo için probot::devices::Servo kullan, ESP32Servo kullanma.
+- teleopLoop ~50 Hz çağrılır; içinde sonsuz döngü/uzun blocking yapma.
 ```
 
----
+Makine-okur özet: [`llms.txt`](llms.txt) · Tam referans: [`API.md`](API.md)
 
-## Platform desteği
+## Sık sorunlar
 
-- **Arduino IDE / arduino-cli**: `library.properties` üzerinden doğrudan
-  derlenir. `make build EXAMPLE=JoystickTest`.
-- **PlatformIO (Arduino framework)**: `lib_deps`'e path veya git URL ekle.
-- **ESP-IDF + Arduino component**: `components/` altına kopyala,
-  `app_main` içinden `probot::runtime_setup()` çağır.
+| Belirti | Çözüm |
+|---|---|
+| "Sketch too big" | Partition Scheme → Huge APP (3MB No OTA) |
+| `#error ... PASSWORD` | Makroları `#include <probot.h>`'den önce yazın |
+| Arayüz açılmıyor / 403 | Başka bir cihaz bağlı (tek client kuralı). Diğerini kapatın, ~5 sn bekleyin |
+| Joystick görünmüyor | Kumandada herhangi bir tuşa basın (tarayıcı gamepad'i tuşa basılınca tanır) |
+| Sık kopma | Kanal çakışması — `PROBOT_WIFI_AP_CHANNEL 0` deneyin veya 1/5/9/13'e dağıtın |
+| Servo titriyor | Yukarıdaki "Servo kullanımı" bölümü |
 
-Sürüm numarası `VERSION` dosyasından yönetilir; `make version-sync`
-metadata dosyalarını eşitler.
+## Destek ve lisans
 
----
-
-## Donanım
-
-Kütüphane **ESP32 ve ESP32-S3** ile uyumludur (WROOM, WROVER, S3 DevKit).
-Test edilmiş kart: [Boardoza Pulse S32-S3](https://boardoza.com/product/boardoza-pulse-s32-s3-breakout-board/).
-
-PWM çıkışı veren herhangi bir motor sürücü kullanılabilir: VNH5019,
-BTS7960B, TB6612, L298N, vb.
+- Hata bildirimi: https://github.com/nfrproducts/probot-lib/issues
+- WhatsApp: +90 538 040 81 48
+- Lisans: MIT + Commons Clause — eğitim ve yarışma kullanımı ücretsiz,
+  ticari lisans için tunagul54@gmail.com
 
 ---
 
-## Lisans
+# Probot (EN)
 
-MIT + Commons Clause. Eğitim ve yarışma kullanımı ücretsiz; ticari
-lisans için: tunagul54@gmail.com
+ESP32 communication library for educational robotics competitions:
+the robot hosts a WiFi AP and a browser-based driver station; joystick
+input streams over a binary WebSocket at 50 Hz with automatic failsafes
+(input zeroing after 500 ms, robot stop after 10 s of DS silence).
 
----
+**Install:** Arduino IDE Library Manager → "probot", or clone
+https://github.com/nfrproducts/probot-lib into `~/Arduino/libraries/`.
+Requires arduino-esp32 core 3.x and the **Huge APP (3MB No OTA)**
+partition scheme.
 
-## Destek
+**Minimal sketch:** see the Turkish quick start above — the code is
+identical. Define the three `PROBOT_WIFI_*` macros, include `probot.h`,
+implement the six lifecycle hooks (`robotInit`, `robotEnd`,
+`teleopInit`, `teleopLoop`, `autonomousInit`, `autonomousLoop`), and
+read input via `probot::io::joystick_api::makeDefault()`. Do not define
+`setup()`/`loop()` — the library owns them.
 
-- **Dokümantasyon:** https://docs.probotstudio.com/yazilim/
-- **WhatsApp:** +90 538 040 81 48
-- **Hata bildirimi:** https://github.com/probot-studio/probot-core/issues
-
----
----
-
-# Probot Lib (EN)
-
-ESP32-based Arduino library for Ministry of Education robotics
-competitions. Provides a wireless driver station over WiFi AP,
-low-latency joystick transport via WebSocket, and a dual-core
-FreeRTOS-based task manager.
-
-**Documentation:** https://docs.probotstudio.com/yazilim/
-
-> **0.2.8** is a **connection-reliability** release. See "What changed
-> in this release" below and `CHANGELOG.md` for the full list.
-
----
-
-## Quick start
-
-**Install (Arduino IDE):** Library Manager → search "Probot Lib" → install.
-
-**Install (arduino-cli):**
-```bash
-arduino-cli lib install "Probot Lib"
-# or from git:
-git clone https://github.com/probot-studio/probot-core ~/Arduino/libraries/probot-core
-```
-
-**Board setup:** Pick `ESP32 Dev Module` or `ESP32S3 Dev Module`. Set
-partition scheme to **`Huge APP (3MB No OTA)`** — the default 1.2 MB
-slot is not enough.
-
-**Minimal sketch:**
-```cpp
-#define PROBOT_WIFI_AP_SSID     "MyRobot"
-#define PROBOT_WIFI_AP_PASSWORD "robot1234"
-#define PROBOT_WIFI_AP_CHANNEL  1
-#include <probot.h>
-
-void robotInit()       {}
-void robotEnd()        {}
-void teleopInit()      {}
-void teleopLoop() {
-  auto& gp = probot::io::gamepad();
-  // drive motors with gp.getLeftX(), gp.getA(), …
-}
-void autonomousInit()  {}
-void autonomousLoop()  { delay(100); }
-```
-
-Flash → join `MyRobot` WiFi → visit `http://192.168.4.1` → drive with a
-joystick.
-
----
-
-## Examples
-
-`examples/JoystickTest/` — prints joystick axes and buttons to Serial
-and the telemetry panel. Starting point for learning the API.
-
-Motor integrations (tank drive, mecanum, PID, closed-loop) are written
-by the user in this release; reference implementations will ship in a
-later version.
-
----
-
-## What changed in this release (0.2.8)
-
-All focused on connection reliability:
-
-1. **WS ping 3-fail tolerance** — Closing on a single failed ping
-   caused spurious disconnects under noisy RF. The link now survives
-   short interference bursts (closes only after three consecutive
-   failures).
-2. **`/health` and `/info` are open** — Judges and monitoring stations
-   can observe robot health without stealing the active driver's
-   ownership slot. `/info` no longer leaks the WiFi password.
-3. **Gamepad state zeroed on owner release** — When the link dies the
-   gamepad buffer is cleared so user code reading axes/buttons sees
-   neutral values instead of whatever the driver held at the moment
-   of disconnect.
-4. **`PROBOT_DS_TIMEOUT_FORCE_STOP`** — Default `1` (safe: set Status
-   to STOP when DS goes quiet). Set to `0` for a softer behavior: user
-   loops keep running with neutral input, no manual restart needed on
-   reconnect.
-5. **Owner check at `/joystick` WS handshake and per-frame** —
-   Previously the WebSocket accepted any client at handshake and only
-   HTTP routes enforced ownership. Now a second driver can't open a
-   parallel WS and race joystick frames.
-
-Full details: `CHANGELOG.md`.
-
----
-
-## Configuration macros
-
-Define before including `probot.h`:
-
-```cpp
-#define PROBOT_WIFI_AP_SSID     "RobotName"   // 1-32 chars
-#define PROBOT_WIFI_AP_PASSWORD "minimum8"    // >= 8 chars
-#define PROBOT_WIFI_AP_CHANNEL  1             // 1-13
-// optional:
-#define PROBOT_WIFI_AP_SSID_MAC_SUFFIX        // append -XXXXXX
-#define PROBOT_DS_TIMEOUT_MS    10000         // DS activity timeout
-#define PROBOT_DS_TIMEOUT_FORCE_STOP 1        // 0 = soft, 1 = hard stop
-```
-
----
-
-## Platform support
-
-- **Arduino IDE / arduino-cli**: built directly via `library.properties`.
-  Try `make build EXAMPLE=JoystickTest`.
-- **PlatformIO (Arduino framework)**: add via `lib_deps` path or git URL.
-- **ESP-IDF + Arduino component**: drop into `components/`, call
-  `probot::runtime_setup()` from `app_main`.
-
-The single source of truth for version is `VERSION`; `make version-sync`
-keeps the manifests aligned.
-
----
-
-## Hardware
-
-Works on **ESP32 and ESP32-S3** variants (WROOM, WROVER, S3 DevKit).
-Tested on [Boardoza Pulse S32-S3](https://boardoza.com/product/boardoza-pulse-s32-s3-breakout-board/).
-
-Any PWM motor controller works: VNH5019, BTS7960B, TB6612, L298N, etc.
-
----
-
-## License
-
-MIT + Commons Clause. Educational and competition use is free; contact
-tunagul54@gmail.com for commercial licensing.
-
----
-
-## Support
-
-- **Docs:** https://docs.probotstudio.com/yazilim/
-- **WhatsApp:** +90 538 040 81 48
-- **Issues:** https://github.com/probot-studio/probot-core/issues
+Full API reference: [API.md](API.md) · Machine-readable index:
+[llms.txt](llms.txt) · Changes: [CHANGELOG.md](CHANGELOG.md)
