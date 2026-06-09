@@ -11,6 +11,24 @@ Biçim [Keep a Changelog](https://keepachangelog.com/), sürümler
 Bağlantı sağlamlaştırma (devam), servo desteği ve doküman yenileme.
 
 ### Eklendi
+- **Tek-WS push mimarisi:** robot, durum+sağlık (`'S'`, ≥1 Hz, heartbeat
+  görevi de görür) ve telemetriyi (`'T'`, değişince) WebSocket üzerinden
+  kendisi yollar; arayüz artık HTTP poll yapmıyor (eskiden ~9 istek/sn).
+  WS Init/Stop boyunca açık kalır; gamepad yokken istemci 2 sn'de bir
+  `'P'` keepalive yollar. WS koparsa arayüz 1 Hz HTTP fallback'e döner.
+- **Captive portal:** robota bağlanan tablet/telefonda karşılama sayfası
+  kendiliğinden açılır (DNS catch-all + OS sonda yakalama). IP yazmak
+  gerekmez. `PROBOT_CAPTIVE_PORTAL 0` ile kapatılır.
+- **Saha teşhisleri:** STA katıl/ayrıl olayları MAC + IEEE reason
+  koduyla loglanır; `/health` ve `'S'` çerçevesi `joyAgeMs` (son
+  joystick paketinin yaşı), `sta` (istemci sayısı) ve `disc` (son kopuş
+  nedeni) alanlarını taşır; Logs sayfasında görünür.
+- **Çalışma anında kanal değişimi:** Logs sayfasından kanal seçilir,
+  `/setChannel` NVS'e kaydeder ve 1-13 için **CSA ile canlı geçiş**
+  yapar (istemciler bağlantıyı koparmadan takip eder). NVS > makro
+  önceliği; `0` = açılışta otomatik seçim.
+- **Telemetri tamponu artık kilitli** (kullanıcı çekirdeği yazar, ağ
+  çekirdeği okur — race vardı) ve `copyBuffer` API'si eklendi.
 - **RF/TCP ince ayarları** (datasheet/IDF kaynak araştırmasına dayalı):
   TX gücü düzeltildi — `WIFI_POWER_19_5dBm` API'de aşağı yuvarlanıp
   **18 dBm** veriyordu, artık gerçek maksimum **20 dBm** kullanılıyor
@@ -143,6 +161,23 @@ Versioning: [Semantic Versioning](https://semver.org/).
 Continued link hardening, servo support, documentation overhaul.
 
 ### Added
+- **Single-WS push architecture:** the robot pushes state+health (`'S'`,
+  ≥1 Hz, doubles as the heartbeat) and telemetry (`'T'`, on change) over
+  the WebSocket; the UI no longer polls HTTP (was ~9 req/s). The WS
+  stays open across Init/Stop; with no gamepad the client sends a `'P'`
+  keepalive every 2 s. If the WS drops, the UI falls back to 1 Hz HTTP.
+- **Captive portal:** joining the robot AP auto-opens a landing page
+  (DNS catch-all + OS probe spoofing) — no IP typing. Disable with
+  `PROBOT_CAPTIVE_PORTAL 0`.
+- **Field diagnostics:** STA join/leave logged with MAC + IEEE reason
+  code; `/health` and the `'S'` frame carry `joyAgeMs`, `sta` and
+  `disc`; surfaced on the Logs page.
+- **Runtime channel switching:** pick a channel on the Logs page;
+  `/setChannel` persists to NVS and switches 1-13 **live via CSA**
+  (clients migrate without dropping). NVS > macro precedence; `0` =
+  auto-select at boot.
+- **Telemetry buffer is now locked** (user-core writer vs network-core
+  reader raced) with a new `copyBuffer` API.
 - **RF/TCP tuning** (grounded in datasheet/IDF source research): TX
   power fix — `WIFI_POWER_19_5dBm` quantized down to **18 dBm** in the
   API; we now request the true API max of **20 dBm** (+2 dB); 802.11b

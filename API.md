@@ -146,33 +146,53 @@ yazacaksanız:
 | Endpoint | Metod | Sahiplik | Açıklama |
 |---|---|---|---|
 | `/` | GET | gerekli | Driver Station arayüzü (SPA) |
-| `/joystick` | WS | gerekli | Binary joystick akışı (aşağıda) + 2 sn'de bir sunucudan heartbeat |
-| `/updateController` | POST | gerekli | JSON fallback: `{"axes":[...],"buttons":[...]}` |
+| `/joystick` | WS | gerekli | Çift yönlü binary kanal (çerçeve formatları aşağıda) |
+| `/updateController` | POST | gerekli | JSON fallback: `{"axes":[...],"buttons":[...]}` — WS koptuğunda |
 | `/robotControl?cmd=init\|start\|stop\|cancelAuto&auto=0\|1&autoLen=N` | GET | gerekli | Faz komutları |
-| `/getState` | GET | gerekli | `{"phase":N,"autonomousEnabled":b,"autoPeriodSeconds":N,"autoRemainingMs":N}` |
-| `/telemetry` | GET | gerekli | Telemetri tamponunun içeriği (text) |
+| `/setChannel?ch=N` | GET | gerekli | Kanalı NVS'e kaydet; 1-13 ise CSA ile **canlı** geçiş, 0 = açılışta otomatik seçim. Dönüş: `{"ok":b,"ch":N,"live":b}` |
+| `/getState` | GET | gerekli | `{"phase":N,"autonomousEnabled":b,"autoPeriodSeconds":N,"autoRemainingMs":N}` (WS yokken fallback) |
+| `/telemetry` | GET | gerekli | Telemetri tamponunun içeriği (text) (WS yokken fallback) |
 | `/getBattery` | GET | serbest | Pil gerilimi (şu an kullanıcı beslemeli) |
-| `/health` | GET | serbest | `{"rssi":N,"up":ms,"heap":N,"dm":b}` — izleme/hakem için |
-| `/info` | GET | serbest | SSID, kanal, IP, çip/heap/flash bilgisi |
+| `/health` | GET | serbest | `{"rssi":N,"up":ms,"heap":N,"dm":b,"joyAgeMs":N,"sta":N,"disc":N}` — izleme/hakem için. `joyAgeMs`: son joystick paketinin yaşı (-1 = hiç gelmedi), `sta`: bağlı istemci sayısı, `disc`: son kopuşun IEEE reason kodu |
+| `/info` | GET | serbest | SSID, kanal + `chSource` (macro/nvs/auto), IP, çip/heap/flash |
+| `/portal` | GET | serbest | Captive portal karşılama sayfası (`PROBOT_CAPTIVE_PORTAL 0` ile kapatılır) |
+
+**Captive portal:** robot, AP'sine katılan cihazların DNS sorgularını
+kendine çözer ve işletim sistemi bağlantı sondalarını (`/generate_204`,
+`/hotspot-detect.html`, `/connecttest.txt` vb.) yakalar — tablete
+bağlanınca karşılama sayfası kendiliğinden açılır, IP yazmak gerekmez.
 
 **Sahiplik (owner) modeli:** korumalı endpoint'e ilk istek atan IP
 sahip olur; diğer IP'ler `403 Forbidden` alır. Sahip
 `PROBOT_DS_OWNER_TIMEOUT_MS` (5 sn) sessiz kalırsa slot boşalır.
 Sahip düştüğünde gamepad verisi anında sıfırlanır.
 
-**WS binary joystick çerçevesi** (istemci → robot):
+**WS çerçeveleri** — ilk bayt tipi belirler.
+
+İstemci → robot:
 
 ```
-[0]      uint8   0x4A ('J' sihirli bayt)
-[1]      uint8   eksen sayısı   (maks 20)
-[2]      uint8   buton sayısı   (maks 20)
-[3]      uint8   rezerve (0)
-[4..]    int16   eksenler, big-endian, değer = float × 32767
-[sonra]  uint8[] butonlar, bit-paketli, LSB önce
+'J' 0x4A  joystick verisi:
+  [1]      uint8   eksen sayısı   (maks 20)
+  [2]      uint8   buton sayısı   (maks 20)
+  [3]      uint8   rezerve (0)
+  [4..]    int16   eksenler, big-endian, değer = float × 32767
+  [sonra]  uint8[] butonlar, bit-paketli, LSB önce
+'P' 0x50  boşta keepalive (tek bayt) — gamepad yokken 2 sn'de bir;
+          owner slotunu ve DS aktivitesini canlı tutar
 ```
 
-Robot → istemci: 2 saniyede bir 2 baytlık heartbeat `[0x48, seq]`.
-5 saniye heartbeat alamayan istemci bağlantıyı ölü saymalıdır.
+Robot → istemci (push):
+
+```
+'S' 0x53  durum+sağlık JSON'u — değişiklikte anında, en geç 1 sn'de bir
+          (heartbeat görevi de görür). Alanlar /getState + /health
+          birleşimi.
+'T' 0x54  telemetri tamponu (text) — içerik değiştiğinde
+```
+
+≥5 saniye hiç çerçeve alamayan istemci bağlantıyı ölü sayıp yeniden
+bağlanmalıdır.
 
 **Bağlantı kesilme zinciri:**
 

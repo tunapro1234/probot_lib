@@ -49,8 +49,9 @@ void autonomousLoop() { delay(100); }
 > Altı fonksiyonun altısı da sketch'te bulunmak zorundadır.
 
 1. Yükle → Serial monitörde IP'yi gör (`192.168.4.1`).
-2. Tablet/telefonu `MyRobot` WiFi ağına bağla.
-3. Tarayıcıda `http://192.168.4.1` aç.
+2. Tablet/telefonu `MyRobot` WiFi ağına bağla — karşılama sayfası
+   kendiliğinden açılır (captive portal).
+3. Açılmazsa tarayıcıda `http://192.168.4.1` aç.
 4. Kumandayı tablete bağla (USB/Bluetooth) → **Init** → **Start**.
 
 ## Örnekler
@@ -77,6 +78,7 @@ Hepsi `#include <probot.h>` satırından **önce** tanımlanır:
 | `PROBOT_INPUT_TIMEOUT_MS` | `500` | Joystick verisi kesilince eksenlerin sıfırlanma süresi |
 | `PROBOT_WIFI_ENABLE_11B` | `0` | `1`: 802.11b hızlarını aç (sadece 2010 öncesi cihazlar için; beacon airtime'ını 6 kat artırır) |
 | `PROBOT_WIFI_PMF_REQUIRED` | `0` | `1`: PMF (802.11w) zorunlu — deauth sahteciliğine karşı koruma, eski tabletlerle uyumsuz olabilir |
+| `PROBOT_CAPTIVE_PORTAL` | `1` | Ağa katılan cihazda karşılama sayfası kendiliğinden açılır; `0` kapatır |
 | `NEOPIXEL_PIN` / `NEOPIXEL_COUNT` | `3` / `1` | Durum LED'i pini/adedi |
 
 ## Yarışma günü: kanal planı
@@ -87,6 +89,9 @@ Hepsi `#include <probot.h>` satırından **önce** tanımlanır:
   kanalı kendisi seçer (açılışa ~2-3 sn ekler). Pit alanı gibi kalabalık
   RF ortamında en pratik çözüm; seçilen kanal Serial'de ve arayüzün
   Logs sayfasında görünür.
+- Kanal yarışma günü **yeniden flash gerektirmeden** değiştirilebilir:
+  Logs sayfası → Kanal Değiştir. 1-13 arası seçimler CSA ile canlı
+  uygulanır (bağlantı korunur) ve kalıcı kaydedilir.
 - Telefon hotspot'ları ve seyirci cihazları da 2.4 GHz'i doldurur —
   maç sırasında robot çevresinde hotspot açtırmayın.
 - Sinyal sorunlarını sahada ayıklamak için `/health` endpoint'i RSSI
