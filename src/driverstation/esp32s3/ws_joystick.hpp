@@ -43,8 +43,8 @@ namespace probot::driverstation::esp32 {
       };
       httpd_register_uri_handler(_server, &ws_uri);
 
-      // Periodic ping to detect dead connections
-      _pingTimer = xTimerCreate("ws_ping", pdMS_TO_TICKS(2000), pdTRUE, this, pingTimerCb);
+      // Periodic heartbeat to detect dead connections on both ends
+      _pingTimer = xTimerCreate("ws_hb", pdMS_TO_TICKS(HEARTBEAT_PERIOD_MS), pdTRUE, this, heartbeatTimerCb);
       if (_pingTimer) xTimerStart(_pingTimer, 0);
 
       Serial.println("[WS   ] WebSocket handler attached to /joystick");
@@ -68,9 +68,16 @@ namespace probot::driverstation::esp32 {
     static constexpr uint32_t MAX_BTNS = 20;
     static constexpr size_t   MAX_FRAME = 4 + MAX_AXES * 2 + (MAX_BTNS + 7) / 8;
 
-    // Close a WS session only after this many consecutive ping send
-    // failures. Tolerates brief RF hiccups in noisy environments (a
-    // single lost frame used to close the connection).
+    // Heartbeat is a 2-byte BINARY frame ('H', seq), not a WS PING:
+    // browsers auto-pong pings invisibly to JS, so the page cannot use
+    // them to tell a live link from a dead one. A data frame fires
+    // onmessage, giving the client a real liveness signal.
+    static constexpr uint8_t  HEARTBEAT_MAGIC     = 0x48; // 'H'
+    static constexpr uint32_t HEARTBEAT_PERIOD_MS = 2000;
+
+    // Close a WS session only after this many consecutive heartbeat
+    // send failures. Tolerates brief RF hiccups in noisy environments
+    // (a single lost frame used to close the connection).
     static constexpr uint8_t  PING_MAX_FAILS   = 3;
     static constexpr uint8_t  PING_TRACK_SLOTS = 8;
 
@@ -162,11 +169,15 @@ namespace probot::driverstation::esp32 {
       for (auto& s : _pingState) if (s.fd == fd) { s.fd = -1; s.fails = 0; }
     }
 
-    static void pingTimerCb(TimerHandle_t t) {
+    static void heartbeatTimerCb(TimerHandle_t t) {
       auto* self = static_cast<WsJoystick*>(pvTimerGetTimerID(t));
       if (!self->_server) return;
-      httpd_ws_frame_t ping = {};
-      ping.type = HTTPD_WS_TYPE_PING;
+      static uint8_t seq = 0;
+      uint8_t payload[2] = { HEARTBEAT_MAGIC, ++seq };
+      httpd_ws_frame_t hb = {};
+      hb.type    = HTTPD_WS_TYPE_BINARY;
+      hb.payload = payload;
+      hb.len     = sizeof(payload);
       size_t fds = 8;
       int clients[8];
       if (httpd_get_client_list(self->_server, &fds, clients) != ESP_OK) return;
@@ -182,10 +193,10 @@ namespace probot::driverstation::esp32 {
       for (size_t i = 0; i < fds; i++) {
         if (httpd_ws_get_fd_info(self->_server, clients[i]) != HTTPD_WS_CLIENT_WEBSOCKET) continue;
         uint8_t* fails = self->trackPingFd(clients[i]);
-        esp_err_t err = httpd_ws_send_frame_async(self->_server, clients[i], &ping);
+        esp_err_t err = httpd_ws_send_frame_async(self->_server, clients[i], &hb);
         if (err != ESP_OK) {
           if (fails && ++(*fails) >= PING_MAX_FAILS) {
-            Serial.printf("[WS   ] /joystick ping fail x%u, closing fd=%d\n",
+            Serial.printf("[WS   ] /joystick heartbeat fail x%u, closing fd=%d\n",
                           (unsigned)*fails, clients[i]);
             httpd_sess_trigger_close(self->_server, clients[i]);
             self->clearPingFd(clients[i]);

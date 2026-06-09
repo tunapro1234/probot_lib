@@ -758,10 +758,6 @@ const char MAIN_page[] PROGMEM = R"=====(
             <span class="debug-value" id="dbgSsid">--</span>
           </div>
           <div class="debug-item">
-            <span class="debug-label">Password</span>
-            <span class="debug-value" id="dbgPw">--</span>
-          </div>
-          <div class="debug-item">
             <span class="debug-label">Channel</span>
             <span class="debug-value" id="dbgCh">--</span>
           </div>
@@ -966,11 +962,18 @@ const char MAIN_page[] PROGMEM = R"=====(
     }
 
     /* ===== SYNC STATE ===== */
+    var syncStateBusy=false;
     function syncState(){
-      fetch('/getState').then(function(r){
+      if(syncStateBusy) return;
+      syncStateBusy=true;
+      var ac=new AbortController();
+      var tid=setTimeout(function(){ac.abort();},3000);
+      fetch('/getState',{signal:ac.signal}).then(function(r){
+        clearTimeout(tid);
         if(!r.ok) return;
         return r.json();
       }).then(function(data){
+        syncStateBusy=false;
         if(!data) return;
         var btn=document.getElementById('robotButton');
         if(!btn) return;
@@ -1034,6 +1037,7 @@ const char MAIN_page[] PROGMEM = R"=====(
           setPhaseDisplay('stopped');
         }
       }).catch(function(e){
+        syncStateBusy=false;
         console.error('syncState failed:',e);
       });
     }
@@ -1159,10 +1163,15 @@ const char MAIN_page[] PROGMEM = R"=====(
       if(wsReconnectTimer||wsStopped) return;
       wsReconnectTimer=setTimeout(function(){wsReconnectTimer=null;if(!wsStopped)connectWebSocket();},2000);
     }
+    /* Robot sends a binary heartbeat every 2s; missing ~2 in a row means
+       the link is dead even if the socket still looks open. Own sends do
+       NOT count as activity: ws.send() into a dead TCP socket succeeds
+       silently (frames just buffer), which used to mask dead links while
+       driving. */
     function wsHealthCheck(){
       if(wsStopped||!wsJoystick) return;
       if(wsJoystick.readyState>1){wsConnected=false;wsJoystick=null;scheduleReconnect();return;}
-      if(wsConnected&&performance.now()-wsLastActivity>3000){
+      if(wsConnected&&performance.now()-wsLastActivity>5000){
         console.log('[WS] Stale, reconnecting');
         killWs();scheduleReconnect();
       }
@@ -1200,7 +1209,6 @@ const char MAIN_page[] PROGMEM = R"=====(
       if(wsConnected&&wsJoystick&&wsJoystick.readyState===1){
         try{
           wsJoystick.send(packJoystickBinary(gp));
-          wsLastActivity=now;
           gamepadSending=false;
           return;
         }catch(e){wsConnected=false;wsJoystick=null;scheduleReconnect();}
@@ -1263,16 +1271,26 @@ const char MAIN_page[] PROGMEM = R"=====(
     });
 
     /* ===== TELEMETRY ===== */
+    /* In-flight guard + timeout: without it, a congested link lets
+       requests pile up faster than they complete, making the jam worse.
+       Hidden tabs skip polling entirely — joystick frames matter more. */
+    var telemetryBusy=false;
     function pollTelemetry(){
-      fetch('/telemetry').then(function(r){
+      if(telemetryBusy||document.hidden) return;
+      telemetryBusy=true;
+      var ac=new AbortController();
+      var tid=setTimeout(function(){ac.abort();},2000);
+      fetch('/telemetry',{signal:ac.signal}).then(function(r){
+        clearTimeout(tid);
         if(r.ok) return r.text();
       }).then(function(text){
+        telemetryBusy=false;
         var el=document.getElementById('telemetryOutput');
         if(el&&text){
           el.textContent=text;
           if(autoScroll) el.scrollTop=el.scrollHeight;
         }
-      }).catch(function(){});
+      }).catch(function(){telemetryBusy=false;});
     }
     function clearTelemetry(){
       var el=document.getElementById('telemetryOutput');
@@ -1291,7 +1309,9 @@ const char MAIN_page[] PROGMEM = R"=====(
         if(el) el.scrollTop=el.scrollHeight;
       }
     }
-    setInterval(pollTelemetry,50);
+    /* 150ms is still smooth for a text log and cuts HTTP airtime ~3x
+       vs the old 50ms — leaves more room for joystick frames. */
+    setInterval(pollTelemetry,150);
     setInterval(syncState,1000);
 
     /* ===== CONNECTION HEALTH ===== */
@@ -1403,7 +1423,6 @@ const char MAIN_page[] PROGMEM = R"=====(
         if(!data) return;
         var el=function(id){return document.getElementById(id);};
         if(el('dbgSsid')) el('dbgSsid').textContent=data.ssid||'--';
-        if(el('dbgPw')) el('dbgPw').textContent=data.pw||'--';
         if(el('dbgCh')) el('dbgCh').textContent=data.ch||'--';
         if(el('dbgIp')) el('dbgIp').textContent=data.ip||'--';
         if(el('dbgChip')) el('dbgChip').textContent=data.chip||'--';
