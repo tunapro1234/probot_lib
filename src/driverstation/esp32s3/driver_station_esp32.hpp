@@ -33,10 +33,25 @@ static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 32, "PROBOT_WIFI_AP_SSID must b
 #endif
 
 #ifndef PROBOT_WIFI_AP_CHANNEL
-#error "WiFi AP channel not provided. Define PROBOT_WIFI_AP_CHANNEL (1-13, or 0 for auto-select) before including probot.h."
+#error "WiFi AP channel not provided. Define PROBOT_WIFI_AP_CHANNEL (1-13) before including probot.h."
 #endif
+
+// Boot-time auto channel select is OPT-IN and OFF by default. A robot scans
+// the band and picks its own channel ONLY when PROBOT_WIFI_AUTO_CHANNEL is 1.
+// For a fleet (a competition) leave this off and assign each robot a fixed,
+// distinct channel by hand — robots booting together all see an empty band
+// and would converge on the same channel. See README "Yarışma günü".
+#ifndef PROBOT_WIFI_AUTO_CHANNEL
+#define PROBOT_WIFI_AUTO_CHANNEL 0
+#endif
+
+#if PROBOT_WIFI_AUTO_CHANNEL
 static_assert(PROBOT_WIFI_AP_CHANNEL >= 0 && PROBOT_WIFI_AP_CHANNEL <= 13,
-              "PROBOT_WIFI_AP_CHANNEL must be 1-13, or 0 for auto-select.");
+              "PROBOT_WIFI_AP_CHANNEL must be 0-13 (used as the fallback when the auto-select scan finds nothing).");
+#else
+static_assert(PROBOT_WIFI_AP_CHANNEL >= 1 && PROBOT_WIFI_AP_CHANNEL <= 13,
+              "PROBOT_WIFI_AP_CHANNEL must be 1-13. To auto-pick the channel at boot, set PROBOT_WIFI_AUTO_CHANNEL 1 (single-robot use only).");
+#endif
 
 // How long the owner slot survives without any request from the owning
 // client before another client may take over.
@@ -117,28 +132,32 @@ namespace probot::driverstation::esp32 {
 
       wifi_country_t country = { .cc = "TR", .schan = 1, .nchan = 13, .policy = WIFI_COUNTRY_POLICY_MANUAL };
 
-      // Channel precedence: NVS override (set from the UI) > macro.
-      // 0 means auto-select in either source.
-      int requestedChannel = PROBOT_WIFI_AP_CHANNEL;
-      ch_source_ = "macro";
+      // Channel resolution. The default is the fixed macro channel. A manual
+      // pin saved from the UI (NVS 1-13) overrides everything. Auto-select
+      // runs ONLY when compiled in (PROBOT_WIFI_AUTO_CHANNEL) and not pinned;
+      // a saved 0 just means "clear the pin, use the firmware default".
+      bool autoMode = (PROBOT_WIFI_AUTO_CHANNEL != 0);
+      channel_   = PROBOT_WIFI_AP_CHANNEL;
+      ch_source_ = autoMode ? "auto" : "macro";
       {
         Preferences prefs;
         if (prefs.begin("probot", /*readOnly=*/true)) {
           int nvsCh = prefs.getInt("ch", -1);
           prefs.end();
-          if (nvsCh >= 0 && nvsCh <= 13) {
-            requestedChannel = nvsCh;
+          if (nvsCh >= 1 && nvsCh <= 13) {
+            autoMode   = false;          // a manual pin wins over auto-select
+            channel_   = nvsCh;
             ch_source_ = "nvs";
           }
+          // nvsCh == 0 → "use firmware default": leave autoMode/channel_ as is.
         }
       }
 
-      channel_ = requestedChannel;
-      if (requestedChannel == 0) {
+      if (autoMode) {
         // Auto-select: scan the band and pick the least congested of the
         // non-overlapping channels. Adds ~2-3 s to boot. Clients find the
         // AP by SSID regardless of channel, so this is transparent to the
-        // driver station.
+        // driver station. OFF by default — see PROBOT_WIFI_AUTO_CHANNEL.
         WiFi.mode(WIFI_STA);
         esp_wifi_set_country(&country);
         channel_ = autoSelectChannel();
@@ -183,8 +202,7 @@ namespace probot::driverstation::esp32 {
       Serial.println(ssid);
       Serial.print("[DS   ] Password:  ");
       Serial.println("********");
-      Serial.printf("[DS   ] Channel:   %d%s\n", channel_,
-                    (PROBOT_WIFI_AP_CHANNEL == 0) ? " (auto)" : "");
+      Serial.printf("[DS   ] Channel:   %d (%s)\n", channel_, ch_source_);
       Serial.print("[DS   ] IP Address: ");
       Serial.println(WiFi.softAPIP());
       Serial.println("[DS   ] ========================================");
@@ -760,8 +778,10 @@ namespace probot::driverstation::esp32 {
       }
 
       // 1-13: switch live via CSA — beacons announce the migration and
-      // compliant clients follow without disconnecting. 0 (auto) needs a
-      // scan, which would drop clients, so it applies at next boot.
+      // compliant clients follow without disconnecting. 0 = clear the saved
+      // pin and fall back to the firmware default (the fixed macro channel,
+      // or auto-select if PROBOT_WIFI_AUTO_CHANNEL was compiled in); applied
+      // at next boot since a scan would drop clients.
       bool live = false;
       if (ch >= 1 && ch <= 13 && ch != ds->channel_) {
         wifi_config_t cfg;

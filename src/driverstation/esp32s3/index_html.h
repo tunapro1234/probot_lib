@@ -773,7 +773,7 @@ const char MAIN_page[] PROGMEM = R"=====(
           <label>Kanal Değiştir (CSA — bağlantı korunur)</label>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
             <select id="chSelect" style="flex:1;min-width:0;font-size:1rem;padding:10px;">
-              <option value="0">Otomatik (açılışta)</option>
+              <option value="0">Varsayılana dön (açılışta)</option>
               <option value="1">1</option><option value="5">5</option>
               <option value="9">9</option><option value="13">13</option>
               <option value="2">2</option><option value="3">3</option>
@@ -1557,7 +1557,7 @@ const char MAIN_page[] PROGMEM = R"=====(
       }).then(function(d){
         if(!status) return;
         if(d.live) status.textContent='Kanal '+d.ch+' (canlı geçiş)';
-        else if(d.ch===0) status.textContent='Otomatik — yeniden başlatınca';
+        else if(d.ch===0) status.textContent='Varsayılan — yeniden başlatınca';
         else status.textContent='Kanal '+d.ch+' — kayıtlı';
         fetchInfo();
       }).catch(function(){

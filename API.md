@@ -136,7 +136,9 @@ auto s = probot::robot::state().read();   // atomik snapshot
 
 Tamamı `#include <probot.h>`'den **önce** tanımlanır. Tablo:
 README "Ayar makroları". Zorunlu olanlar: `PROBOT_WIFI_AP_PASSWORD`
-(≥8 karakter) ve `PROBOT_WIFI_AP_CHANNEL` (1-13 veya 0 = otomatik).
+(≥8 karakter) ve `PROBOT_WIFI_AP_CHANNEL` (1-13). Açılışta otomatik
+kanal seçimi opt-in'dir: `PROBOT_WIFI_AUTO_CHANNEL 1` (varsayılan
+kapalı, filoda önerilmez — bkz. README kanal planı).
 
 ## HTTP / WebSocket arayüzü
 
@@ -149,7 +151,7 @@ yazacaksanız:
 | `/joystick` | WS | gerekli | Çift yönlü binary kanal (çerçeve formatları aşağıda) |
 | `/updateController` | POST | gerekli | JSON fallback: `{"axes":[...],"buttons":[...]}` — WS koptuğunda |
 | `/robotControl?cmd=init\|start\|stop\|cancelAuto&auto=0\|1&autoLen=N` | GET | gerekli | Faz komutları |
-| `/setChannel?ch=N` | GET | gerekli | Kanalı NVS'e kaydet; 1-13 ise CSA ile **canlı** geçiş (zaten o kanaldaysa `live:false`), 0 = açılışta otomatik seçim. Dönüş: `{"ok":b,"ch":N,"live":b}` |
+| `/setChannel?ch=N` | GET | gerekli | Kanalı NVS'e kaydet; 1-13 ise CSA ile **canlı** geçiş (zaten o kanaldaysa `live:false`), `0` = kaydı temizle, açılışta firmware varsayılanına dön. Dönüş: `{"ok":b,"ch":N,"live":b}` |
 | `/getState` | GET | gerekli | `{"phase":N,"autonomousEnabled":b,"autoPeriodSeconds":N,"autoRemainingMs":N}` (WS yokken fallback) |
 | `/telemetry` | GET | gerekli | Telemetri tamponunun içeriği (text) (WS yokken fallback) |
 | `/getBattery` | GET | serbest | Pil gerilimi (şu an kullanıcı beslemeli) |

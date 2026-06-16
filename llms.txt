@@ -13,8 +13,10 @@ Rules that generated code MUST follow:
   `teleopInit`, `teleopLoop`, `autonomousInit`, `autonomousLoop`
   (empty bodies are fine).
 - Define `PROBOT_WIFI_AP_SSID`, `PROBOT_WIFI_AP_PASSWORD` (min 8 chars)
-  and `PROBOT_WIFI_AP_CHANNEL` (1-13, or 0 = auto-select) BEFORE
-  `#include <probot.h>`.
+  and `PROBOT_WIFI_AP_CHANNEL` (1-13) BEFORE `#include <probot.h>`. For
+  a fleet, give each robot a distinct fixed channel by hand. Boot-time
+  auto channel select is opt-in via `PROBOT_WIFI_AUTO_CHANNEL 1`
+  (default off; single-robot use, not recommended for a fleet).
 - Joystick access: `auto js = probot::io::joystick_api::makeDefault();`
   then `js.getLeftY()`, `js.getA()`, `js.getPOV()` etc. Axis range is
   -1..+1, Y is positive up. `probot::io::gamepad()` is the low-level

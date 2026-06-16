@@ -26,7 +26,7 @@ ve joystick verisini WebSocket ile düşük gecikmeyle robota taşır.
 ```cpp
 #define PROBOT_WIFI_AP_SSID     "MyRobot"
 #define PROBOT_WIFI_AP_PASSWORD "robot1234"   // en az 8 karakter
-#define PROBOT_WIFI_AP_CHANNEL  1             // 1-13, veya 0 = otomatik seç
+#define PROBOT_WIFI_AP_CHANNEL  1             // 1-13 (yarışmada elle dağıtın)
 #include <probot.h>
 
 void robotInit() {}                // Init'e basınca 1 kez
@@ -70,7 +70,8 @@ Hepsi `#include <probot.h>` satırından **önce** tanımlanır:
 |---|---|---|
 | `PROBOT_WIFI_AP_SSID` | `Probot-XXXXXX` | AP adı. Tanımsız bırakılırsa MAC eki otomatik açılır. Ek açıkken en fazla 25, kapalıyken 32 karakter |
 | `PROBOT_WIFI_AP_PASSWORD` | — (zorunlu) | AP şifresi (≥8 karakter) |
-| `PROBOT_WIFI_AP_CHANNEL` | — (zorunlu) | 1-13, veya **0 = açılışta en boş kanalı otomatik seç** |
+| `PROBOT_WIFI_AP_CHANNEL` | — (zorunlu) | AP kanalı, **1-13**. Yarışmada robotlara elle farklı kanal verin |
+| `PROBOT_WIFI_AUTO_CHANNEL` | `0` | `1`: robot açılışta bandı tarayıp en boş kanalı **kendi** seçer. **Filoda önerilmez** (bkz. kanal planı), sadece tek robot için |
 | `PROBOT_WIFI_AP_SSID_MAC_SUFFIX` | kapalı | SSID sonuna `-XXXXXX` (MAC) ekler |
 | `PROBOT_DS_TIMEOUT_MS` | `10000` | DS'ten veri kesilirse timeout (ms) |
 | `PROBOT_DS_TIMEOUT_FORCE_STOP` | `1` | `1`: timeout'ta robot STOP. `0`: loop sürer, joystick nötr, bağlantı dönünce devam |
@@ -84,14 +85,24 @@ Hepsi `#include <probot.h>` satırından **önce** tanımlanır:
 ## Yarışma günü: kanal planı
 
 - 2.4 GHz'te birbirini **ezmeyen** kanallar: **1, 5, 9, 13**. Aynı anda
-  çalışan robotlar bu dörtlüden farklı kanallara dağıtılmalı.
-- `PROBOT_WIFI_AP_CHANNEL 0` → robot açılışta ortamı tarar, en boş
-  kanalı kendisi seçer (açılışa ~2-3 sn ekler). Pit alanı gibi kalabalık
-  RF ortamında en pratik çözüm; seçilen kanal Serial'de ve arayüzün
-  Logs sayfasında görünür.
+  çalışan robotları bu kanallara **elle** dağıtın — her robota
+  `PROBOT_WIFI_AP_CHANNEL` ile sabit ve farklı bir kanal verin.
+  Deterministik atama, koordineli bir filoda en güvenli yöntemdir.
 - Kanal yarışma günü **yeniden flash gerektirmeden** değiştirilebilir:
   Logs sayfası → Kanal Değiştir. 1-13 arası seçimler CSA ile canlı
-  uygulanır (bağlantı korunur) ve kalıcı kaydedilir.
+  uygulanır (uyumlu istemciler bağlantıyı koparmadan takip eder) ve
+  kalıcı kaydedilir. Maç **sırasında** değiştirmeyin — bazı tabletler
+  CSA'yı takip etmeyip birkaç saniye kopabilir.
+- Bazı dizüstü/tablet'ler bölge kilidi yüzünden **kanal 12-13'ü
+  görmez**. Bir cihaz robotu bulamıyorsa o robota 1-11 arası bir kanal
+  verin.
+- **Otomatik kanal seçimi (`PROBOT_WIFI_AUTO_CHANNEL 1`) varsayılan
+  KAPALIDIR ve filoda önerilmez.** Her robot bandı bağımsız tarar;
+  robotlar aynı anda açıldığında hiçbiri henüz yayın yapmadığından
+  bandı boş görür ve **hepsi aynı kanala (kanal 1) düşebilir** —
+  dağıtmak yerine yığar. Yalnızca ortamda tek robot varken
+  (ev/atölye) mantıklıdır. Seçilen kanal Serial'de ve Logs sayfasında
+  görünür.
 - Telefon hotspot'ları ve seyirci cihazları da 2.4 GHz'i doldurur —
   maç sırasında robot çevresinde hotspot açtırmayın.
 - Sinyal sorunlarını sahada ayıklamak için `/health` endpoint'i RSSI
@@ -167,7 +178,7 @@ Makine-okur özet: [`llms.txt`](llms.txt) · Tam referans: [`API.md`](API.md)
 | `#error ... PASSWORD` | Makroları `#include <probot.h>`'den önce yazın |
 | Arayüz açılmıyor / 403 | Başka bir cihaz bağlı (tek client kuralı). Diğerini kapatın, ~5 sn bekleyin |
 | Joystick görünmüyor | Kumandada herhangi bir tuşa basın (tarayıcı gamepad'i tuşa basılınca tanır) |
-| Sık kopma | Kanal çakışması — `PROBOT_WIFI_AP_CHANNEL 0` deneyin veya 1/5/9/13'e dağıtın |
+| Sık kopma | Kanal çakışması — robotları 1/5/9/13'e **elle** dağıtın (her birine farklı sabit kanal) |
 | Servo titriyor | Yukarıdaki "Servo kullanımı" bölümü |
 
 ## Destek ve lisans

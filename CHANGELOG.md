@@ -26,7 +26,7 @@ Bağlantı sağlamlaştırma (devam), servo desteği ve doküman yenileme.
 - **Çalışma anında kanal değişimi:** Logs sayfasından kanal seçilir,
   `/setChannel` NVS'e kaydeder ve 1-13 için **CSA ile canlı geçiş**
   yapar (istemciler bağlantıyı koparmadan takip eder). NVS > makro
-  önceliği; `0` = açılışta otomatik seçim.
+  önceliği; `0` = kaydı temizle, açılışta firmware varsayılanına dön.
 - **Telemetri tamponu artık kilitli** (kullanıcı çekirdeği yazar, ağ
   çekirdeği okur — race vardı) ve `copyBuffer` API'si eklendi.
 - **RF/TCP ince ayarları** (datasheet/IDF kaynak araştırmasına dayalı):
@@ -44,9 +44,14 @@ Bağlantı sağlamlaştırma (devam), servo desteği ve doküman yenileme.
   donanım PWM ile servo sınıfı. Kanalları üstten ayırır — `analogWrite`
   motor PWM'iyle timer çakışması (servo titremesinin 1 numaralı yazılım
   nedeni) yapısal olarak imkânsız. `attach/write/writeMicroseconds/detach`.
-- **`PROBOT_WIFI_AP_CHANNEL 0` = otomatik kanal seçimi.** Açılışta band
-  taranır, 1/5/9/13 içinden en boş kanal seçilir (~2-3 sn ek açılış).
-  Seçilen kanal Serial'de ve `/info`'da raporlanır.
+- **Otomatik kanal seçimi artık opt-in:** ayrı `PROBOT_WIFI_AUTO_CHANNEL`
+  makrosu (varsayılan **0/kapalı**). `1` yapılırsa robot açılışta bandı
+  tarayıp 1/5/9/13 içinden en boş kanalı seçer (~2-3 sn ek açılış);
+  seçilen kanal Serial'de ve `/info`'da görünür. **Filoda önerilmez** —
+  robotlar aynı anda açıldığında hiçbiri henüz yayın yapmadığından bandı
+  boş görür ve hepsi aynı kanala düşebilir; yarışmada
+  `PROBOT_WIFI_AP_CHANNEL` ile elle dağıtın. (Önceden `PROBOT_WIFI_AP_CHANNEL 0`
+  tetikliyordu; artık sabit kanal 1-13 olmak zorunda.)
 - **`PROBOT_DS_OWNER_TIMEOUT_MS`** makrosu (varsayılan 5000) — owner
   slotunun boşalma süresi artık yapılandırılabilir.
 - **Yeni örnekler:** `TankDrive` (BTS7960 tarzı çift motor) ve
@@ -131,7 +136,9 @@ Bağlantı sağlamlaştırma (devam), servo desteği ve doküman yenileme.
 - Davranış kıran API değişikliği yok; mevcut sketch'ler aynen derlenir.
 - Servo kullanan takımlar `ESP32Servo` yerine `probot::devices::Servo`'ya
   geçmeli (README "Servo kullanımı").
-- Kalabalık RF ortamında `#define PROBOT_WIFI_AP_CHANNEL 0` deneyin.
+- Kalabalık RF ortamında robotları 1/5/9/13'e **elle** dağıtın (her
+  birine farklı `PROBOT_WIFI_AP_CHANNEL`). Otomatik seçim isteyen tek
+  robotlar `PROBOT_WIFI_AUTO_CHANNEL 1` ekleyebilir (filoda önerilmez).
 
 ---
 
@@ -218,7 +225,7 @@ Continued link hardening, servo support, documentation overhaul.
 - **Runtime channel switching:** pick a channel on the Logs page;
   `/setChannel` persists to NVS and switches 1-13 **live via CSA**
   (clients migrate without dropping). NVS > macro precedence; `0` =
-  auto-select at boot.
+  clear the pin and use the firmware default at next boot.
 - **Telemetry buffer is now locked** (user-core writer vs network-core
   reader raced) with a new `copyBuffer` API.
 - **RF/TCP tuning** (grounded in datasheet/IDF source research): TX
@@ -237,9 +244,15 @@ Continued link hardening, servo support, documentation overhaul.
   of the range downward, so a timer collision with `analogWrite` motor
   PWM (the #1 software cause of servo jitter) is structurally
   impossible. `attach/write/writeMicroseconds/detach`.
-- **`PROBOT_WIFI_AP_CHANNEL 0` = auto channel select.** Scans the band
-  at boot and picks the least congested of 1/5/9/13 (~2-3 s added boot
-  time). The chosen channel is reported on Serial and `/info`.
+- **Auto channel select is now opt-in** behind a separate
+  `PROBOT_WIFI_AUTO_CHANNEL` macro (default **0/off**). When set to `1`
+  the robot scans the band at boot and picks the least congested of
+  1/5/9/13 (~2-3 s added boot); the chosen channel is reported on Serial
+  and `/info`. **Not recommended for a fleet** — robots booting together
+  all see an empty band and can converge on the same channel; assign
+  channels by hand with `PROBOT_WIFI_AP_CHANNEL` for a competition.
+  (Previously `PROBOT_WIFI_AP_CHANNEL 0` triggered it; the fixed channel
+  must now be 1-13.)
 - **`PROBOT_DS_OWNER_TIMEOUT_MS`** macro (default 5000) — the owner-slot
   idle timeout is now configurable.
 - **New examples:** `TankDrive` (BTS7960-style dual motor) and
@@ -322,7 +335,9 @@ Continued link hardening, servo support, documentation overhaul.
 - No breaking API changes; existing sketches compile unchanged.
 - Teams using servos should switch from `ESP32Servo` to
   `probot::devices::Servo` (see README "Servo kullanımı").
-- In crowded RF environments try `#define PROBOT_WIFI_AP_CHANNEL 0`.
+- In crowded RF environments assign robots to 1/5/9/13 **by hand**
+  (a distinct `PROBOT_WIFI_AP_CHANNEL` each). A lone robot may add
+  `PROBOT_WIFI_AUTO_CHANNEL 1` for auto-select (not for a fleet).
 
 ---
 
