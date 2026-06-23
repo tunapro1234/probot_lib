@@ -6,6 +6,72 @@ Biçim [Keep a Changelog](https://keepachangelog.com/), sürümler
 
 ---
 
+## [0.3.0] — Kooperatif Yaşam Döngüsü + Acil Durdurma
+
+Güvenlik/yaşam döngüsü yeniden tasarımı. Issue #21'deki donma sınıfını
+kökten kapatır. 6 hook API'si aynen derlenir, ama **davranış değişir**
+(aşağıdaki yükseltme notları).
+
+### Değişti
+- **Tek kalıcı kullanıcı task'ı + faz state machine.** Artık faz başına
+  task açılıp `vTaskDelete` ile öldürülmüyor. Core 1'de boot'ta açılan,
+  **asla öldürülmeyen** tek bir task altı hook'u sırayla, yalnız döngü
+  sınırlarında çalıştırır. Buton komutu "istenen mod"u set eder; geçişi
+  task kendi güvenli sınırında yapar. **Bir Stop ya da faz değişimi artık
+  kullanıcı kodunu iş ortasında (Wire/malloc kilidi tutarken) kesemez** —
+  0.2.x'teki orphaned-lock donmasının kök sebebi buydu (issue #21).
+  `runtime.hpp` baştan yazıldı; saf mantık `core/lifecycle.hpp`'de
+  (host'ta unit-test edilir).
+- **Stall watchdog artık halt-safe (öldürme/reboot yok).** Bir loop turu
+  `PROBOT_LOOP_DEADLINE_MS` (2000) içinde dönmezse: input sıfırlanır,
+  kırmızı LED, robot güvende tutulur — **task öldürülmez, çip reboot
+  edilmez** (homing/relative mekanizma state'i korunur). Tur dönünce
+  kendiliğinden temizlenir. Donmadan gerçek çıkış: acil durdurma ya da
+  donanım E-stop.
+- **TWDT yalnız sysloop'u izler** (kullanıcı task'ı kasıtlı olarak abone
+  değil): yalnızca bir **süpervizör/kütüphane** kilitlenmesi reboot
+  ettirir, kullanıcı state'i asla. Timeout `PROBOT_WDT_TIMEOUT_S` (8).
+- **Status LED kilitsiz.** `pixel.show()` artık `portMAX_DELAY` mutex'i
+  altında değil; tek task (sysloop) `flush()` ile basar. Kullanıcı
+  `setColor` yalnız bir atomik söze yazar. Öldürülen task'ın LED mutex'ini
+  orphan etme (kütüphane içi tek orphan riski) tamamen kalktı.
+- httpd `recv_wait_timeout` 5 sn → 2 sn (yarım-açık client worker'ı
+  tutamaz; `send_wait_timeout` ile simetrik).
+
+### Eklendi
+- **Acil durdurma (terminal).** Arayüzde kırmızı **EMERGENCY STOP** butonu
+  + `/robotControl?cmd=estop`. Sırası: latch → enable pini kes →
+  kullanıcı task'ını öldür → **taze bir task'ta `robotEnd()`'i
+  `PROBOT_ESTOP_END_MS` (500) watchdog'lu çalıştır** (takılırsa orphaned
+  bir bus yüzünden → `ESP.restart()`). Sonra robot **reboot'a kadar
+  kilitli**: init/start reddedilir, arayüzde "EMERGENCY STOPPED" + Reboot
+  butonu (`cmd=reboot`). Normal Stop'tan farkı: Stop kooperatif bekler,
+  acil durdurma keser ve terminaldir.
+- **Opsiyonel `PROBOT_ESTOP_ENABLE_PIN`** (varsayılan -1/kapalı):
+  kütüphanenin sürdüğü tek enable GPIO'su. Motor sürücülerinin enable
+  hattına (ya da bir kontaktöre) bağla; boot'ta HIGH, acil durdurmada
+  LOW — kullanıcı kodundan bağımsız donanım kill yolu.
+- **Yeni makrolar:** `PROBOT_LOOP_DEADLINE_MS`, `PROBOT_WDT_TIMEOUT_S`,
+  `PROBOT_ESTOP_END_MS`, `PROBOT_ESTOP_ENABLE_PIN`, `USER_LOOP_PERIOD_MS`.
+- `'S'` push çerçevesine ve `/getState`'e `estop` alanı (arayüz banner'ı).
+- Faz machine / supervisor / stall tespiti için host unit testleri
+  (`tests/test_lifecycle.cpp`).
+
+### Yükseltme notları
+- **Sözleşme:** kullanıcı `teleopLoop`/`autonomousLoop`'unun her turu bir
+  gün **dönmeli** (öneri: < ~2 sn). Blocking yasak değil; *sonsuz*
+  blocking yasak. I2C/sensör çağrılarına timeout koyun
+  (`Wire.setTimeOut(50)`), yoksa takılı bir cihaz turu wedge'ler.
+- **Stop gecikmesi:** Stop artık o anki tur dönünce etkili olur (en fazla
+  bir loop periyodu; loop bloklarsa daha uzun). Anında kesme için acil
+  durdurma / donanım E-stop kullanın.
+- **Auto-wedge → teleop otomatik kurtarması kalktı** (eski "öldür ve
+  devam et" güvensizdi). Donmuş bir otonom artık halt-safe'e düşer.
+- Davranış kıran kaynak değişikliği yok; mevcut sketch'ler aynen derlenir.
+- 4 ayrı worker stack'i tek task'ta birleşti — `STACK_USER` 4096 → 8192.
+
+---
+
 ## [0.2.9] — Yarışma Hazırlığı
 
 Bağlantı sağlamlaştırma (devam), servo desteği ve doküman yenileme.
@@ -203,6 +269,72 @@ mevcut sketch'ler değişiklik gerektirmeden derlenir ve çalışır.
 All notable changes are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/).
 Versioning: [Semantic Versioning](https://semver.org/).
+
+---
+
+## [0.3.0] — Cooperative Lifecycle + Emergency Stop
+
+Safety/lifecycle rework that closes the freeze class from issue #21 at the
+root. The 6-hook API compiles unchanged, but **behavior changes** (see
+upgrade notes).
+
+### Changed
+- **One persistent user task + phase state machine.** No more per-phase
+  task create/`vTaskDelete`. A single task on core 1, created at boot and
+  **never killed**, runs all six hooks in sequence, only at loop
+  boundaries. A button sets the "requested mode"; the task performs the
+  transition at its own safe boundary. **A Stop or phase change can no
+  longer interrupt user code mid-transaction (holding a Wire/malloc
+  lock)** — that was the root of the 0.2.x orphaned-lock freeze (issue
+  #21). `runtime.hpp` rewritten; the pure logic lives in
+  `core/lifecycle.hpp` (host unit-tested).
+- **Stall watchdog is now halt-safe (no kill, no reboot).** A loop
+  iteration that doesn't return within `PROBOT_LOOP_DEADLINE_MS` (2000)
+  → inputs zeroed, red LED, held safe — **the task is not killed and the
+  chip is not rebooted** (preserving homed/relative mechanism state).
+  Clears itself when the loop returns. Real recovery from a true wedge:
+  emergency stop or the hardware E-stop.
+- **TWDT watches only the sysloop** (the user task is deliberately not
+  subscribed): only a **supervisor/library** wedge reboots, never user
+  state. Timeout `PROBOT_WDT_TIMEOUT_S` (8).
+- **Lock-free status LED.** `pixel.show()` no longer runs under a
+  `portMAX_DELAY` mutex; a single task (sysloop) pushes via `flush()`,
+  user `setColor` only stores an atomic word. The orphan-on-kill of the
+  LED mutex (the one in-library orphan) is gone.
+- httpd `recv_wait_timeout` 5 s → 2 s (caps a half-open client's worker
+  hold; symmetric with `send_wait_timeout`).
+
+### Added
+- **Emergency stop (terminal).** A red **EMERGENCY STOP** button in the UI
+  + `/robotControl?cmd=estop`. Sequence: latch → cut the enable pin →
+  kill the user task → **run `robotEnd()` in a fresh task under a
+  `PROBOT_ESTOP_END_MS` (500) watchdog** (if it hangs on a bus the kill
+  orphaned → `ESP.restart()`). The robot then stays **locked until
+  reboot**: init/start are refused, the UI shows "EMERGENCY STOPPED" + a
+  Reboot button (`cmd=reboot`). Unlike Stop (cooperative wait), emergency
+  stop cuts and is terminal.
+- **Optional `PROBOT_ESTOP_ENABLE_PIN`** (default -1/off): one
+  library-driven enable GPIO. Wire it to your motor drivers' enable lines
+  (or a contactor); HIGH at boot, LOW on emergency stop — a hardware kill
+  path independent of how user code drives outputs.
+- **New macros:** `PROBOT_LOOP_DEADLINE_MS`, `PROBOT_WDT_TIMEOUT_S`,
+  `PROBOT_ESTOP_END_MS`, `PROBOT_ESTOP_ENABLE_PIN`, `USER_LOOP_PERIOD_MS`.
+- `estop` field on the `'S'` push frame and `/getState` (UI banner).
+- Host unit tests for the phase machine / supervisor / stall detection
+  (`tests/test_lifecycle.cpp`).
+
+### Upgrade notes
+- **Contract:** every iteration of `teleopLoop`/`autonomousLoop` must
+  eventually **return** (aim for < ~2 s). Blocking is allowed; *unbounded*
+  blocking is not. Put a timeout on I2C/sensor calls
+  (`Wire.setTimeOut(50)`) or a stuck device wedges the iteration.
+- **Stop latency:** Stop now takes effect when the current iteration
+  returns (at most one loop period; longer if the loop blocks). For an
+  instant cut use emergency stop / the hardware E-stop.
+- **Auto-wedge → teleop auto-recovery removed** (the old "kill and
+  continue" was unsafe). A wedged autonomous now falls to halt-safe.
+- No breaking source changes; existing sketches compile unchanged.
+- The four worker stacks collapsed into one — `STACK_USER` 4096 → 8192.
 
 ---
 

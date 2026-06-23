@@ -4,7 +4,7 @@ ESP32 tabanlı robot yarışması iletişim kütüphanesi. Robot bir WiFi
 erişim noktası açar, tarayıcıdan çalışan Driver Station arayüzü sunar
 ve joystick verisini WebSocket ile düşük gecikmeyle robota taşır.
 
-**Sürüm 0.2.9** · ESP32 / ESP32-S3 · [API Referansı](API.md) ·
+**Sürüm 0.3.0** · ESP32 / ESP32-S3 · [API Referansı](API.md) ·
 [English summary below](#probot-en)
 
 ---
@@ -81,6 +81,10 @@ Hepsi `#include <probot.h>` satırından **önce** tanımlanır:
 | `PROBOT_WIFI_PMF_REQUIRED` | `0` | `1`: PMF (802.11w) zorunlu — deauth sahteciliğine karşı koruma, eski tabletlerle uyumsuz olabilir |
 | `PROBOT_CAPTIVE_PORTAL` | `1` | Ağa katılan cihazda karşılama sayfası kendiliğinden açılır; `0` kapatır |
 | `NEOPIXEL_PIN` / `NEOPIXEL_COUNT` | `3` / `1` | Durum LED'i pini/adedi |
+| `PROBOT_LOOP_DEADLINE_MS` | `2000` | Loop turu bu süreyi aşarsa "stalled": input sıfır, halt-safe (öldürme/reboot yok) |
+| `PROBOT_WDT_TIMEOUT_S` | `8` | Donanım watchdog (yalnız sysloop; bir *kütüphane* kilidi reboot ettirir, kullanıcı kodu değil) |
+| `PROBOT_ESTOP_ENABLE_PIN` | `-1` | Kütüphanenin sürdüğü enable GPIO'su (motor sürücü enable / kontaktör). Boot'ta HIGH, acil durdurmada LOW |
+| `PROBOT_ESTOP_END_MS` | `500` | Acil durdurmada `robotEnd()`'e tanınan süre; aşılırsa çip reboot eder |
 
 ## Yarışma günü: kanal planı
 
@@ -149,13 +153,41 @@ olmalı (1 kHz'te servo darbe genişliği fiziksel olarak üretilemez).
   İkinci cihaz arayüzü açarsa `403` alır. `/health` ve `/info` ise
   sahiplik gerektirmez — hakem/izleme cihazları serbestçe okuyabilir.
 
+## Yaşam döngüsü ve loop sözleşmesi (0.3.0)
+
+- Altı hook **tek kalıcı task'ta**, yalnız döngü sınırlarında çalışır.
+  Stop/faz değişimi kullanıcı kodunu iş ortasında **kesmez** — bu yüzden
+  bir Wire/I2C ya da malloc kilidi asla orphan olmaz (eski sürümlerdeki
+  donmanın kök sebebi buydu).
+- **Kural:** her `teleopLoop`/`autonomousLoop` turu bir gün **dönmeli**
+  (öneri < ~2 sn). Blocking serbest, *sonsuz* blocking yasak. I2C/sensör
+  çağrılarına timeout koyun — örn. `Wire.begin()` sonrası
+  `Wire.setTimeOut(50);` — yoksa takılı bir cihaz turu kilitler.
+- **Stop kooperatiftir:** o anki tur dönünce `robotEnd()` koşar (en fazla
+  bir loop periyodu gecikme). Anında kesme için acil durdurma kullanın.
+- **Stall (halt-safe):** bir tur `PROBOT_LOOP_DEADLINE_MS` (2 sn) içinde
+  dönmezse input sıfırlanır, LED kırmızı yanar, robot güvende tutulur —
+  **task öldürülmez, çip reboot edilmez** (homing/relative state korunur).
+
+## Acil durdurma
+
+- Arayüzdeki kırmızı **EMERGENCY STOP** butonu (ya da
+  `/robotControl?cmd=estop`) kullanıcı task'ını öldürür, `robotEnd()`'i
+  watchdog'lu çalıştırır ve robotu **reboot'a kadar kilitler** (Init/Start
+  reddedilir; "Reboot" butonu ya da güç döngüsü temizler). Donmuş bir
+  loop'u bile durdurur.
+- Gerçek güvenlik garantisi için **donanım E-stop**'unu güç/enable hattına
+  koyun: çip tamamen kilitlense bile çalışan tek katman odur. Kütüphanenin
+  `PROBOT_ESTOP_ENABLE_PIN`'ini motor sürücülerinin enable hattına
+  bağlarsanız acil durdurma o hattı da donanımda keser.
+
 ## Yapay zeka ile kod yazma
 
 Gemini / ChatGPT / Claude'a robot kodu yazdırırken bu satırları
 prompt'unuzun başına ekleyin:
 
 ```text
-ESP32 için "probot" kütüphanesiyle (0.2.9) Arduino kodu yaz.
+ESP32 için "probot" kütüphanesiyle (0.3.0) Arduino kodu yaz.
 Önce API referansını oku:
 https://raw.githubusercontent.com/probot-studio/probot-core/stable/API.md
 Kurallar:

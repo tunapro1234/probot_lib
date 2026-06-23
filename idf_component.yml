@@ -1,4 +1,4 @@
-version: 0.2.9
+version: 0.3.0
 description: ESP32-S3 communication library for robotics
 url: https://github.com/probot-studio/probot-core
 dependencies:

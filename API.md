@@ -1,4 +1,4 @@
-# Probot API Referansı (0.2.9)
+# Probot API Referansı (0.3.0)
 
 Tek sayfalık tam referans. Kurulum ve örnekler için: [README.md](README.md)
 
@@ -25,13 +25,26 @@ STOP ──Init──▶ INITED ──Start──▶ [AUTONOMOUS (N sn)] ──�
 
 - Otonom süresi ve aç/kapa arayüzden seçilir; süre bitince teleop'a
   kendiliğinden geçilir.
-- `Stop`: teleop/otonom task'ları sonlandırılır, `robotEnd()` çağrılır
-  (1 sn içinde dönmezse zorla kesilir).
-- Loop'lar ayrı FreeRTOS task'ında, **core 1**'de koşar. WiFi/sunucu
-  core 0'dadır — kullanıcı kodu ağı yavaşlatmaz.
-- Bir loop çağrısı **2 saniyeden** uzun bloke olursa "deadline miss"
-  sayılır: teleop'ta uyarı verilir, otonomdaysa otonom öldürülüp
-  teleop'a geçilir. LED kırmızı yanıp söner.
+- **Altı hook, tek kalıcı task'ta** çalışır (**core 1**); boot'ta açılır,
+  normal işleyişte **asla öldürülmez**. WiFi/sunucu core 0'dadır.
+- Geçişler **kooperatiftir**: buton "istenen mod"u set eder, task geçişi
+  o anki tur **bittikten sonra**, güvenli sınırda yapar. Bu yüzden bir
+  Stop/faz değişimi kullanıcı kodunu iş ortasında (Wire/malloc kilidi
+  tutarken) **kesemez** — eski sürümlerdeki orphaned-lock donmasının
+  (issue #21) kök sebebi buydu.
+- `Stop`: o anki loop turu dönünce `robotEnd()` çağrılır (en fazla bir
+  loop periyodu gecikme; loop bloklarsa daha uzun). Anında kesme için
+  **acil durdurma** ya da donanım E-stop kullanın.
+- **Sözleşme:** her loop turu bir gün **dönmeli** (öneri < ~2 sn).
+  Blocking serbest, *sonsuz* blocking yasak — I2C/sensör çağrılarına
+  timeout koyun (`Wire.setTimeOut(50)`).
+- **Stall (halt-safe):** bir loop turu `PROBOT_LOOP_DEADLINE_MS` (2000)
+  içinde dönmezse input sıfırlanır, LED kırmızı yanıp söner, robot
+  güvende tutulur — **task öldürülmez, çip reboot edilmez** (homing
+  state'i korunur). Tur dönünce temizlenir.
+- **Acil durdurma (`cmd=estop`):** kullanıcı task'ı öldürülür, `robotEnd()`
+  watchdog'lu çalıştırılır, robot **reboot'a kadar kilitlenir**
+  (init/start reddedilir). Bkz. HTTP tablosu + "Acil durdurma".
 
 ## Joystick
 
@@ -140,6 +153,30 @@ README "Ayar makroları". Zorunlu olanlar: `PROBOT_WIFI_AP_PASSWORD`
 kanal seçimi opt-in'dir: `PROBOT_WIFI_AUTO_CHANNEL 1` (varsayılan
 kapalı, filoda önerilmez — bkz. README kanal planı).
 
+Yaşam döngüsü / güvenlik makroları (0.3.0):
+
+| Makro | Varsayılan | Anlamı |
+|---|---|---|
+| `PROBOT_LOOP_DEADLINE_MS` | 2000 | Bir loop turu bu süreyi aşarsa "stalled" — input sıfır, halt-safe |
+| `PROBOT_WDT_TIMEOUT_S` | 8 | Donanım watchdog (yalnız sysloop abone; > loop deadline olmalı) |
+| `PROBOT_ESTOP_END_MS` | 500 | Acil durdurmada `robotEnd()`'e tanınan süre; aşılırsa reboot |
+| `PROBOT_ESTOP_ENABLE_PIN` | -1 | Kütüphanenin sürdüğü enable GPIO'su (-1 = kapalı). Boot'ta HIGH, estop'ta LOW |
+| `USER_LOOP_PERIOD_MS` | 20 | Loop çağrı periyodu (~50 Hz) |
+
+## Acil durdurma
+
+İki ayrı durdurma var:
+
+- **Stop** (`cmd=stop`): kooperatif. O anki tur dönünce `robotEnd()` koşar.
+  Robot tekrar Init/Start edilebilir.
+- **Emergency stop** (`cmd=estop`): terminal. Sırası: latch → enable pini
+  LOW → kullanıcı task'ını öldür → taze task'ta `robotEnd()`'i
+  `PROBOT_ESTOP_END_MS` watchdog'lu çalıştır (takılırsa `ESP.restart()`).
+  Robot **reboot'a kadar kilitli** — `init`/`start` reddedilir (`cmd=reboot`
+  ya da güç döngüsü temizler). Donmuş bir loop'u bile durdurur (task
+  öldürülür); ama gerçek güvenlik garantisi için **donanım E-stop**'u güç/
+  enable hattına koyun — çip tamamen kilitliyse yalnız o çalışır.
+
 ## HTTP / WebSocket arayüzü
 
 Robot `192.168.4.1:80`'de tek sunucu çalıştırır. Kendi DS istemcinizi
@@ -150,9 +187,11 @@ yazacaksanız:
 | `/` | GET | gerekli | Driver Station arayüzü (SPA) |
 | `/joystick` | WS | gerekli | Çift yönlü binary kanal (çerçeve formatları aşağıda) |
 | `/updateController` | POST | gerekli | JSON fallback: `{"axes":[...],"buttons":[...]}` — WS koptuğunda |
-| `/robotControl?cmd=init\|start\|stop\|cancelAuto&auto=0\|1&autoLen=N` | GET | gerekli | Faz komutları |
+| `/robotControl?cmd=init\|start\|stop\|cancelAuto&auto=0\|1&autoLen=N` | GET | gerekli | Faz komutları. Estop kilitliyken `init`/`start` reddedilir (409) |
+| `/robotControl?cmd=estop` | GET | gerekli | **Acil durdurma**: kullanıcı task'ı öldürülür, `robotEnd()` watchdog'lu (`PROBOT_ESTOP_END_MS`) çalışır, enable pini kesilir, robot reboot'a kadar kilitlenir |
+| `/robotControl?cmd=reboot` | GET | gerekli | Çipi yeniden başlatır (`ESP.restart()`) — estop kilidini temizlemenin yolu |
 | `/setChannel?ch=N` | GET | gerekli | Kanalı NVS'e kaydet; 1-13 ise CSA ile **canlı** geçiş (zaten o kanaldaysa `live:false`), `0` = kaydı temizle, açılışta firmware varsayılanına dön. Dönüş: `{"ok":b,"ch":N,"live":b}` |
-| `/getState` | GET | gerekli | `{"phase":N,"autonomousEnabled":b,"autoPeriodSeconds":N,"autoRemainingMs":N}` (WS yokken fallback) |
+| `/getState` | GET | gerekli | `{"phase":N,"autonomousEnabled":b,"autoPeriodSeconds":N,"autoRemainingMs":N,"estop":b}` (WS yokken fallback) |
 | `/telemetry` | GET | gerekli | Telemetri tamponunun içeriği (text) (WS yokken fallback) |
 | `/getBattery` | GET | serbest | Pil gerilimi (şu an kullanıcı beslemeli) |
 | `/health` | GET | serbest | `{"rssi":N,"up":ms,"heap":N,"dm":b,"joyAgeMs":N,"sta":N,"disc":N}` — izleme/hakem için. `joyAgeMs`: son joystick paketinin yaşı (-1 = hiç gelmedi), `sta`: bağlı istemci sayısı, `disc`: son kopuşun IEEE reason kodu |
@@ -189,7 +228,8 @@ Robot → istemci (push):
 ```
 'S' 0x53  durum+sağlık JSON'u — değişiklikte bir sonraki tick'te
           (250 ms), değişiklik yoksa en geç ~1.25 sn'de bir (heartbeat
-          görevi de görür). Alanlar /getState + /health birleşimi.
+          görevi de görür). Alanlar /getState + /health birleşimi
+          (`estop` alanı dahil: acil durdurma kilidi).
 'T' 0x54  telemetri tamponu (text) — içerik değiştiğinde
 ```
 
