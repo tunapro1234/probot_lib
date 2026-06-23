@@ -124,6 +124,29 @@ namespace probot {
 #endif
     }
 
+    // The actual terminal emergency-stop sequence. Runs ONLY from the sysloop
+    // (core 0) so it never deletes its own caller. Idempotent.
+    inline void runEmergencyStop(){
+      if (__atomic_exchange_n(&probot::robot::g_estop_latched, 1u, __ATOMIC_SEQ_CST)) return;
+      setEnablePin(false);                 // hardware kill path, if wired
+      // Kill the single user task. Safe for probot's own portMUX locks (they
+      // can't be killed mid critical-section); only a user-held Wire/malloc
+      // lock can orphan, acceptable because this path is terminal + reboot.
+      if (g_user_task){
+        vTaskDelete(g_user_task);
+        g_user_task = nullptr;
+      }
+      // Run robotEnd() in a fresh task under the sysloop watchdog.
+      __atomic_store_n(&g_estop_end_done, 0u, __ATOMIC_SEQ_CST);
+      uint32_t t = millis(); if (t == 0) t = 1;
+      __atomic_store_n(&g_estop_end_start, t, __ATOMIC_SEQ_CST);
+      xTaskCreatePinnedToCore(estopEndTask, "estop", STACK_USER, NULL,
+                              PRIO_USER, &g_estop_task, CORE_CTRL);
+      probot::robot::state().setStatus(millis(), probot::robot::Status::STOP);
+      probot::telemetry::println("!! EMERGENCY STOP — robot disabled, reboot required");
+      Serial.println("[SYS  ] EMERGENCY STOP");
+    }
+
     inline void updateLed(bool estop){
       static bool on = false;
       on = !on;
@@ -180,7 +203,7 @@ namespace probot {
         // Run the terminal emergency-stop sequence once, from here (so it is
         // serialized and off the HTTP task).
         if (!estop && __atomic_load_n(&probot::robot::g_estop_requested, __ATOMIC_SEQ_CST)){
-          probot::emergencyStop();
+          runEmergencyStop();
           estop = true;
         }
 
@@ -252,26 +275,12 @@ namespace probot {
     }
   } // namespace detail
 
-  // Terminal emergency stop. Idempotent.
+  // Request a terminal emergency stop. Safe to call from ANY task, including
+  // a user hook: it only sets a flag. The sysloop runs the real sequence
+  // (kill the user task, run robotEnd under a watchdog, latch until reboot),
+  // so it never deletes its own caller.
   inline void emergencyStop(){
-    if (__atomic_exchange_n(&probot::robot::g_estop_latched, 1u, __ATOMIC_SEQ_CST)) return;
-    detail::setEnablePin(false);                 // hardware kill path, if wired
-    // Kill the single user task. Safe for probot's own portMUX locks (they
-    // can't be killed mid critical-section); only a user-held Wire/malloc lock
-    // can orphan, which is acceptable because this path is terminal + reboot.
-    if (detail::g_user_task){
-      vTaskDelete(detail::g_user_task);
-      detail::g_user_task = nullptr;
-    }
-    // Run robotEnd() in a fresh task under the sysloop watchdog.
-    __atomic_store_n(&detail::g_estop_end_done, 0u, __ATOMIC_SEQ_CST);
-    uint32_t t = millis(); if (t == 0) t = 1;
-    __atomic_store_n(&detail::g_estop_end_start, t, __ATOMIC_SEQ_CST);
-    xTaskCreatePinnedToCore(detail::estopEndTask, "estop", STACK_USER, NULL,
-                            PRIO_USER, &detail::g_estop_task, CORE_CTRL);
-    probot::robot::state().setStatus(millis(), robot::Status::STOP);
-    probot::telemetry::println("!! EMERGENCY STOP — robot disabled, reboot required");
-    Serial.println("[SYS  ] EMERGENCY STOP");
+    __atomic_store_n(&probot::robot::g_estop_requested, 1u, __ATOMIC_SEQ_CST);
   }
 
   inline void runtime_setup(){
