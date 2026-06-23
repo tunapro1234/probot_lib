@@ -45,6 +45,13 @@
 #define PROBOT_ESTOP_ENABLE_PIN -1
 #endif
 
+// Optional robot signal light (FRC-RSL style) on a plain digital pin. The
+// library drives it: BLINK while the robot can move (teleop/autonomous),
+// SOLID ON otherwise (disabled/stopped/e-stopped). -1 = off.
+#ifndef PROBOT_RSL_PIN
+#define PROBOT_RSL_PIN -1
+#endif
+
 #include <probot/robot/system.hpp>
 #include <probot/robot/state.hpp>
 #include <probot/telemetry/telemetry.hpp>
@@ -174,8 +181,14 @@ namespace probot {
             break;
         }
       }
-      builtinled::setColor(r, g, b);
-      builtinled::flush();               // only the sysloop calls show()
+      builtinled::render(r, g, b);       // single caller (sysloop): paints status
+
+#if PROBOT_RSL_PIN >= 0
+      // Robot signal light: blink while the robot can move, else solid on.
+      bool moving = !estop && (s.phase == probot::robot::Phase::TELEOP ||
+                               s.phase == probot::robot::Phase::AUTONOMOUS);
+      digitalWrite(PROBOT_RSL_PIN, moving ? (on ? HIGH : LOW) : HIGH);
+#endif
     }
 
     inline void sysloopTask(void*){
@@ -291,6 +304,10 @@ namespace probot {
 #if PROBOT_ESTOP_ENABLE_PIN >= 0
     pinMode(PROBOT_ESTOP_ENABLE_PIN, OUTPUT);
     digitalWrite(PROBOT_ESTOP_ENABLE_PIN, HIGH);   // enabled
+#endif
+#if PROBOT_RSL_PIN >= 0
+    pinMode(PROBOT_RSL_PIN, OUTPUT);
+    digitalWrite(PROBOT_RSL_PIN, HIGH);            // solid on until moving
 #endif
 
     wdt_init_no_idle(PROBOT_WDT_TIMEOUT_S, true);

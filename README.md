@@ -85,6 +85,8 @@ Hepsi `#include <probot.h>` satırından **önce** tanımlanır:
 | `PROBOT_WDT_TIMEOUT_S` | `8` | Donanım watchdog (yalnız sysloop; bir *kütüphane* kilidi reboot ettirir, kullanıcı kodu değil) |
 | `PROBOT_ESTOP_ENABLE_PIN` | `-1` | Kütüphanenin sürdüğü enable GPIO'su (motor sürücü enable / kontaktör). Boot'ta HIGH, acil durdurmada LOW |
 | `PROBOT_ESTOP_END_MS` | `500` | Acil durdurmada `robotEnd()`'e tanınan süre; aşılırsa çip reboot eder |
+| `PROBOT_RSL_PIN` | `-1` | Sinyal lambası (RSL) digital pini: hareket edebilirken blink, yoksa sabit açık |
+| `NEOPIXEL_BRIGHTNESS` | `32` | Durum LED'i parlaklığı (0-255) |
 
 ## Yarışma günü: kanal planı
 
@@ -132,7 +134,10 @@ Servo titremesinin iki yaygın sebebi var; ikisi de kütüphane dışında:
 PCA9685 kullanıyorsanız: servo çıkışları için PWM frekansı **50 Hz**
 olmalı (1 kHz'te servo darbe genişliği fiziksel olarak üretilemez).
 
-## Durum LED'i
+## Durum LED'i ve RSL
+
+Builtin NeoPixel **yalnız maç durumunu** gösterir, rengini kütüphane sürer —
+elle renk atama API'si yoktur (LED'in rengi hep bir anlam taşır).
 
 | Renk | Anlam |
 |---|---|
@@ -141,7 +146,12 @@ olmalı (1 kHz'te servo darbe genişliği fiziksel olarak üretilemez).
 | Sarı sabit | Init tamam, Start bekleniyor |
 | Turuncu yanıp sönüyor | Otonom çalışıyor |
 | Yeşil yanıp sönüyor | Teleop çalışıyor |
-| Kırmızı yanıp sönüyor | Deadline miss — loop 2 sn'den uzun bloke oldu |
+| Kırmızı yanıp sönüyor | Stalled — loop 2 sn'den uzun döndü, güvende tutuluyor |
+| Kırmızı sabit | Acil durdurma (kilitli, reboot gerekli) |
+
+**RSL (sinyal lambası):** `#define PROBOT_RSL_PIN <gpio>` verirseniz kütüphane
+o digital pini sürer — robot **hareket edebilirken** (teleop/otonom) yanıp
+söner, aksi halde **sabit açık** kalır.
 
 ## Bağlantı davranışı (güvenlik)
 

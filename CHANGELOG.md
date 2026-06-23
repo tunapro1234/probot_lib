@@ -31,10 +31,11 @@ kökten kapatır. 6 hook API'si aynen derlenir, ama **davranış değişir**
 - **TWDT yalnız sysloop'u izler** (kullanıcı task'ı kasıtlı olarak abone
   değil): yalnızca bir **süpervizör/kütüphane** kilitlenmesi reboot
   ettirir, kullanıcı state'i asla. Timeout `PROBOT_WDT_TIMEOUT_S` (8).
-- **Status LED kilitsiz.** `pixel.show()` artık `portMAX_DELAY` mutex'i
-  altında değil; tek task (sysloop) `flush()` ile basar. Kullanıcı
-  `setColor` yalnız bir atomik söze yazar. Öldürülen task'ın LED mutex'ini
-  orphan etme (kütüphane içi tek orphan riski) tamamen kalktı.
+- **Status LED artık status-only ve kilitsiz.** El ile renk atama API'si
+  (`setColor`/`set`/`setBrightness`) **kaldırıldı** — LED'in rengi her zaman
+  maç durumunu gösterir, kütüphane sürer (tek task: sysloop, `render()`).
+  `portMAX_DELAY` mutex'i kalktı → öldürülen task'ın LED kilidini orphan
+  etme riski (kütüphane içi tek orphan) tamamen bitti.
 - httpd `recv_wait_timeout` 5 sn → 2 sn (yarım-açık client worker'ı
   tutamaz; `send_wait_timeout` ile simetrik).
 
@@ -67,7 +68,10 @@ kökten kapatır. 6 hook API'si aynen derlenir, ama **davranış değişir**
   durdurma / donanım E-stop kullanın.
 - **Auto-wedge → teleop otomatik kurtarması kalktı** (eski "öldür ve
   devam et" güvensizdi). Donmuş bir otonom artık halt-safe'e düşer.
-- Davranış kıran kaynak değişikliği yok; mevcut sketch'ler aynen derlenir.
+- **BREAKING:** `probot::builtinled::setColor/set/setBrightness` kaldırıldı —
+  status LED artık yalnız kütüphane tarafından sürülüyor. Bu çağrıları yapan
+  sketch'ler derlenmez; satırları silin (gösterge için `PROBOT_RSL_PIN` kullanın).
+- Bunun dışında davranış kıran kaynak değişikliği yok; sketch'ler aynen derlenir.
 - 4 ayrı worker stack'i tek task'ta birleşti — `STACK_USER` 4096 → 8192.
 
 ---
@@ -317,8 +321,12 @@ upgrade notes).
   library-driven enable GPIO. Wire it to your motor drivers' enable lines
   (or a contactor); HIGH at boot, LOW on emergency stop — a hardware kill
   path independent of how user code drives outputs.
+- **Optional `PROBOT_RSL_PIN`** (default -1/off): an FRC-RSL-style signal
+  light on a plain digital pin. The library blinks it while the robot can
+  move (teleop/autonomous) and holds it solid on otherwise.
 - **New macros:** `PROBOT_LOOP_DEADLINE_MS`, `PROBOT_WDT_TIMEOUT_S`,
-  `PROBOT_ESTOP_END_MS`, `PROBOT_ESTOP_ENABLE_PIN`, `USER_LOOP_PERIOD_MS`.
+  `PROBOT_ESTOP_END_MS`, `PROBOT_ESTOP_ENABLE_PIN`, `PROBOT_RSL_PIN`,
+  `NEOPIXEL_BRIGHTNESS`, `USER_LOOP_PERIOD_MS`.
 - `estop` field on the `'S'` push frame and `/getState` (UI banner).
 - Host unit tests for the phase machine / supervisor / stall detection
   (`tests/test_lifecycle.cpp`).
@@ -333,7 +341,10 @@ upgrade notes).
   instant cut use emergency stop / the hardware E-stop.
 - **Auto-wedge → teleop auto-recovery removed** (the old "kill and
   continue" was unsafe). A wedged autonomous now falls to halt-safe.
-- No breaking source changes; existing sketches compile unchanged.
+- **BREAKING:** `probot::builtinled::setColor/set/setBrightness` were removed
+  — the status LED is now library-driven only. Sketches calling them won't
+  compile; delete those lines (use `PROBOT_RSL_PIN` for an indicator).
+- Otherwise no breaking source changes; existing sketches compile unchanged.
 - The four worker stacks collapsed into one — `STACK_USER` 4096 → 8192.
 
 ---

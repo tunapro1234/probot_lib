@@ -124,16 +124,21 @@ kol.detach();                   // sinyali kes (servo gevşer)
 
 `attach()` ilk `write()`'a kadar darbe üretmez — robot açılışta zıplamaz.
 
-## Durum LED'i (NeoPixel)
+## Durum LED'i (NeoPixel) + RSL
 
-Kütüphane durum renklerini kendisi sürer (README'de tablo). Pin
-varsayılanı GPIO 3; `#define NEOPIXEL_PIN 48` ile değiştirilir.
-El ile renk basmak isterseniz:
+Builtin NeoPixel **yalnız maç durumunu** gösterir; renkleri kütüphane sürer
+(tablo README'de). **El ile renk atama API'si yoktur** — LED'in rengi her zaman
+bir anlam taşır. Pin varsayılanı GPIO 3 (`#define NEOPIXEL_PIN 48` ile değişir);
+parlaklık `#define NEOPIXEL_BRIGHTNESS 32`.
+
+Ek bir sinyal lambası (FRC RSL tarzı) için düz bir digital pin verin:
 
 ```cpp
-probot::builtinled::setColor(255, 0, 255);
-probot::builtinled::setBrightness(64);     // 0-255, varsayılan 32
+#define PROBOT_RSL_PIN 10   // probot.h'den önce
 ```
+
+Kütüphane bu pini sürer: robot **hareket edebilirken** (teleop/otonom) yanıp
+söner, aksi halde (disabled/stop/e-stop) **sabit açık** kalır.
 
 ## Robot durumu (ileri seviye)
 
