@@ -223,8 +223,10 @@ namespace probot::driverstation::esp32 {
       // Nagle + the client's delayed ACK can hold small server->client
       // frames for tens of ms.
       cfg.open_fn = onSocketOpen;
-      // Bound how long a send to a stalled client can block (default 5s).
+      // Bound how long a send/recv to a stalled client can block (default 5s
+      // each). Symmetric 2 s caps the worker hold for half-open clients.
       cfg.send_wait_timeout = 2;
+      cfg.recv_wait_timeout = 2;
       // TCP keepalive detects a vanished client (tablet walked away,
       // battery died) in ~7s at the TCP layer, closing the session
       // without app-level machinery.
@@ -420,7 +422,7 @@ namespace probot::driverstation::esp32 {
       int n = snprintf(out, out_size,
         "{\"phase\":%u,\"autonomousEnabled\":%s,\"autoPeriodSeconds\":%d,"
         "\"autoRemainingMs\":%u,\"rssi\":%d,\"up\":%lu,\"heap\":%lu,\"dm\":%s,"
-        "\"joyAgeMs\":%ld,\"sta\":%ld,\"disc\":%u}",
+        "\"estop\":%s,\"joyAgeMs\":%ld,\"sta\":%ld,\"disc\":%u}",
         static_cast<unsigned>(s.phase),
         s.autonomousEnabled ? "true" : "false",
         (int)s.autoPeriodSeconds,
@@ -429,6 +431,7 @@ namespace probot::driverstation::esp32 {
         (unsigned long)now,
         (unsigned long)ESP.getFreeHeap(),
         s.deadlineMiss ? "true" : "false",
+        __atomic_load_n(&probot::robot::g_estop_latched, __ATOMIC_SEQ_CST) ? "true" : "false",
         joyAge,
         (long)diag::g_sta_count,
         (unsigned)diag::g_last_disc_reason);
@@ -734,6 +737,26 @@ namespace probot::driverstation::esp32 {
       // overflow on hostile/typo'd input.
       if (autoLen > 3600) autoLen = 3600;
 
+      // Emergency stop and reboot are handled even while latched.
+      if (strcmp(cmd, "estop") == 0) {
+        __atomic_store_n(&probot::robot::g_estop_requested, 1u, __ATOMIC_SEQ_CST);
+        httpd_resp_send(req, "ESTOP", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
+      }
+      if (strcmp(cmd, "reboot") == 0) {
+        __atomic_store_n(&probot::robot::g_reboot_requested, 1u, __ATOMIC_SEQ_CST);
+        httpd_resp_send(req, "REBOOT", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
+      }
+
+      // Terminal latch: once emergency-stopped the robot stays dead until a
+      // reboot — refuse anything that would re-arm it.
+      if (__atomic_load_n(&probot::robot::g_estop_latched, __ATOMIC_SEQ_CST)) {
+        httpd_resp_set_status(req, "409 Conflict");
+        httpd_resp_send(req, "EMERGENCY STOPPED — reboot required", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
+      }
+
       if (strcmp(cmd, "init") == 0) {
         ds->_rs.setStatus(millis(), robot::Status::INIT);
         ds->_rs.setDeadlineMiss(millis(), false);
@@ -810,13 +833,14 @@ namespace probot::driverstation::esp32 {
       if (!ds->enforceOwner(req)) return ESP_OK;
 
       auto s = ds->_rs.read();
-      char buf[128];
+      char buf[160];
       snprintf(buf, sizeof(buf),
-               "{\"phase\":%u,\"autonomousEnabled\":%s,\"autoPeriodSeconds\":%d,\"autoRemainingMs\":%u}",
+               "{\"phase\":%u,\"autonomousEnabled\":%s,\"autoPeriodSeconds\":%d,\"autoRemainingMs\":%u,\"estop\":%s}",
                static_cast<unsigned>(s.phase),
                s.autonomousEnabled ? "true" : "false",
                (int)s.autoPeriodSeconds,
-               (unsigned)computeAutoRemainingMs(s, millis()));
+               (unsigned)computeAutoRemainingMs(s, millis()),
+               __atomic_load_n(&probot::robot::g_estop_latched, __ATOMIC_SEQ_CST) ? "true" : "false");
 
       httpd_resp_set_type(req, "application/json");
       httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
