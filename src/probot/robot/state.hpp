@@ -84,4 +84,12 @@ namespace probot::robot {
   // Driver station activity — updated by HTTP/WS handlers on every request.
   // Checked by sysloop to detect connection loss.
   inline volatile uint32_t g_ds_last_activity_ms = 0;
+
+  // Emergency stop. Set requested=1 from an HTTP handler; the sysloop runs
+  // the terminal emergency-stop sequence and sets latched=1. While latched,
+  // init/start commands are refused — the robot stays dead until reboot.
+  inline volatile uint32_t g_estop_requested = 0;
+  inline volatile uint32_t g_estop_latched   = 0;
+  // Deliberate software reboot request (the "reboot to clear estop" button).
+  inline volatile uint32_t g_reboot_requested = 0;
 }

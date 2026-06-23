@@ -12,7 +12,12 @@ namespace probot {
   constexpr UBaseType_t PRIO_USER  = 1;
 
   constexpr uint32_t STACK_CTRL  = 4096;
-  constexpr uint32_t STACK_USER  = 4096;
-
-  constexpr uint32_t END_KILL_TIMEOUT_MS = 1000;
+  // One persistent user task now hosts all six hooks (init/end/teleop/auto),
+  // so it gets the headroom the four separate worker stacks used to split.
+  constexpr uint32_t STACK_USER  = 8192;
 }
+
+// User loop cadence: how often teleopLoop/autonomousLoop are called (~50 Hz).
+#ifndef USER_LOOP_PERIOD_MS
+#define USER_LOOP_PERIOD_MS 20
+#endif
