@@ -491,6 +491,36 @@ const char MAIN_page[] PROGMEM = R"=====(
       letter-spacing:0.1em;opacity:0.85;
     }
 
+    /* Emergency stop */
+    .estop-btn{
+      width:100%;margin-top:14px;
+      padding:18px;border:none;border-radius:14px;cursor:pointer;
+      background:var(--stop);color:#fff;
+      font-size:1.4rem;font-weight:800;letter-spacing:0.12em;
+      text-transform:uppercase;
+    }
+    .estop-btn:active{filter:brightness(0.85);}
+    .estop-overlay{
+      display:none;
+      position:fixed;inset:0;z-index:10000;
+      color:#fff;
+      justify-content:center;align-items:center;
+      flex-direction:column;gap:18px;
+      font-size:2.2rem;font-weight:800;
+      letter-spacing:0.2em;text-transform:uppercase;
+      background:rgba(140,12,12,0.97);
+    }
+    .estop-overlay.show{display:flex;}
+    .estop-overlay .sub{
+      font-size:0.95rem;font-weight:400;
+      letter-spacing:0.08em;opacity:0.9;text-transform:none;
+    }
+    .estop-overlay button{
+      margin-top:10px;padding:16px 32px;border:none;border-radius:12px;
+      cursor:pointer;background:#fff;color:#8c0c0c;
+      font-size:1.1rem;font-weight:800;letter-spacing:0.06em;
+    }
+
     /* Debug grid for Logs page */
     .debug-grid{
       display:grid;
@@ -664,6 +694,12 @@ const char MAIN_page[] PROGMEM = R"=====(
     <span class="sub">Trying to reconnect...</span>
   </div>
 
+  <div class="estop-overlay" id="estopOverlay">
+    <span>EMERGENCY STOPPED</span>
+    <span class="sub">Robot disabled — reboot required to clear</span>
+    <button id="rebootButton">Reboot Robot</button>
+  </div>
+
 <main>
   <!-- ===== DASHBOARD PAGE ===== -->
   <div class="page active" id="page-dashboard">
@@ -682,6 +718,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             <input type="checkbox" id="enableAutonomous" checked>
           </div>
         </div>
+        <button id="estopButton" class="estop-btn">EMERGENCY STOP</button>
         <div class="auto-progress">
           <div class="auto-progress-header">
             <span>Autonomous Countdown</span>
@@ -1001,6 +1038,8 @@ const char MAIN_page[] PROGMEM = R"=====(
     var lastCmdMs=-10000;
     function applyState(data){
         if(!data) return;
+        var estopOv=document.getElementById('estopOverlay');
+        if(estopOv) estopOv.classList.toggle('show',data.estop===true);
         if(performance.now()-lastCmdMs<600) return;
         var btn=document.getElementById('robotButton');
         if(!btn) return;
@@ -1133,6 +1172,25 @@ const char MAIN_page[] PROGMEM = R"=====(
       }
     }
     document.getElementById('robotButton').addEventListener('click',handleRobotButton);
+
+    /* ===== EMERGENCY STOP / REBOOT ===== */
+    function sendSimpleCmd(cmd){
+      var ac=new AbortController();
+      var tid=setTimeout(function(){ac.abort();},3000);
+      return fetch('/robotControl?cmd='+cmd,{signal:ac.signal}).then(function(r){
+        clearTimeout(tid);return r;
+      }).catch(function(err){console.error(cmd+' fetch error:',err);});
+    }
+    document.getElementById('estopButton').addEventListener('click',function(){
+      lastCmdMs=performance.now();
+      sendSimpleCmd('estop');
+      var ov=document.getElementById('estopOverlay');
+      if(ov) ov.classList.add('show');
+    });
+    document.getElementById('rebootButton').addEventListener('click',function(){
+      this.textContent='Rebooting...';this.disabled=true;
+      sendSimpleCmd('reboot');
+    });
 
     /* ===== GAMEPAD ===== */
     function updateGamepads(){
