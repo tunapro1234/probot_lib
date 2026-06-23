@@ -106,21 +106,25 @@ probot::printf("hiz=%.2f\n", hiz);
 probot::clearTelemetry();
 ```
 
-## Servo
+## Servo (kütüphane sınıf SAĞLAMAZ — kalıp)
 
-50 Hz LEDC donanım PWM; kanalları üstten ayırır, `analogWrite` motor
-PWM'iyle timer çakışması yaşamaz (titreme nedeni #1). Detay ve güç
-uyarıları: README "Servo kullanımı".
+probot çıkış donanımını sarmalamaz; servoyu **ham LEDC** ile sen sürersin.
+Servo 50 Hz / 14-bit ister; `analogWrite` (~1 kHz, motorlar) uymaz. Titreme
+(timer çakışması) olmaması için servoya **yüksek bir LEDC kanalı** ver —
+motorlar `analogWrite` ile alttan (0,1,2…) kullanır, çakışmaz:
 
 ```cpp
-probot::devices::Servo kol;
-kol.attach(4);                  // pin; opsiyonel: attach(pin, minUs, maxUs)
-kol.write(90.0f);               // 0-180 derece
-kol.writeMicroseconds(1500);    // 500-2500 µs
-kol.readMicroseconds();         // son yazılan değer
-kol.attached();                 // bool
-kol.detach();                   // sinyali kes (servo gevşer)
+#define SERVO_PIN 4
+void robotInit(){ ledcAttachChannel(SERVO_PIN, 50, 14, 7); }  // 50 Hz, 14-bit, kanal 7
+void teleopLoop(){
+  uint16_t us = 500 + (angle/180.0f)*2000;          // 0-180° -> 500-2500 µs
+  ledcWrite(SERVO_PIN, (uint32_t)us * 16383 / 20000);
+}
+void robotEnd(){ ledcWrite(SERVO_PIN, 0); }          // darbeyi kes (güvenli)
 ```
+
+Tam çalışan örnek: `examples/ServoTest`. Güç uyarıları: README "Servo
+kullanımı" (servoyu ayrı 5-6 V kaynaktan besle, GND ortak).
 
 `attach()` ilk `write()`'a kadar darbe üretmez — robot açılışta zıplamaz.
 

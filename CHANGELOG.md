@@ -71,6 +71,11 @@ kökten kapatır. 6 hook API'si aynen derlenir, ama **davranış değişir**
 - **BREAKING:** `probot::builtinled::setColor/set/setBrightness` kaldırıldı —
   status LED artık yalnız kütüphane tarafından sürülüyor. Bu çağrıları yapan
   sketch'ler derlenmez; satırları silin (gösterge için `PROBOT_RSL_PIN` kullanın).
+- **BREAKING:** `probot::devices::Servo` sınıfı **kaldırıldı**. Kütüphane çıkış
+  donanımını sarmalamıyor; servoyu ham LEDC ile sür — `robotInit`'te
+  `ledcAttachChannel(pin, 50, 14, 7)` (yüksek kanal → motor `analogWrite`'ıyla
+  timer çakışması olmaz), loop'ta `ledcWrite(pin, us*16383/20000)`. Tam kalıp:
+  `examples/ServoTest` ve README "Servo kullanımı".
 - Bunun dışında davranış kıran kaynak değişikliği yok; sketch'ler aynen derlenir.
 - 4 ayrı worker stack'i tek task'ta birleşti — `STACK_USER` 4096 → 8192.
 
@@ -344,6 +349,11 @@ upgrade notes).
 - **BREAKING:** `probot::builtinled::setColor/set/setBrightness` were removed
   — the status LED is now library-driven only. Sketches calling them won't
   compile; delete those lines (use `PROBOT_RSL_PIN` for an indicator).
+- **BREAKING:** the `probot::devices::Servo` class was **removed**. The library
+  no longer wraps output hardware; drive servos with raw LEDC —
+  `ledcAttachChannel(pin, 50, 14, 7)` in `robotInit` (a HIGH channel so it never
+  shares a timer with `analogWrite` motor PWM) and `ledcWrite(pin, us*16383/20000)`
+  in the loop. Full pattern: `examples/ServoTest` and README "Servo kullanımı".
 - Otherwise no breaking source changes; existing sketches compile unchanged.
 - The four worker stacks collapsed into one — `STACK_USER` 4096 → 8192.
 

@@ -21,8 +21,11 @@ Rules that generated code MUST follow:
   then `js.getLeftY()`, `js.getA()`, `js.getPOV()` etc. Axis range is
   -1..+1, Y is positive up. `probot::io::gamepad()` is the low-level
   service and has NO getLeftX/getA-style methods.
-- Servos: use `probot::devices::Servo` (attach/write/writeMicroseconds),
-  not ESP32Servo and not analogWrite — avoids LEDC timer conflicts.
+- Servos: the library provides NO servo class — drive raw LEDC. In
+  `robotInit` call `ledcAttachChannel(pin, 50, 14, 7)` (a HIGH channel, so it
+  never shares a timer with `analogWrite` motor PWM → no jitter); in the loop
+  `ledcWrite(pin, us * 16383 / 20000)` for a 500-2500 us pulse. Not ESP32Servo,
+  not analogWrite (1 kHz can't make a 50 Hz servo frame).
 - `teleopLoop`/`autonomousLoop` are called repeatedly (~50 Hz); do not
   write infinite loops or block longer than 2 s inside them.
 - Telemetry to the driver station panel: `probot::printf("v=%.2f\n", v);`

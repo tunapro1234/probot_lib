@@ -10,7 +10,6 @@
 #include <probot/io/gamepad.hpp>
 #include <probot/io/joystick_api.hpp>
 #include <probot/devices/leds/builtin.hpp>
-#include <probot/devices/servo/servo.hpp>
 #include <probot/robot/state.hpp>
 #include <probot/robot/system.hpp>
 #include <probot/telemetry/telemetry.hpp>

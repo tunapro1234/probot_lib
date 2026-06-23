@@ -118,15 +118,21 @@ Hepsi `#include <probot.h>` satırından **önce** tanımlanır:
 
 Servo titremesinin iki yaygın sebebi var; ikisi de kütüphane dışında:
 
-1. **Timer çakışması:** `analogWrite` (motorlar, 1 kHz) ile servo
-   kütüphaneleri (50 Hz) aynı LEDC timer'ına düşerse biri diğerinin
-   frekansını bozar. Çözüm: `probot::devices::Servo` kullanın — kanalları
-   üstten ayırır, motor PWM'iyle asla çakışmaz:
+1. **Timer çakışması:** `analogWrite` (motorlar, ~1 kHz) ile servo (50 Hz)
+   aynı LEDC timer'ına düşerse biri diğerinin frekansını bozar. probot bir
+   servo sınıfı vermez (donanımı sen sürersin); titremeyi önlemek için
+   servoya **yüksek bir LEDC kanalı** verin — motorların `analogWrite`'ı
+   alttan (0,1,2…) kullandığı için çakışmaz:
    ```cpp
-   probot::devices::Servo kol;
-   void robotInit() { kol.attach(4); }      // GPIO 4
-   void teleopLoop() { kol.write(90); ... } // 0-180°
+   #define SERVO_PIN 4
+   void robotInit() { ledcAttachChannel(SERVO_PIN, 50, 14, 7); } // 50 Hz, 14-bit, kanal 7
+   void teleopLoop() {
+     uint16_t us = 500 + (angle/180.0f)*2000;        // 0-180° -> 500-2500 µs
+     ledcWrite(SERVO_PIN, (uint32_t)us * 16383 / 20000);
+   }
+   void robotEnd() { ledcWrite(SERVO_PIN, 0); }      // darbeyi kes
    ```
+   Tam örnek: `examples/ServoTest`.
 2. **Güç:** Servoyu ESP32'nin 5V/3V3 pininden beslemeyin. WiFi anlık
    akım çekişleri gerilimi düşürür, servo seğirir. Servoya **ayrı 5-6V
    kaynak (BEC/UBEC)** verin, toprakları ortak bağlayın.
@@ -206,7 +212,8 @@ Kurallar:
 - Joystick: auto js = probot::io::joystick_api::makeDefault();
   js.getLeftY() vb. (-1..+1). probot::io::gamepad() üzerinde getLeftX gibi
   metodlar YOKTUR.
-- Servo için probot::devices::Servo kullan, ESP32Servo kullanma.
+- Servo için ham LEDC kullan: robotInit'te ledcAttachChannel(pin,50,14,7)
+  (yüksek kanal → motor analogWrite'ıyla çakışmaz), teleopLoop'ta ledcWrite.
 - teleopLoop ~50 Hz çağrılır; içinde sonsuz döngü/uzun blocking yapma.
 ```
 
