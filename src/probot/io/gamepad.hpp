@@ -1,6 +1,14 @@
 #pragma once
 #include <stdint.h>
 #include <Arduino.h>
+#include <probot/core/lock.hpp>
+
+// How long after the last received joystick packet axes/buttons keep
+// their values before read() returns neutral. FRC uses 125 ms, FTC
+// ~300 ms, WPILib XRP 500 ms; tighten for faster failsafe.
+#ifndef PROBOT_INPUT_TIMEOUT_MS
+#define PROBOT_INPUT_TIMEOUT_MS 500
+#endif
 
 namespace probot::io {
   struct GamepadSnapshot {
@@ -25,11 +33,15 @@ namespace probot::io {
       GamepadSnapshot z{};
       _buf[0] = z;
       _buf[1] = z;
-      _timeout_ms = 500;
+      _timeout_ms = PROBOT_INPUT_TIMEOUT_MS;
     }
 
+    // Written from two tasks (WS/HTTP handlers push frames, sysloop
+    // zeroes state on owner release); read from user code on the other
+    // core — everything goes through one short critical section.
     void write(uint32_t now_ms, const float* axes, uint32_t nAxis, const bool* buttons, uint32_t nButton){
-      uint32_t cur = __atomic_load_n(&_cur, __ATOMIC_SEQ_CST);
+      probot::core::MuxGuard guard(_mux);
+      uint32_t cur = _cur;
       uint32_t w   = 1u - cur;
       GamepadSnapshot s = _buf[cur];
       s.ms = now_ms;
@@ -38,18 +50,28 @@ namespace probot::io {
       s.buttonCount = (nButton>20?20:nButton);
       for (uint32_t i=0;i<s.axisCount;i++){ s.axes[i] = axes[i]; }
       for (uint32_t i=0;i<s.buttonCount;i++){ s.buttons[i] = buttons[i]; }
-      __atomic_thread_fence(__ATOMIC_SEQ_CST);
       _buf[w] = s;
-      __atomic_store_n(&_cur, w, __ATOMIC_SEQ_CST);
+      _cur = w;
     }
 
     void setTimeoutMs(uint32_t timeout_ms){
       __atomic_store_n(&_timeout_ms, timeout_ms, __ATOMIC_SEQ_CST);
     }
 
+    // Raw time of the last received packet — unlike read().ms this is
+    // not rewritten when the data goes stale, so it measures true
+    // joystick frame age for diagnostics.
+    uint32_t lastWriteMs() const {
+      probot::core::MuxGuard guard(_mux);
+      return _buf[_cur].ms;
+    }
+
     GamepadSnapshot read() const override {
-      uint32_t idx = __atomic_load_n(&_cur, __ATOMIC_SEQ_CST);
-      GamepadSnapshot s = _buf[idx];
+      GamepadSnapshot s;
+      {
+        probot::core::MuxGuard guard(_mux);
+        s = _buf[_cur];
+      }
       uint32_t timeout_ms = __atomic_load_n(&_timeout_ms, __ATOMIC_SEQ_CST);
       if (timeout_ms > 0){
         uint32_t now_ms = millis();
@@ -67,5 +89,6 @@ namespace probot::io {
     mutable GamepadSnapshot _buf[2];
     mutable volatile uint32_t _cur;
     mutable volatile uint32_t _timeout_ms;
+    probot::core::Mux _mux;
   };
 }

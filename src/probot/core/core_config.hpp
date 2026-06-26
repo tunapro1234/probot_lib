@@ -4,18 +4,20 @@
 #include <freertos/task.h>
 
 namespace probot {
+  // Core 0 runs WiFi/httpd/sysloop ("UI"), core 1 runs user code ("CTRL").
   constexpr int CORE_UI   = 0;
   constexpr int CORE_CTRL = 1;
 
   constexpr UBaseType_t PRIO_CTRL  = 4;
-  constexpr UBaseType_t PRIO_STATE = 5; // state manager higher than scheduler
   constexpr UBaseType_t PRIO_USER  = 1;
-  constexpr UBaseType_t PRIO_UI    = 3;
 
-  constexpr uint32_t STACK_UI    = 4096;
   constexpr uint32_t STACK_CTRL  = 4096;
-  constexpr uint32_t STACK_USER  = 4096;
-
-  constexpr uint32_t INIT_KILL_TIMEOUT_MS = 3000;
-  constexpr uint32_t END_KILL_TIMEOUT_MS  = 1000;
+  // One persistent user task now hosts all six hooks (init/end/teleop/auto),
+  // so it gets the headroom the four separate worker stacks used to split.
+  constexpr uint32_t STACK_USER  = 8192;
 }
+
+// User loop cadence: how often teleopLoop/autonomousLoop are called (~50 Hz).
+#ifndef USER_LOOP_PERIOD_MS
+#define USER_LOOP_PERIOD_MS 20
+#endif

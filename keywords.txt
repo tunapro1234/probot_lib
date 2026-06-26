@@ -1,0 +1,87 @@
+#######################################
+# Syntax coloring for probot
+#######################################
+
+#######################################
+# Datatypes / classes (KEYWORD1)
+#######################################
+probot	KEYWORD1
+Joystick	KEYWORD1
+Servo	KEYWORD1
+GamepadService	KEYWORD1
+StateService	KEYWORD1
+
+#######################################
+# Functions (KEYWORD2)
+#######################################
+robotInit	KEYWORD2
+robotEnd	KEYWORD2
+teleopInit	KEYWORD2
+teleopLoop	KEYWORD2
+autonomousInit	KEYWORD2
+autonomousLoop	KEYWORD2
+makeDefault	KEYWORD2
+getLeftX	KEYWORD2
+getLeftY	KEYWORD2
+getRightX	KEYWORD2
+getRightY	KEYWORD2
+getLeftTriggerAxis	KEYWORD2
+getRightTriggerAxis	KEYWORD2
+getA	KEYWORD2
+getB	KEYWORD2
+getX	KEYWORD2
+getY	KEYWORD2
+getLB	KEYWORD2
+getRB	KEYWORD2
+getBack	KEYWORD2
+getStart	KEYWORD2
+getOptions	KEYWORD2
+getCross	KEYWORD2
+getCircle	KEYWORD2
+getSquare	KEYWORD2
+getTriangle	KEYWORD2
+getLeftStickButton	KEYWORD2
+getRightStickButton	KEYWORD2
+getSeq	KEYWORD2
+getMs	KEYWORD2
+getAxisCount	KEYWORD2
+getButtonCount	KEYWORD2
+getPOV	KEYWORD2
+getDpadUp	KEYWORD2
+getDpadDown	KEYWORD2
+getDpadLeft	KEYWORD2
+getDpadRight	KEYWORD2
+getRawAxis	KEYWORD2
+getRawButton	KEYWORD2
+isConnected	KEYWORD2
+attach	KEYWORD2
+detach	KEYWORD2
+write	KEYWORD2
+writeMicroseconds	KEYWORD2
+readMicroseconds	KEYWORD2
+attached	KEYWORD2
+print	KEYWORD2
+println	KEYWORD2
+printf	KEYWORD2
+clearTelemetry	KEYWORD2
+setActiveByName	KEYWORD2
+setColor	KEYWORD2
+setBrightness	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+PROBOT_WIFI_AP_SSID	LITERAL1
+PROBOT_WIFI_AP_PASSWORD	LITERAL1
+PROBOT_WIFI_AP_CHANNEL	LITERAL1
+PROBOT_WIFI_AUTO_CHANNEL	LITERAL1
+PROBOT_WIFI_AP_SSID_MAC_SUFFIX	LITERAL1
+PROBOT_DS_TIMEOUT_MS	LITERAL1
+PROBOT_DS_TIMEOUT_FORCE_STOP	LITERAL1
+PROBOT_DS_OWNER_TIMEOUT_MS	LITERAL1
+PROBOT_INPUT_TIMEOUT_MS	LITERAL1
+PROBOT_WIFI_ENABLE_11B	LITERAL1
+PROBOT_WIFI_PMF_REQUIRED	LITERAL1
+PROBOT_CAPTIVE_PORTAL	LITERAL1
+NEOPIXEL_PIN	LITERAL1
+NEOPIXEL_COUNT	LITERAL1

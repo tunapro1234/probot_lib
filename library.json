@@ -20,13 +20,13 @@
     "websocket",
     "telemetry"
   ],
-  "name": "Probot Lib",
+  "name": "probot",
   "platforms": [
     "espressif32"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/nfrproducts/probot-lib"
+    "url": "https://github.com/probot-studio/probot-core"
   },
-  "version": "0.2.7"
+  "version": "0.3.0"
 }

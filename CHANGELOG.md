@@ -1,0 +1,548 @@
+# Changelog
+
+Tüm önemli değişiklikler burada dokümante edilir.
+Biçim [Keep a Changelog](https://keepachangelog.com/), sürümler
+[Semantic Versioning](https://semver.org/).
+
+---
+
+## [0.3.0] — Kooperatif Yaşam Döngüsü + Acil Durdurma
+
+Güvenlik/yaşam döngüsü yeniden tasarımı. Issue #21'deki donma sınıfını
+kökten kapatır. 6 hook API'si aynen derlenir, ama **davranış değişir**
+(aşağıdaki yükseltme notları).
+
+### Değişti
+- **Tek kalıcı kullanıcı task'ı + faz state machine.** Artık faz başına
+  task açılıp `vTaskDelete` ile öldürülmüyor. Core 1'de boot'ta açılan,
+  **asla öldürülmeyen** tek bir task altı hook'u sırayla, yalnız döngü
+  sınırlarında çalıştırır. Buton komutu "istenen mod"u set eder; geçişi
+  task kendi güvenli sınırında yapar. **Bir Stop ya da faz değişimi artık
+  kullanıcı kodunu iş ortasında (Wire/malloc kilidi tutarken) kesemez** —
+  0.2.x'teki orphaned-lock donmasının kök sebebi buydu (issue #21).
+  `runtime.hpp` baştan yazıldı; saf mantık `core/lifecycle.hpp`'de
+  (host'ta unit-test edilir).
+- **Stall watchdog artık halt-safe (öldürme/reboot yok).** Bir loop turu
+  `PROBOT_LOOP_DEADLINE_MS` (2000) içinde dönmezse: input sıfırlanır,
+  kırmızı LED, robot güvende tutulur — **task öldürülmez, çip reboot
+  edilmez** (homing/relative mekanizma state'i korunur). Tur dönünce
+  kendiliğinden temizlenir. Donmadan gerçek çıkış: acil durdurma ya da
+  donanım E-stop.
+- **TWDT yalnız sysloop'u izler** (kullanıcı task'ı kasıtlı olarak abone
+  değil): yalnızca bir **süpervizör/kütüphane** kilitlenmesi reboot
+  ettirir, kullanıcı state'i asla. Timeout `PROBOT_WDT_TIMEOUT_S` (8).
+- **Status LED artık status-only ve kilitsiz.** El ile renk atama API'si
+  (`setColor`/`set`/`setBrightness`) **kaldırıldı** — LED'in rengi her zaman
+  maç durumunu gösterir, kütüphane sürer (tek task: sysloop, `render()`).
+  `portMAX_DELAY` mutex'i kalktı → öldürülen task'ın LED kilidini orphan
+  etme riski (kütüphane içi tek orphan) tamamen bitti.
+- httpd `recv_wait_timeout` 5 sn → 2 sn (yarım-açık client worker'ı
+  tutamaz; `send_wait_timeout` ile simetrik).
+
+### Eklendi
+- **Acil durdurma (terminal).** Arayüzde kırmızı **EMERGENCY STOP** butonu
+  + `/robotControl?cmd=estop`. Sırası: latch → enable pini kes →
+  kullanıcı task'ını öldür → **taze bir task'ta `robotEnd()`'i
+  `PROBOT_ESTOP_END_MS` (500) watchdog'lu çalıştır** (takılırsa orphaned
+  bir bus yüzünden → `ESP.restart()`). Sonra robot **reboot'a kadar
+  kilitli**: init/start reddedilir, arayüzde "EMERGENCY STOPPED" + Reboot
+  butonu (`cmd=reboot`). Normal Stop'tan farkı: Stop kooperatif bekler,
+  acil durdurma keser ve terminaldir.
+- **Opsiyonel `PROBOT_ESTOP_ENABLE_PIN`** (varsayılan -1/kapalı):
+  kütüphanenin sürdüğü tek enable GPIO'su. Motor sürücülerinin enable
+  hattına (ya da bir kontaktöre) bağla; boot'ta HIGH, acil durdurmada
+  LOW — kullanıcı kodundan bağımsız donanım kill yolu.
+- **Yeni makrolar:** `PROBOT_LOOP_DEADLINE_MS`, `PROBOT_WDT_TIMEOUT_S`,
+  `PROBOT_ESTOP_END_MS`, `PROBOT_ESTOP_ENABLE_PIN`, `USER_LOOP_PERIOD_MS`.
+- `'S'` push çerçevesine ve `/getState`'e `estop` alanı (arayüz banner'ı).
+- Faz machine / supervisor / stall tespiti için host unit testleri
+  (`tests/test_lifecycle.cpp`).
+
+### Yükseltme notları
+- **Sözleşme:** kullanıcı `teleopLoop`/`autonomousLoop`'unun her turu bir
+  gün **dönmeli** (öneri: < ~2 sn). Blocking yasak değil; *sonsuz*
+  blocking yasak. I2C/sensör çağrılarına timeout koyun
+  (`Wire.setTimeOut(50)`), yoksa takılı bir cihaz turu wedge'ler.
+- **Stop gecikmesi:** Stop artık o anki tur dönünce etkili olur (en fazla
+  bir loop periyodu; loop bloklarsa daha uzun). Anında kesme için acil
+  durdurma / donanım E-stop kullanın.
+- **Auto-wedge → teleop otomatik kurtarması kalktı** (eski "öldür ve
+  devam et" güvensizdi). Donmuş bir otonom artık halt-safe'e düşer.
+- **BREAKING:** `probot::builtinled::setColor/set/setBrightness` kaldırıldı —
+  status LED artık yalnız kütüphane tarafından sürülüyor. Bu çağrıları yapan
+  sketch'ler derlenmez; satırları silin (gösterge için `PROBOT_RSL_PIN` kullanın).
+- **BREAKING:** `probot::devices::Servo` sınıfı **kaldırıldı**. Kütüphane çıkış
+  donanımını sarmalamıyor; servoyu ham LEDC ile sür — `robotInit`'te
+  `ledcAttachChannel(pin, 50, 14, 7)` (yüksek kanal → motor `analogWrite`'ıyla
+  timer çakışması olmaz), loop'ta `ledcWrite(pin, us*16383/20000)`. Tam kalıp:
+  `examples/ServoTest` ve README "Servo kullanımı".
+- Bunun dışında davranış kıran kaynak değişikliği yok; sketch'ler aynen derlenir.
+- 4 ayrı worker stack'i tek task'ta birleşti — `STACK_USER` 4096 → 8192.
+
+---
+
+## [0.2.9] — Yarışma Hazırlığı
+
+Bağlantı sağlamlaştırma (devam), servo desteği ve doküman yenileme.
+
+### Eklendi
+- **Tek-WS push mimarisi:** robot, durum+sağlık (`'S'`, ≥1 Hz, heartbeat
+  görevi de görür) ve telemetriyi (`'T'`, değişince) WebSocket üzerinden
+  kendisi yollar; arayüz artık HTTP poll yapmıyor (eskiden ~9 istek/sn).
+  WS Init/Stop boyunca açık kalır; gamepad yokken istemci 2 sn'de bir
+  `'P'` keepalive yollar. WS koparsa arayüz 1 Hz HTTP fallback'e döner.
+- **Captive portal:** robota bağlanan tablet/telefonda karşılama sayfası
+  kendiliğinden açılır (DNS catch-all + OS sonda yakalama). IP yazmak
+  gerekmez. `PROBOT_CAPTIVE_PORTAL 0` ile kapatılır.
+- **Saha teşhisleri:** STA katıl/ayrıl olayları MAC + IEEE reason
+  koduyla loglanır; `/health` ve `'S'` çerçevesi `joyAgeMs` (son
+  joystick paketinin yaşı), `sta` (istemci sayısı) ve `disc` (son kopuş
+  nedeni) alanlarını taşır; Logs sayfasında görünür.
+- **Çalışma anında kanal değişimi:** Logs sayfasından kanal seçilir,
+  `/setChannel` NVS'e kaydeder ve 1-13 için **CSA ile canlı geçiş**
+  yapar (istemciler bağlantıyı koparmadan takip eder). NVS > makro
+  önceliği; `0` = kaydı temizle, açılışta firmware varsayılanına dön.
+- **Telemetri tamponu artık kilitli** (kullanıcı çekirdeği yazar, ağ
+  çekirdeği okur — race vardı) ve `copyBuffer` API'si eklendi.
+- **RF/TCP ince ayarları** (datasheet/IDF kaynak araştırmasına dayalı):
+  TX gücü düzeltildi — `WIFI_POWER_19_5dBm` API'de aşağı yuvarlanıp
+  **18 dBm** veriyordu, artık gerçek maksimum **20 dBm** kullanılıyor
+  (+2 dB); 802.11b hızları varsayılan kapalı (beacon airtime 6 kat
+  azalır, `PROBOT_WIFI_ENABLE_11B` ile geri açılır); httpd soketlerine
+  `TCP_NODELAY` (Nagle × delayed-ACK gecikmesi biter) ve TCP keepalive
+  (~7 sn'de ölü client tespiti); WS gönderimleri mutex ile sıralandı
+  (eşzamanlı `httpd_ws_send_frame_async` çerçeve bozuyor, esp-idf
+  #14495); `send_wait_timeout` 5 sn → 2 sn; `max_open_sockets` 10.
+  Yeni makrolar: `PROBOT_INPUT_TIMEOUT_MS`, `PROBOT_WIFI_ENABLE_11B`,
+  `PROBOT_WIFI_PMF_REQUIRED`.
+- **`probot::devices::Servo`** (`devices/servo/servo.hpp`): 50 Hz LEDC
+  donanım PWM ile servo sınıfı. Kanalları üstten ayırır — `analogWrite`
+  motor PWM'iyle timer çakışması (servo titremesinin 1 numaralı yazılım
+  nedeni) yapısal olarak imkânsız. `attach/write/writeMicroseconds/detach`.
+- **Otomatik kanal seçimi artık opt-in:** ayrı `PROBOT_WIFI_AUTO_CHANNEL`
+  makrosu (varsayılan **0/kapalı**). `1` yapılırsa robot açılışta bandı
+  tarayıp 1/5/9/13 içinden en boş kanalı seçer (~2-3 sn ek açılış);
+  seçilen kanal Serial'de ve `/info`'da görünür. **Filoda önerilmez** —
+  robotlar aynı anda açıldığında hiçbiri henüz yayın yapmadığından bandı
+  boş görür ve hepsi aynı kanala düşebilir; yarışmada
+  `PROBOT_WIFI_AP_CHANNEL` ile elle dağıtın. (Önceden `PROBOT_WIFI_AP_CHANNEL 0`
+  tetikliyordu; artık sabit kanal 1-13 olmak zorunda.)
+- **`PROBOT_DS_OWNER_TIMEOUT_MS`** makrosu (varsayılan 5000) — owner
+  slotunun boşalma süresi artık yapılandırılabilir.
+- **Yeni örnekler:** `TankDrive` (BTS7960 tarzı çift motor) ve
+  `ServoTest` (joystick ile servo).
+- **Doküman seti:** README yeniden yazıldı (derlenen quick-start, kanal
+  planı, servo rehberi); `API.md` tek sayfa tam referans; `llms.txt`
+  (yapay zekâ araçları için kurallar + ham linkler); `keywords.txt`.
+- Telemetri halka tamponu için host unit testleri.
+
+### Değişti
+- **WS PING yerine görünür heartbeat:** tarayıcılar PING/PONG'u JS'e
+  göstermediği için istemci ölü linki ayırt edemiyordu. Sunucunun
+  ≥1 Hz `'S'` (durum+sağlık) push çerçevesi artık heartbeat görevini
+  görüyor; `onmessage` gerçek canlılık sinyali. Sunucu tarafındaki
+  ardışık-3-fail kapatma mantığı `sendToAll` içinde korundu.
+- **Web UI ölü-link tespiti düzeltildi:** kendi gönderimleri artık
+  aktivite sayılmıyor (ölü TCP soketine `ws.send()` sessizce başarılı
+  olur — sürüş sırasında kopan bağlantı hiç fark edilmiyordu). Stale
+  eşiği 5 sn (≈5 kaçırılmış `'S'` çerçevesi). Boştayken yaşanan sürekli
+  kopma/yeniden bağlanma döngüsü de bu sayede bitti.
+- **Web UI HTTP sağlamlaştırma:** durum/sağlık sorgularına eşzamanlılık
+  kilidi + zaman aşımı eklendi (tıkanan hatta istek yığılması önlenir);
+  HTTP artık yalnızca WS koptuğunda (1 Hz fallback) ve 10 sn'de bir RTT
+  ölçümü için kullanılır.
+- **httpd core 0'a sabitlendi** — core 1 tamamen kullanıcı koduna kaldı.
+- `/info` artık makro yerine gerçek (otomatik seçilmiş olabilecek)
+  kanalı döndürür. Logs sayfasındaki anlamsız "Password" satırı kalktı.
+
+### Düzeltildi
+- **KRİTİK — DS timeout'u robotu gerçekten durdurmuyordu (0.2.8
+  hatası):** FORCE_STOP yolu status'u STOP yaparken `lastStatus`'u da
+  STOP'a çekiyordu; geçiş bloğu değişikliği hiç görmüyor, teleop/auto
+  task'ları çalışmaya devam ediyor, `robotEnd()` hiç koşmuyordu.
+- **Aynı çekirdekte öncelik tersinmesi kilitlenmesi:** state/gamepad/
+  telemetri spinlock'ları farklı öncelikli task'lar arasında
+  paylaşılıyordu — yüksek öncelikli task spin'e girince kilidi tutan
+  düşük öncelikli task bir daha hiç koşamıyordu. Üçü de kısa portMUX
+  kritik bölgesine çevrildi (okuyucular dahil — yırtık snapshot da
+  kapandı).
+- **Görev yaşam döngüsü:** init/end worker'larının kendi handle'larını
+  silmesi use-after-free yaratabiliyordu (handle'lar artık yalnız
+  sysloop'a ait, worker'lar bayrakla park ediyor); teleop/auto artık
+  önce kooperatif durduruluyor (60 ms), Serial/Wire ortasında
+  öldürülme riski büyük ölçüde kalktı; INITED fazı artık `robotInit()`
+  gerçekten bitince raporlanıyor; task yaratma hataları loglanıyor.
+- **Watchdog hiçbir görevi izlemiyordu** — sysloop artık TWDT'ye abone
+  (3 sn panik, kilitlenmede yeniden başlatma).
+- **Deadline-miss telemetri seli:** uyarı saniyede ~1000 kez basılıp
+  256 baytlık tamponu tam ihtiyaç anında siliyordu — artık bölüm
+  başına tek atış.
+- **Servo kanal tükenmesi:** her DS Init'i `robotInit()`'i yeniden
+  çalıştırır; `attach()` her seferinde yeni LEDC kanalı yakıyordu —
+  birkaç Init sonrası tüm servolar ölüyordu. Kanal artık nesneye bir
+  kez tahsis ediliyor.
+- **WS yayını 8+ sokette tamamen duruyordu:** `httpd_get_client_list`
+  küçük diziyle çağrılınca hata veriyor, tüm push/heartbeat kesiliyordu
+  (dizi 13'e çıkarıldı). Yayın alıcıları artık owner IP'siyle de
+  süzülüyor (ikinci cihaz state/telemetri dinleyemez).
+- **WS akış hizası:** payload'lı PING/PONG ve boyut aşan çerçeveler
+  TCP akışını kaydırabiliyordu — PING payload'u artık RFC'ye uygun
+  yankılanıyor, aşırı boyut oturumu temiz kapatıyor; 20'den fazla
+  eksen bildiren çerçeveler hayalet buton üretmek yerine reddediliyor
+  (istemci de 20/20'ye kırpıyor).
+- **TankDrive otonom örneği** her çalıştırmada deadline-miss
+  tetikliyordu (2 sn'lik blocking delay) — zaman damgalı kalıba
+  çevrildi.
+- Web UI: gamepad listesi 60 Hz'de yeniden kurulup seçimi sıfırlıyordu;
+  optimistic buton güncellemesi eski 'S' çerçevesiyle çakışabiliyordu
+  (600 ms komut penceresi); kapanan soketin geç `onclose`'u yeni soketi
+  düşürebiliyordu; SSID artık /info JSON'una ve portal HTML'ine
+  süzülerek gömülüyor.
+- **Owner state yarışı:** owner alanlarına httpd task'ı ile sysloop
+  task'ı eşzamanlı erişiyordu; tüm erişimler `portMUX` kritik bölgesine
+  alındı (log/G-Ç kritik bölge dışında).
+- **Gamepad çift yazar yarışı:** `GamepadService::write` hem WS/HTTP
+  handler'larından hem owner release yolundan çağrılıyor; yazarlar artık
+  spinlock ile sıralanıyor (okuyucular kilitsiz kalır).
+- Kullanılmayan sabitler temizlendi (`INIT_KILL_TIMEOUT_MS`, `PRIO_STATE`,
+  `PRIO_UI`, `STACK_UI`).
+
+### Yükseltme notları
+- Davranış kıran API değişikliği yok; mevcut sketch'ler aynen derlenir.
+- Servo kullanan takımlar `ESP32Servo` yerine `probot::devices::Servo`'ya
+  geçmeli (README "Servo kullanımı").
+- Kalabalık RF ortamında robotları 1/5/9/13'e **elle** dağıtın (her
+  birine farklı `PROBOT_WIFI_AP_CHANNEL`). Otomatik seçim isteyen tek
+  robotlar `PROBOT_WIFI_AUTO_CHANNEL 1` ekleyebilir (filoda önerilmez).
+
+---
+
+## [0.2.8] — Bağlantı Güvenilirliği
+
+Tek odak: **link-layer dayanıklılığı**. Davranış değiştiren API yok;
+mevcut sketch'ler değişiklik gerektirmeden derlenir ve çalışır.
+
+### Eklendi
+- **`PROBOT_DS_TIMEOUT_FORCE_STOP`** makrosu (`runtime.hpp`).
+  - `1` (varsayılan, önceki davranışla aynı): DS timeout'unda
+    `Status::STOP` set edilir, teleop/auto task'ları sonlandırılır.
+  - `0`: sadece `forceDisconnect` çağrılır, WS oturumları kapatılır,
+    gamepad nötrlenir. Kullanıcı loopları çalışmaya devam eder; bağlantı
+    geri gelince init/start gerekmez.
+
+### Değişti
+- **WS `/joystick` ping toleransı** (`ws_joystick.hpp`).
+  Tek `httpd_ws_send_frame_async` fail'inde oturum kapatılıyordu; artık
+  fd başına sayaç tutulur ve **ardışık 3 fail**'den önce kapatma
+  yapılmaz. Başarılı ping sayaç sıfırlar. Gürültülü RF'de sahte
+  disconnect'leri ortadan kaldırır.
+- **`/health` ve `/info` endpoint'leri owner-check'siz**
+  (`driver_station_esp32.hpp`). Hakem/izleme cihazları aktif sürücüyü
+  etkilemeden robot sağlığını okuyabilir.
+- **`/info` response'undan `pw` alanı kaldırıldı.** Endpoint artık
+  açık okunabilir olduğu için AP parolası dışarı sızmamalı.
+- **`/joystick` WebSocket handshake'i ve her frame için owner
+  doğrulaması** (`ws_joystick.hpp`, `driver_station_esp32.hpp`).
+  Daha önce handshake her client'ı kabul ediyor, owner kontrolü sadece
+  HTTP route'larında uygulanıyordu. Artık ikinci bir client `/joystick`
+  üzerinden paralel frame yollayamaz.
+- **Owner release'de gamepad state'i sıfırlanır**
+  (`driver_station_esp32.hpp`). `releaseOwner()` artık
+  `_gs.write(now, nullptr, 0, nullptr, 0)` çağırır; kullanıcı kodu
+  stale axis/button değerleri okuyup motorlara göndermez.
+
+### Düzeltildi
+- Yok (davranış değişiklikleri yukarıda listelendi).
+
+### Yükseltme notları
+- **Yarışmada robot mutlaka durmaya devam etsin istiyorsanız:** hiçbir
+  şey yapmayın. `PROBOT_DS_TIMEOUT_FORCE_STOP` varsayılan `1`.
+- **Bağlantı kesintilerinde otomatik devam etsin istiyorsanız:**
+  sketch'inize şunu ekleyin:
+  ```cpp
+  #define PROBOT_DS_TIMEOUT_FORCE_STOP 0
+  ```
+- Hakem laptop'u / 2. tablet `/health` üzerinden robotları izlemek
+  istiyorsa artık mümkün — 403 almaz.
+
+---
+
+## [0.2.7] — 2026-02-08
+
+Önceki son yayın. Bağlantı davranışı için bkz. git `0.2.7` tag'i.
+
+---
+
+# Changelog (EN)
+
+All notable changes are documented here.
+Format: [Keep a Changelog](https://keepachangelog.com/).
+Versioning: [Semantic Versioning](https://semver.org/).
+
+---
+
+## [0.3.0] — Cooperative Lifecycle + Emergency Stop
+
+Safety/lifecycle rework that closes the freeze class from issue #21 at the
+root. The 6-hook API compiles unchanged, but **behavior changes** (see
+upgrade notes).
+
+### Changed
+- **One persistent user task + phase state machine.** No more per-phase
+  task create/`vTaskDelete`. A single task on core 1, created at boot and
+  **never killed**, runs all six hooks in sequence, only at loop
+  boundaries. A button sets the "requested mode"; the task performs the
+  transition at its own safe boundary. **A Stop or phase change can no
+  longer interrupt user code mid-transaction (holding a Wire/malloc
+  lock)** — that was the root of the 0.2.x orphaned-lock freeze (issue
+  #21). `runtime.hpp` rewritten; the pure logic lives in
+  `core/lifecycle.hpp` (host unit-tested).
+- **Stall watchdog is now halt-safe (no kill, no reboot).** A loop
+  iteration that doesn't return within `PROBOT_LOOP_DEADLINE_MS` (2000)
+  → inputs zeroed, red LED, held safe — **the task is not killed and the
+  chip is not rebooted** (preserving homed/relative mechanism state).
+  Clears itself when the loop returns. Real recovery from a true wedge:
+  emergency stop or the hardware E-stop.
+- **TWDT watches only the sysloop** (the user task is deliberately not
+  subscribed): only a **supervisor/library** wedge reboots, never user
+  state. Timeout `PROBOT_WDT_TIMEOUT_S` (8).
+- **Lock-free status LED.** `pixel.show()` no longer runs under a
+  `portMAX_DELAY` mutex; a single task (sysloop) pushes via `flush()`,
+  user `setColor` only stores an atomic word. The orphan-on-kill of the
+  LED mutex (the one in-library orphan) is gone.
+- httpd `recv_wait_timeout` 5 s → 2 s (caps a half-open client's worker
+  hold; symmetric with `send_wait_timeout`).
+
+### Added
+- **Emergency stop (terminal).** A red **EMERGENCY STOP** button in the UI
+  + `/robotControl?cmd=estop`. Sequence: latch → cut the enable pin →
+  kill the user task → **run `robotEnd()` in a fresh task under a
+  `PROBOT_ESTOP_END_MS` (500) watchdog** (if it hangs on a bus the kill
+  orphaned → `ESP.restart()`). The robot then stays **locked until
+  reboot**: init/start are refused, the UI shows "EMERGENCY STOPPED" + a
+  Reboot button (`cmd=reboot`). Unlike Stop (cooperative wait), emergency
+  stop cuts and is terminal.
+- **Optional `PROBOT_ESTOP_ENABLE_PIN`** (default -1/off): one
+  library-driven enable GPIO. Wire it to your motor drivers' enable lines
+  (or a contactor); HIGH at boot, LOW on emergency stop — a hardware kill
+  path independent of how user code drives outputs.
+- **Optional `PROBOT_RSL_PIN`** (default -1/off): an FRC-RSL-style signal
+  light on a plain digital pin. The library blinks it while the robot can
+  move (teleop/autonomous) and holds it solid on otherwise.
+- **New macros:** `PROBOT_LOOP_DEADLINE_MS`, `PROBOT_WDT_TIMEOUT_S`,
+  `PROBOT_ESTOP_END_MS`, `PROBOT_ESTOP_ENABLE_PIN`, `PROBOT_RSL_PIN`,
+  `NEOPIXEL_BRIGHTNESS`, `USER_LOOP_PERIOD_MS`.
+- `estop` field on the `'S'` push frame and `/getState` (UI banner).
+- Host unit tests for the phase machine / supervisor / stall detection
+  (`tests/test_lifecycle.cpp`).
+
+### Upgrade notes
+- **Contract:** every iteration of `teleopLoop`/`autonomousLoop` must
+  eventually **return** (aim for < ~2 s). Blocking is allowed; *unbounded*
+  blocking is not. Put a timeout on I2C/sensor calls
+  (`Wire.setTimeOut(50)`) or a stuck device wedges the iteration.
+- **Stop latency:** Stop now takes effect when the current iteration
+  returns (at most one loop period; longer if the loop blocks). For an
+  instant cut use emergency stop / the hardware E-stop.
+- **Auto-wedge → teleop auto-recovery removed** (the old "kill and
+  continue" was unsafe). A wedged autonomous now falls to halt-safe.
+- **BREAKING:** `probot::builtinled::setColor/set/setBrightness` were removed
+  — the status LED is now library-driven only. Sketches calling them won't
+  compile; delete those lines (use `PROBOT_RSL_PIN` for an indicator).
+- **BREAKING:** the `probot::devices::Servo` class was **removed**. The library
+  no longer wraps output hardware; drive servos with raw LEDC —
+  `ledcAttachChannel(pin, 50, 14, 7)` in `robotInit` (a HIGH channel so it never
+  shares a timer with `analogWrite` motor PWM) and `ledcWrite(pin, us*16383/20000)`
+  in the loop. Full pattern: `examples/ServoTest` and README "Servo kullanımı".
+- Otherwise no breaking source changes; existing sketches compile unchanged.
+- The four worker stacks collapsed into one — `STACK_USER` 4096 → 8192.
+
+---
+
+## [0.2.9] — Competition Readiness
+
+Continued link hardening, servo support, documentation overhaul.
+
+### Added
+- **Single-WS push architecture:** the robot pushes state+health (`'S'`,
+  ≥1 Hz, doubles as the heartbeat) and telemetry (`'T'`, on change) over
+  the WebSocket; the UI no longer polls HTTP (was ~9 req/s). The WS
+  stays open across Init/Stop; with no gamepad the client sends a `'P'`
+  keepalive every 2 s. If the WS drops, the UI falls back to 1 Hz HTTP.
+- **Captive portal:** joining the robot AP auto-opens a landing page
+  (DNS catch-all + OS probe spoofing) — no IP typing. Disable with
+  `PROBOT_CAPTIVE_PORTAL 0`.
+- **Field diagnostics:** STA join/leave logged with MAC + IEEE reason
+  code; `/health` and the `'S'` frame carry `joyAgeMs`, `sta` and
+  `disc`; surfaced on the Logs page.
+- **Runtime channel switching:** pick a channel on the Logs page;
+  `/setChannel` persists to NVS and switches 1-13 **live via CSA**
+  (clients migrate without dropping). NVS > macro precedence; `0` =
+  clear the pin and use the firmware default at next boot.
+- **Telemetry buffer is now locked** (user-core writer vs network-core
+  reader raced) with a new `copyBuffer` API.
+- **RF/TCP tuning** (grounded in datasheet/IDF source research): TX
+  power fix — `WIFI_POWER_19_5dBm` quantized down to **18 dBm** in the
+  API; we now request the true API max of **20 dBm** (+2 dB); 802.11b
+  rates disabled by default (6x less beacon airtime; re-enable with
+  `PROBOT_WIFI_ENABLE_11B`); `TCP_NODELAY` on httpd sockets (kills the
+  Nagle × delayed-ACK stall) and TCP keepalive (~7 s dead-client
+  detection); WS sends serialized with a mutex (concurrent
+  `httpd_ws_send_frame_async` corrupts frames, esp-idf #14495);
+  `send_wait_timeout` 5 s → 2 s; `max_open_sockets` 10. New macros:
+  `PROBOT_INPUT_TIMEOUT_MS`, `PROBOT_WIFI_ENABLE_11B`,
+  `PROBOT_WIFI_PMF_REQUIRED`.
+- **`probot::devices::Servo`** (`devices/servo/servo.hpp`): hobby-servo
+  class on 50 Hz LEDC hardware PWM. Channels are allocated from the top
+  of the range downward, so a timer collision with `analogWrite` motor
+  PWM (the #1 software cause of servo jitter) is structurally
+  impossible. `attach/write/writeMicroseconds/detach`.
+- **Auto channel select is now opt-in** behind a separate
+  `PROBOT_WIFI_AUTO_CHANNEL` macro (default **0/off**). When set to `1`
+  the robot scans the band at boot and picks the least congested of
+  1/5/9/13 (~2-3 s added boot); the chosen channel is reported on Serial
+  and `/info`. **Not recommended for a fleet** — robots booting together
+  all see an empty band and can converge on the same channel; assign
+  channels by hand with `PROBOT_WIFI_AP_CHANNEL` for a competition.
+  (Previously `PROBOT_WIFI_AP_CHANNEL 0` triggered it; the fixed channel
+  must now be 1-13.)
+- **`PROBOT_DS_OWNER_TIMEOUT_MS`** macro (default 5000) — the owner-slot
+  idle timeout is now configurable.
+- **New examples:** `TankDrive` (BTS7960-style dual motor) and
+  `ServoTest` (servo from joystick).
+- **Documentation set:** rewritten README (a quick-start that actually
+  compiles, channel planning, servo guide); `API.md` single-page full
+  reference; `llms.txt` (rules + raw links for AI tools); `keywords.txt`.
+- Host unit tests for the telemetry ring buffer.
+
+### Changed
+- **Visible heartbeat instead of WS PING:** browsers auto-pong pings
+  invisibly to JS, so the client could never tell a live link from a
+  dead one. The server's ≥1 Hz `'S'` (state+health) push frame now
+  doubles as the heartbeat — `onmessage` is a real liveness signal.
+  The server-side 3-consecutive-failure close logic lives on inside
+  `sendToAll`.
+- **Web UI dead-link detection fixed:** the client no longer counts its
+  own sends as link activity (`ws.send()` into a dead TCP socket
+  succeeds silently — a link dying mid-drive was never detected). Stale
+  threshold 5 s (≈5 missed `'S'` frames). This also ends the reconnect
+  churn loop the UI used to enter while idle.
+- **Web UI HTTP hardening:** in-flight guards + timeouts on the state
+  and health fetches (no request pile-up on a congested link); HTTP is
+  now used only while the WS is down (1 Hz fallback) and for a 10 s
+  RTT sample.
+- **httpd pinned to core 0** — core 1 is now exclusively user code.
+- `/info` reports the actual (possibly auto-selected) channel instead of
+  the macro. The meaningless "Password" row was removed from Logs.
+
+### Fixed
+- **CRITICAL — DS timeout never actually stopped the robot (0.2.8
+  bug):** the FORCE_STOP path set `lastStatus` together with the
+  status, so the transition block never saw the change — teleop/auto
+  kept running and `robotEnd()` never ran.
+- **Same-core priority-inversion livelock:** the state/gamepad/
+  telemetry spinlocks were shared between different-priority tasks on
+  one core — a spinning high-priority task starved the lock holder
+  forever. All three are now short portMUX critical sections (readers
+  included, which also closes the torn-snapshot window).
+- **Task lifecycle:** init/end workers deleting their own handles could
+  use-after-free (handles are now owned solely by the sysloop; workers
+  park on a flag); teleop/auto now stop cooperatively (60 ms grace)
+  before a hard kill; INITED is reported only when `robotInit()`
+  actually finished; task-creation failures are logged.
+- **The watchdog supervised zero tasks** — the sysloop now subscribes
+  to the TWDT (3 s panic, reboots out of livelocks).
+- **Deadline-miss telemetry flood:** the warning printed ~1000×/s and
+  wiped the 256-byte buffer exactly when needed — now one-shot per
+  episode.
+- **Servo channel exhaustion:** every DS Init re-runs `robotInit()`;
+  `attach()` burned a fresh LEDC channel each time — a few Inits killed
+  all servos. Channels are now claimed once per instance.
+- **WS broadcast died entirely above 8 sockets:** `httpd_get_client_list`
+  fails outright with a too-small array, stopping all push/heartbeat
+  frames (array now 13). Broadcast recipients are also filtered by the
+  owner IP (a second device can no longer eavesdrop state/telemetry).
+- **WS stream alignment:** PING/PONG with payloads and oversize frames
+  could desync the TCP stream — ping payloads are now echoed per RFC,
+  oversize closes the session cleanly, and frames declaring >20 axes
+  are rejected instead of misparsed into phantom buttons (the client
+  also clamps to 20/20).
+- **TankDrive autonomous example** tripped the deadline-miss kill on
+  every run (2 s blocking delay) — rewritten with the timestamp
+  pattern.
+- Web UI: the gamepad list rebuilt at 60 Hz resetting the selection;
+  optimistic button updates raced stale 'S' frames (600 ms command
+  grace window); a dying socket's late `onclose` could drop the new
+  socket; the SSID is now sanitized before embedding in /info JSON and
+  the portal HTML.
+- **Owner-state race:** owner fields were accessed concurrently from the
+  httpd task and sysloop; all access now goes through a `portMUX`
+  critical section (logging/I-O kept outside).
+- **Gamepad dual-writer race:** `GamepadService::write` is called from
+  both WS/HTTP handlers and the owner-release path; writers are now
+  serialized with a spinlock (readers stay lock-free).
+- Removed dead constants (`INIT_KILL_TIMEOUT_MS`, `PRIO_STATE`,
+  `PRIO_UI`, `STACK_UI`).
+
+### Upgrade notes
+- No breaking API changes; existing sketches compile unchanged.
+- Teams using servos should switch from `ESP32Servo` to
+  `probot::devices::Servo` (see README "Servo kullanımı").
+- In crowded RF environments assign robots to 1/5/9/13 **by hand**
+  (a distinct `PROBOT_WIFI_AP_CHANNEL` each). A lone robot may add
+  `PROBOT_WIFI_AUTO_CHANNEL 1` for auto-select (not for a fleet).
+
+---
+
+## [0.2.8] — Connection Reliability
+
+Single theme: **link-layer hardening**. No behavioral API changes;
+existing sketches keep compiling and running.
+
+### Added
+- **`PROBOT_DS_TIMEOUT_FORCE_STOP`** macro (`runtime.hpp`).
+  - `1` (default, matches prior behavior): DS timeout forces
+    `Status::STOP`, tears down teleop/auto tasks.
+  - `0`: only `forceDisconnect` runs, WS sessions are closed, gamepad
+    is zeroed. User loops keep running; no init/start needed when the
+    link returns.
+
+### Changed
+- **`/joystick` WS ping tolerance** (`ws_joystick.hpp`). A single
+  `httpd_ws_send_frame_async` failure used to close the session. We
+  now track per-fd consecutive failures and close only after
+  **three in a row**. A successful send resets the counter. Kills
+  spurious disconnects under noisy RF.
+- **`/health` and `/info` endpoints are owner-free**
+  (`driver_station_esp32.hpp`). Judges and monitoring stations can
+  observe robot health without stealing the active driver's ownership
+  slot.
+- **`pw` field removed from `/info`**. The endpoint is now publicly
+  readable, so the AP password must not leak.
+- **Owner check at `/joystick` WS handshake and per-frame**
+  (`ws_joystick.hpp`, `driver_station_esp32.hpp`). The handshake used
+  to accept any client; enforcement only covered HTTP routes. A second
+  driver can no longer open a parallel WS and race frames.
+- **Gamepad state zeroed on owner release**
+  (`driver_station_esp32.hpp`). `releaseOwner()` now calls
+  `_gs.write(now, nullptr, 0, nullptr, 0)` so user code doesn't read
+  stale axis/button values and drive motors with them.
+
+### Fixed
+- None (behavior changes listed above).
+
+### Upgrade notes
+- **If you want the robot to always hard-stop on disconnect:** do
+  nothing. `PROBOT_DS_TIMEOUT_FORCE_STOP` defaults to `1`.
+- **If you want automatic recovery instead:** add to your sketch
+  ```cpp
+  #define PROBOT_DS_TIMEOUT_FORCE_STOP 0
+  ```
+- Judge laptops / secondary tablets can now poll `/health` without
+  receiving 403.
+
+---
+
+## [0.2.7] — 2026-02-08
+
+Previous release. See git tag `0.2.7` for reference.

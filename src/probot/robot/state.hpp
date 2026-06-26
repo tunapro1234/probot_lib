@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <probot/core/lock.hpp>
 
 namespace probot::robot {
   enum class Status : uint8_t { INIT=0, START=1, STOP=2 };
@@ -37,47 +38,38 @@ namespace probot::robot {
     void setClientCount(uint32_t now_ms, int32_t c){ writeField(now_ms, [&](StateSnapshot& w){ w.clientCount = c; }); }
     void setDeadlineMiss(uint32_t now_ms, bool v){ writeField(now_ms, [&](StateSnapshot& w){ w.deadlineMiss = v; }); }
 
+    // Readers take the same short critical section as writers: a
+    // double buffer alone cannot protect a reader that gets preempted
+    // mid-copy while the writer flips twice.
     StateSnapshot read() const {
-      uint32_t idx = __atomic_load_n(&_cur, __ATOMIC_SEQ_CST);
-      return _buf[idx];
+      probot::core::MuxGuard guard(_mux);
+      return _buf[_cur];
     }
 
     // Convenience getters
-    bool     autonomousEnabled() const { return _buf[__atomic_load_n(&_cur, __ATOMIC_SEQ_CST)].autonomousEnabled; }
-    int32_t  autoPeriodSeconds() const { return _buf[__atomic_load_n(&_cur, __ATOMIC_SEQ_CST)].autoPeriodSeconds; }
-    uint32_t autoStartMs() const       { return _buf[__atomic_load_n(&_cur, __ATOMIC_SEQ_CST)].autoStartMs; }
-    Status   status() const            { return _buf[__atomic_load_n(&_cur, __ATOMIC_SEQ_CST)].status; }
-    Phase    phase() const             { return _buf[__atomic_load_n(&_cur, __ATOMIC_SEQ_CST)].phase; }
+    bool     autonomousEnabled() const { return read().autonomousEnabled; }
+    int32_t  autoPeriodSeconds() const { return read().autoPeriodSeconds; }
+    uint32_t autoStartMs() const       { return read().autoStartMs; }
+    Status   status() const            { return read().status; }
+    Phase    phase() const             { return read().phase; }
 
   private:
-    void lock() const {
-      uint32_t expected = 0;
-      while (!__atomic_compare_exchange_n(&_write_lock, &expected, 1u, false,
-                                          __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
-        expected = 0;
-      }
-    }
-
-    void unlock() const { __atomic_store_n(&_write_lock, 0u, __ATOMIC_RELEASE); }
-
     template<typename Fn>
     void writeField(uint32_t now_ms, Fn fn){
-      lock();
-      uint32_t cur = __atomic_load_n(&_cur, __ATOMIC_SEQ_CST);
+      probot::core::MuxGuard guard(_mux);
+      uint32_t cur = _cur;
       uint32_t w   = 1u - cur;
       StateSnapshot s = _buf[cur];
       s.ms = now_ms;
       s.seq++;
       fn(s);
-      __atomic_thread_fence(__ATOMIC_SEQ_CST);
       _buf[w] = s;
-      __atomic_store_n(&_cur, w, __ATOMIC_SEQ_CST);
-      unlock();
+      _cur = w;
     }
 
     mutable StateSnapshot     _buf[2];
     mutable volatile uint32_t _cur;
-    mutable volatile uint32_t _write_lock = 0;
+    probot::core::Mux         _mux;
   };
 
   inline StateService& state(){
@@ -92,4 +84,12 @@ namespace probot::robot {
   // Driver station activity — updated by HTTP/WS handlers on every request.
   // Checked by sysloop to detect connection loss.
   inline volatile uint32_t g_ds_last_activity_ms = 0;
+
+  // Emergency stop. Set requested=1 from an HTTP handler; the sysloop runs
+  // the terminal emergency-stop sequence and sets latched=1. While latched,
+  // init/start commands are refused — the robot stays dead until reboot.
+  inline volatile uint32_t g_estop_requested = 0;
+  inline volatile uint32_t g_estop_latched   = 0;
+  // Deliberate software reboot request (the "reboot to clear estop" button).
+  inline volatile uint32_t g_reboot_requested = 0;
 }

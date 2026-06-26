@@ -1,35 +1,45 @@
-# Gelecek Çalışmalar Notları (TR)
+# Gelecek Çalışmalar (TR)
 
-- **S-Eğrisi Motion Profile Desteği**: Önceden hesaplanmış trajeler için yüksek bellek tüketimi (en kötü 720KB) nedeniyle şu anda devre dışı. Gelecekteki seçenekler: (1) Kaydırmalı pencere yaklaşımı (motor başına 2.4KB), (2) Analitik formülasyon (dinamik bellek yok), (3) Hibrit yaklaşım. Trapez profiller mevcut ve çoğu kullanım senaryosu için yeterli.
-- Resmi ölçüler geldikten sonra NFR şasi geometrisi sabitlerini (iz genişliği, dingil mesafesi, tekerlek çapı) güncelle.
-- Boardoza motor kontrolcüsü desteğini entegre et (donanım ekibinden gelecek PWM/CAN detayları bekleniyor).
-- ESP32-S3 için donanımsal quadrature encoder sürücüsü ekle (temel örnek: PCNT + 1024 CPR tekerlek).
-- IMotorController arayüzünü PIDF + feedforward slotları ve isteğe bağlı motion profile zamanlaması (trapez/S-eğrisi) ile genişlet.
-- NFR örneklerinde kullanılan NullIMotorController yer tutucularını gerçek IMotorController uygulamalarıyla değiştir.
-- Her aktarma için motor motion profile ve feedforward ön ayarlarını yapılandıracak şasi seviyesinde yardımcı fonksiyonlar sun.
-- MPU6050 entegrasyonunu sağlamlaştır (kalibrasyon akışı, hata yönetimi) ve ilerideki MPU9050/BNO varyantlarına hazırlık yap.
-- Robotlar hazır olduğunda joystick hattını donanım üzerinde 10 ms örnekleme + 20 ms kontrol döngüsü ile doğrula.
-- Nihai şasi parametrelerini kullanarak otonom şablonlar ekle (10 cm ileri → 90° dönüş → 10 cm ileri).
-- Robotlar hazır olduğunda donanım-iç-döngü ve saha test kampanyasını planla.
-- ESP32 ADC (gerilim bölücü devresi) ile pil gerilimi ölçümü uygula ve driver station arayüzünde göster.
-- Yarışma sırasında bağlantı koptuğunda driver station için otomatik WiFi yeniden bağlanma mekanizması ekle.
-- Motion profile bellek kullanımını gözden geçirip optimize et (SCurveProfile en kötü durumda 720KB ayırabiliyor).
+Kütüphane 0.2.7'den beri yalnızca iletişim katmanıdır; motor/encoder/IMU
+maddeleri bu listeden çıkarılmıştır (gerekirse git geçmişine bakın).
+
+- **Pil gerilimi ölçümü:** ESP32 ADC + gerilim bölücü ile `batteryVoltage`
+  alanını doldur, arayüzde göster (`/getBattery` ve UI hazır, veri yok).
+- **Saha test kampanyası:** `connection-test/` düzeneği ile C senaryosu
+  (30+ dk stabilite) ve B senaryosu (worst-case tek kanal) koşulmadı —
+  0.2.8/0.2.9 bağlantı değişikliklerini sahada doğrula.
+- **Donanım doğrulaması:** joystick hattını gerçek robotta 10 ms örnekleme
+  + 20 ms kontrol döngüsüyle ölç (gecikme/jitter karakterizasyonu). Ayrıca
+  havadan doğrula: 11b devre dışı bırakma gerçekten beacon'ları 6 Mbps'e
+  taşıyor mu (sniffer ile), CSA kanal geçişini tabletler takip ediyor mu.
+- **Telemetri tamponu:** 256 bayt yarışma sırasında küçük kalabiliyor;
+  daha büyük tampon değerlendir (WS push 0.2.9'da geldi).
+- **ESP-NOW el kumandası:** bağlantısız kontrol linki (yeniden bağlanma
+  problemi yapısal olarak yok); ESP32 el kumandası + robot tarafında
+  IGamepadSource implementasyonu.
+- **ESP32-C5 değerlendirmesi:** 5 GHz softAP — kalabalık 2.4 GHz salon
+  sorununun yapısal çözümü.
 
 ---
 
-# Future Work Notes (EN)
+# Future Work (EN)
 
-- **S-Curve Motion Profile Support**: Currently disabled due to high memory usage (up to 720KB worst-case for pre-computed trajectories). Future implementation options: (1) Sliding window approach (2.4KB per motor), (2) Analytical formulation (zero dynamic memory), or (3) Hybrid approach. Trapezoid profiles are available and sufficient for most use cases.
-- Update NFR chassis geometry constants (track width, wheel base, wheel diameter) once official dimensions arrive.
-- Integrate Boardoza motor controller support (PWM/CAN specifics pending from hardware team).
-- Add hardware quadrature encoder driver implementation for ESP32-S3 (baseline example: PCNT + 1024 CPR wheel).
-- Extend IMotorController to PIDF + feedforward slots and optional motion profile scheduling (trapezoid/S-curve).
-- Swap placeholder NullIMotorController usages with real IMotorController implementations in NFR examples.
-- Expose chassis-level helpers to configure motor motion profiles and feedforward presets per drivetrain.
-- Harden MPU6050 integration (calibration flow, failure handling) and prepare for future MPU9050/BNO variants.
-- Validate joystick pipeline at 10 ms sampling + 20 ms control loop on hardware once robots are available.
-- Add autonomous templates (10 cm forward → 90° turn → 10 cm forward) using finalized chassis parameters.
-- Plan hardware-in-the-loop / field testing campaign when robots are ready.
-- Implement battery voltage measurement using ESP32 ADC (voltage divider circuit) and expose via driver station UI.
-- Add WiFi auto-reconnection mechanism for driver station when connection drops during competition.
-- Review and optimize memory usage for motion profiles (SCurveProfile can allocate up to 720KB in worst case).
+The library is communication-only since 0.2.7; motor/encoder/IMU items
+were dropped from this list (see git history if needed).
+
+- **Battery voltage:** feed `batteryVoltage` via ESP32 ADC + divider;
+  `/getBattery` and the UI exist but receive no data today.
+- **Field test campaign:** run connection-test scenario C (30+ min
+  stability) and scenario B (worst-case single channel) to validate the
+  0.2.8/0.2.9 connectivity changes under real RF load.
+- **Hardware validation:** measure joystick latency/jitter on a real
+  robot at 10 ms sampling + 20 ms control loop. Also verify over the
+  air: does the 11b disable really move beacons to 6 Mbps (sniffer),
+  and do tablets follow the CSA channel switch.
+- **Telemetry buffer:** 256 bytes is tight during matches; consider a
+  larger ring buffer (WS push shipped in 0.2.9).
+- **ESP-NOW handheld controller:** connectionless control link (the
+  reconnection problem is structurally absent); ESP32 handheld + an
+  IGamepadSource implementation on the robot side.
+- **ESP32-C5 evaluation:** 5 GHz softAP — the structural fix for
+  crowded 2.4 GHz venues.

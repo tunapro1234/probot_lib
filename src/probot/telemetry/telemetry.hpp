@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
+#include <probot/core/lock.hpp>
 
 namespace probot::telemetry {
 
@@ -17,11 +18,22 @@ namespace detail {
   };
 
   inline TelemetryBuffer g_buffer{};
+
+  // Writers run on the user core, readers on the network core — one
+  // short critical section keeps head/len/data consistent (see
+  // lock.hpp for why this must not be a raw spinlock on ESP32).
+  inline probot::core::Mux g_mux{};
+
+  struct LockGuard {
+    LockGuard() { g_mux.lock(); }
+    ~LockGuard() { g_mux.unlock(); }
+  };
 }
 
 inline void writeBytes(const char* msg, size_t msgLen) {
   auto& buf = detail::g_buffer;
   if (msgLen == 0) return;
+  detail::LockGuard guard;
 
   if (msgLen >= detail::BUFFER_SIZE) {
     msg += (msgLen - detail::BUFFER_SIZE);
@@ -71,22 +83,26 @@ inline void printf(const char* fmt, ...) {
 
 inline void clear() {
   auto& buf = detail::g_buffer;
+  detail::LockGuard guard;
   buf.head = 0;
   buf.len = 0;
   uint32_t s = buf.seq; buf.seq = s + 1;
 }
 
-// Internal: DS tarafından çağrılır
-inline const char* getBuffer() {
+// Internal: called by the DS. Copies into the caller's buffer (out_size
+// must be >= BUFFER_SIZE + 1); returns bytes written excluding the NUL.
+inline size_t copyBuffer(char* out, size_t out_size) {
   auto& buf = detail::g_buffer;
-  static char out[detail::BUFFER_SIZE + 1];
+  if (out_size == 0) return 0;
+  detail::LockGuard guard;
   uint16_t len = buf.len;
+  if (len >= out_size) len = static_cast<uint16_t>(out_size - 1);
   if (len == 0) {
     out[0] = '\0';
-    return out;
+    return 0;
   }
   uint16_t head = buf.head;
-  uint16_t tail = static_cast<uint16_t>((head + detail::BUFFER_SIZE - len) % detail::BUFFER_SIZE);
+  uint16_t tail = static_cast<uint16_t>((head + detail::BUFFER_SIZE - buf.len) % detail::BUFFER_SIZE);
   size_t first = detail::BUFFER_SIZE - tail;
   if (first > len) first = len;
   memcpy(out, buf.data + tail, first);
@@ -95,6 +111,14 @@ inline const char* getBuffer() {
     memcpy(out + first, buf.data, remaining);
   }
   out[len] = '\0';
+  return len;
+}
+
+// Legacy convenience: returns a static buffer. Not safe if two readers
+// call it concurrently — the DS uses copyBuffer() with its own storage.
+inline const char* getBuffer() {
+  static char out[detail::BUFFER_SIZE + 1];
+  copyBuffer(out, sizeof(out));
   return out;
 }
 

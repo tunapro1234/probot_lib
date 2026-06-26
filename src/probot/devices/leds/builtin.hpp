@@ -11,65 +11,39 @@
 #ifndef NEOPIXEL_COUNT
 #define NEOPIXEL_COUNT 1
 #endif
+#ifndef NEOPIXEL_BRIGHTNESS
+#define NEOPIXEL_BRIGHTNESS 32
+#endif
 
 namespace probot::builtinled {
+// The status LED is reserved for match-state signaling and is driven solely
+// by the runtime sysloop — the color always MEANS something (phase / stalled /
+// emergency stop). There is intentionally NO user-facing color API.
+//
+// `render()` is the single, library-internal entry point. It must be called
+// from exactly one task (the sysloop): it performs the blocking NeoPixel RMT
+// transmit, so a single caller means no mutex and no reentrancy.
 #if defined(ARDUINO)
   namespace detail {
-    struct BuiltinLedState {
+    struct State {
       Adafruit_NeoPixel pixel;
-      uint8_t brightness = 32;
       bool initialized = false;
-
-      BuiltinLedState() : pixel(NEOPIXEL_COUNT, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800) {}
+      State() : pixel(NEOPIXEL_COUNT, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800) {}
     };
-
-    inline BuiltinLedState& state(){
-      static BuiltinLedState s{};
-      return s;
-    }
-
-    inline void ensureInit(){
-      auto& s = state();
-      if (!s.initialized){
-        s.pixel.begin();
-        s.pixel.setBrightness(s.brightness);
-        s.pixel.clear();
-        s.pixel.show();
-        s.initialized = true;
-      }
-    }
-  } // namespace detail
-
-  inline void setBrightness(uint8_t brightness){
-    auto& s = detail::state();
-    s.brightness = brightness;
-    if (s.initialized){
-      s.pixel.setBrightness(s.brightness);
-      s.pixel.show();
-    }
+    inline State& state(){ static State s{}; return s; }
   }
 
-  inline void set(bool on){
-    detail::ensureInit();
+  inline void render(uint8_t r, uint8_t g, uint8_t b){
     auto& s = detail::state();
-    if (on){ s.pixel.setPixelColor(0, s.pixel.Color(0, 0, 255)); }
-    else { s.pixel.setPixelColor(0, 0); }
-    s.pixel.show();
-  }
-
-  inline void setColor(uint8_t r, uint8_t g, uint8_t b){
-    detail::ensureInit();
-    auto& s = detail::state();
+    if (!s.initialized){
+      s.pixel.begin();
+      s.initialized = true;
+    }
+    s.pixel.setBrightness(NEOPIXEL_BRIGHTNESS);
     s.pixel.setPixelColor(0, s.pixel.Color(r, g, b));
     s.pixel.show();
   }
-#elif defined(PROBOT_BUILTINLED_EXTERNAL)
-  void set(bool on);
-  void setBrightness(uint8_t brightness);
-  void setColor(uint8_t r, uint8_t g, uint8_t b);
 #else
-  inline void set(bool) {}
-  inline void setBrightness(uint8_t) {}
-  inline void setColor(uint8_t, uint8_t, uint8_t) {}
+  inline void render(uint8_t, uint8_t, uint8_t) {}
 #endif
 } // namespace probot::builtinled
