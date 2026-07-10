@@ -62,8 +62,9 @@ void teleopLoop() {
 
 // Otonom örneği: 2 saniye ileri git, dur.
 // ÖNEMLİ: autonomousLoop kısa sürede dönmeli — 2 saniyeden uzun bloke
-// olan loop "deadline miss" sayılır ve görev sonlandırılır. Bu yüzden
-// delay(2000) yerine zaman damgasıyla durum takibi yapılır.
+// olan loop "deadline miss" sayılır: input sıfırlanır, LED kırmızı yanar,
+// robot güvende tutulur (task öldürülmez). Bu yüzden delay(2000) yerine
+// zaman damgasıyla durum takibi yapılır.
 uint32_t autoStartTime = 0;
 
 void autonomousInit() {
