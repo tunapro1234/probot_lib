@@ -186,6 +186,16 @@ Yaşam döngüsü / güvenlik makroları (0.3.0):
   öldürülür); ama gerçek güvenlik garantisi için **donanım E-stop**'u güç/
   enable hattına koyun — çip tamamen kilitliyse yalnız o çalışır.
 
+Koddan tetikleme:
+
+```cpp
+probot::emergencyStop();   // her task'tan güvenli, kullanıcı hook'u dahil
+```
+
+Sadece bir bayrak set eder; gerçek sırayı (task kill → watchdog'lu
+`robotEnd()` → kilit) sysloop yürütür — bu yüzden çağıran task kendini
+silmez. Arayüzdeki EMERGENCY STOP butonuyla aynı yola çıkar.
+
 ## HTTP / WebSocket arayüzü
 
 Robot `192.168.4.1:80`'de tek sunucu çalıştırır. Kendi DS istemcinizi
