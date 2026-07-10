@@ -9,6 +9,11 @@ Biçim [Keep a Changelog](https://keepachangelog.com/), sürümler
 ## [Unreleased]
 
 ### Değişti
+- **DS arayüzü Probot marka renklerine geçti** (eski NFR lacivert/buz paleti
+  kalktı; yerleşim/markup/JS aynı). Krem zemin `#FFF7F0`, kakao mürekkep
+  `#241a12`, turuncu vurgu `#FF4500`, turuncu-tonlu gölgeler; start/stop
+  yeşil-kırmızısı semantik olarak korundu. Başlıktaki "by NFR Products"
+  ibaresi "by Probot Studio" oldu.
 - **Varsayılan WiFi kanal üçlüsü 1/5/9/13 → 1/6/11** (Tuna kararı, 2026-07-10).
   Kanal auto-select adayları artık `{1, 6, 11}`; arayüzdeki kanal ipucu ve
   seçim sırası ile README rehberi buna göre güncellendi. Bunlar sadece

@@ -14,11 +14,11 @@ const char MAIN_page[] PROGMEM = R"=====(
   <title>Probot Driver Station</title>
   <style>
     :root{
-      --navy:#00204d;
-      --ice:#e5e4e2;
+      --navy:#241a12;
+      --ice:#FFF7F0;
       --start:#28a745;
       --stop:#d93025;
-      --sky:#0aa6d9;
+      --sky:#FF4500;
       font-family:"Inter","Segoe UI",sans-serif;
     }
     *{margin:0;padding:0;box-sizing:border-box;}
@@ -40,8 +40,8 @@ const char MAIN_page[] PROGMEM = R"=====(
       justify-content:space-between;
       background:var(--navy);
       color:var(--ice);
-      box-shadow:0 8px 18px rgba(0,32,77,0.24);
-      border-bottom:1px solid rgba(229,228,226,0.12);
+      box-shadow:0 8px 18px rgba(214,54,0,0.16);
+      border-bottom:1px solid rgba(214,54,0,0.15);
     }
     .app-header .header-left{
       display:flex;
@@ -54,7 +54,7 @@ const char MAIN_page[] PROGMEM = R"=====(
     }
     .app-header .header-left .header-subtitle{
       font-size:0.82rem;
-      color:rgba(229,228,226,0.8);
+      color:rgba(255,247,240,0.8);
       text-transform:uppercase;
       letter-spacing:0.08em;
     }
@@ -79,7 +79,7 @@ const char MAIN_page[] PROGMEM = R"=====(
     .nav-link:hover{opacity:0.85;}
     .nav-link.active{
       opacity:1;
-      border-bottom-color:var(--ice);
+      border-bottom-color:var(--sky);
     }
     .app-header .header-status{
       display:flex;
@@ -128,8 +128,8 @@ const char MAIN_page[] PROGMEM = R"=====(
 
     main{
       flex:1;
-      background:linear-gradient(180deg,var(--ice) 0%,rgba(229,228,226,0.85) 70%,rgba(229,228,226,0.7) 100%);
-      box-shadow:0 -24px 48px rgba(0,32,77,0.12);
+      background:linear-gradient(180deg,var(--ice) 0%,rgba(255,247,240,0.85) 70%,rgba(255,247,240,0.7) 100%);
+      box-shadow:0 -24px 48px rgba(214,54,0,0.12);
       padding:36px 48px 48px;
     }
     .page{display:none;}
@@ -149,8 +149,8 @@ const char MAIN_page[] PROGMEM = R"=====(
       background:var(--ice);
       border-radius:24px;
       padding:28px;
-      border:1px solid rgba(0,32,77,0.12);
-      box-shadow:0 24px 36px rgba(0,32,77,0.08);
+      border:1px solid rgba(214,54,0,0.15);
+      box-shadow:0 24px 36px rgba(214,54,0,0.08);
       display:flex;
       flex-direction:column;
       gap:20px;
@@ -159,7 +159,7 @@ const char MAIN_page[] PROGMEM = R"=====(
       font-size:1.1rem;
       letter-spacing:0.12em;
       text-transform:uppercase;
-      color:rgba(0,32,77,0.85);
+      color:rgba(36,26,18,0.85);
     }
     .control-row{
       display:grid;
@@ -167,10 +167,10 @@ const char MAIN_page[] PROGMEM = R"=====(
       gap:16px;
     }
     .control{
-      background:rgba(229,228,226,0.9);
+      background:rgba(255,247,240,0.9);
       border-radius:16px;
       padding:16px;
-      border:1px solid rgba(0,32,77,0.08);
+      border:1px solid rgba(214,54,0,0.15);
       display:flex;
       flex-direction:column;
       gap:10px;
@@ -178,12 +178,12 @@ const char MAIN_page[] PROGMEM = R"=====(
     .control label{
       font-size:0.96rem;
       letter-spacing:0.08em;
-      color:rgba(0,32,77,0.65);
+      color:rgba(36,26,18,0.65);
     }
     .control input[type="number"]{
       padding:10px;
       border-radius:12px;
-      border:1px solid rgba(0,32,77,0.14);
+      border:1px solid rgba(214,54,0,0.15);
       background:var(--ice);
       text-align:center;
       font-size:1rem;
@@ -191,41 +191,41 @@ const char MAIN_page[] PROGMEM = R"=====(
     }
     .auto-progress{
       margin-top:16px;
-      background:linear-gradient(180deg,rgba(0,32,77,0.08),rgba(0,32,77,0.03));
+      background:linear-gradient(180deg,rgba(36,26,18,0.08),rgba(36,26,18,0.03));
       border-radius:16px;
       padding:16px;
-      border:1px solid rgba(0,32,77,0.12);
+      border:1px solid rgba(214,54,0,0.15);
       display:flex;
       flex-direction:column;
       gap:12px;
-      box-shadow:0 16px 28px rgba(0,32,77,0.08);
+      box-shadow:0 16px 28px rgba(214,54,0,0.08);
     }
     .auto-progress-header{
       display:flex;
       justify-content:space-between;
       align-items:center;
       font-size:0.95rem;
-      color:rgba(0,32,77,0.75);
+      color:rgba(36,26,18,0.75);
       letter-spacing:0.08em;
       text-transform:uppercase;
     }
     .auto-progress-header strong{
       font-size:1.25rem;
       letter-spacing:0.08em;
-      color:rgba(0,32,77,0.8);
+      color:rgba(36,26,18,0.8);
     }
     .auto-progress-bar{
       position:relative;
       height:12px;
       border-radius:999px;
-      background:rgba(0,32,77,0.1);
+      background:rgba(36,26,18,0.1);
       overflow:hidden;
     }
     .auto-progress-fill{
       position:absolute;
       left:0;top:0;bottom:0;
       width:0%;
-      background:linear-gradient(90deg,var(--navy),rgba(0,32,77,0.6));
+      background:linear-gradient(90deg,var(--navy),rgba(36,26,18,0.6));
       border-radius:inherit;
       transition:width 120ms linear;
     }
@@ -242,7 +242,7 @@ const char MAIN_page[] PROGMEM = R"=====(
       flex-direction:column;
       align-items:center;
       gap:8px;
-      color:rgba(0,32,77,0.7);
+      color:rgba(36,26,18,0.7);
       letter-spacing:0.08em;
       font-size:0.92rem;
     }
@@ -251,21 +251,21 @@ const char MAIN_page[] PROGMEM = R"=====(
       width:120px;
       height:120px;
       border-radius:50%;
-      background:radial-gradient(circle,var(--ice) 0%,rgba(229,228,226,0.85) 65%,rgba(229,228,226,0.7) 100%);
-      box-shadow:inset 0 4px 12px rgba(0,32,77,0.12);
+      background:radial-gradient(circle,var(--ice) 0%,rgba(255,247,240,0.85) 65%,rgba(255,247,240,0.7) 100%);
+      box-shadow:inset 0 4px 12px rgba(214,54,0,0.12);
     }
     .joy-cross{
       position:absolute;
       left:50%;top:50%;
       width:4px;height:100%;
-      background:rgba(0,32,77,0.2);
+      background:rgba(36,26,18,0.2);
       transform:translate(-50%,-50%);
     }
     .joy-cross::before{
       content:"";position:absolute;
       left:50%;top:50%;
       width:100%;height:4px;
-      background:rgba(0,32,77,0.2);
+      background:rgba(36,26,18,0.2);
       transform:translate(-50%,-50%);
     }
     .joy-dot{
@@ -273,7 +273,7 @@ const char MAIN_page[] PROGMEM = R"=====(
       width:14px;height:14px;
       border-radius:50%;
       background:var(--navy);
-      box-shadow:0 0 10px rgba(0,32,77,0.4);
+      box-shadow:0 0 10px rgba(214,54,0,0.2);
       transform:translate(-50%,-50%);
       left:50%;top:50%;
     }
@@ -286,14 +286,14 @@ const char MAIN_page[] PROGMEM = R"=====(
       position:relative;
       width:48px;height:48px;
       border-radius:50%;
-      background:radial-gradient(circle at 30% 30%,rgba(229,228,226,0.95),rgba(0,32,77,0.08));
-      border:1px solid rgba(0,32,77,0.18);
-      color:rgba(0,32,77,0.75);
+      background:radial-gradient(circle at 30% 30%,rgba(255,247,240,0.95),rgba(36,26,18,0.08));
+      border:1px solid rgba(214,54,0,0.18);
+      color:rgba(36,26,18,0.75);
       font-size:0.75rem;
       display:flex;align-items:center;justify-content:center;
       letter-spacing:0.08em;
       text-transform:uppercase;
-      box-shadow:0 8px 16px rgba(0,32,77,0.16);
+      box-shadow:0 8px 16px rgba(214,54,0,0.16);
       transition:transform 120ms ease, box-shadow 120ms ease, background 160ms ease;
     }
     .joy-button::after{
@@ -302,16 +302,16 @@ const char MAIN_page[] PROGMEM = R"=====(
       display:flex;align-items:center;justify-content:center;
     }
     .joy-button.active{
-      background:radial-gradient(circle at 30% 30%,rgba(229,228,226,0.95),rgba(0,32,77,0.2));
-      border-color:rgba(0,32,77,0.7);
+      background:radial-gradient(circle at 30% 30%,rgba(255,247,240,0.95),rgba(36,26,18,0.2));
+      border-color:rgba(214,54,0,0.2);
       color:var(--navy);
-      box-shadow:0 10px 20px rgba(0,32,77,0.35),0 0 12px rgba(0,32,77,0.3);
+      box-shadow:0 10px 20px rgba(214,54,0,0.18),0 0 12px rgba(214,54,0,0.15);
       transform:translateY(-2px);
     }
     .joy-status{
       margin-top:18px;
       display:flex;flex-direction:column;gap:4px;
-      color:rgba(0,32,77,0.75);
+      color:rgba(36,26,18,0.75);
       letter-spacing:0.06em;
     }
     .joy-status strong{
@@ -329,8 +329,8 @@ const char MAIN_page[] PROGMEM = R"=====(
       position:relative;
       width:80px;height:80px;
       border-radius:50%;
-      background:radial-gradient(circle,var(--ice) 0%,rgba(229,228,226,0.85) 65%,rgba(229,228,226,0.7) 100%);
-      box-shadow:inset 0 3px 8px rgba(0,32,77,0.12);
+      background:radial-gradient(circle,var(--ice) 0%,rgba(255,247,240,0.85) 65%,rgba(255,247,240,0.7) 100%);
+      box-shadow:inset 0 3px 8px rgba(214,54,0,0.12);
       flex-shrink:0;
     }
     .mini-joy-axes .joy-cross{width:3px;}
@@ -354,19 +354,19 @@ const char MAIN_page[] PROGMEM = R"=====(
       display:flex;
       align-items:center;
       justify-content:space-between;
-      background:rgba(229,228,226,0.85);
+      background:rgba(255,247,240,0.85);
       border-radius:16px;
       padding:10px 14px;
     }
     .switch span{
       font-size:0.92rem;
       letter-spacing:0.1em;
-      color:rgba(0,32,77,0.7);
+      color:rgba(36,26,18,0.7);
     }
     .switch input{
       width:46px;height:24px;
       appearance:none;
-      background:rgba(0,32,77,0.18);
+      background:rgba(36,26,18,0.18);
       border-radius:999px;
       position:relative;
       cursor:pointer;
@@ -378,7 +378,7 @@ const char MAIN_page[] PROGMEM = R"=====(
       border-radius:50%;
       position:absolute;top:2px;left:3px;
       background:var(--ice);
-      box-shadow:0 6px 12px rgba(0,32,77,0.24);
+      box-shadow:0 6px 12px rgba(214,54,0,0.12);
       transition:transform 160ms ease;
     }
     .switch input:checked{background:var(--sky);}
@@ -387,18 +387,18 @@ const char MAIN_page[] PROGMEM = R"=====(
       padding:16px;
       border-radius:18px;
       border:none;
-      background:var(--navy);
-      color:var(--ice);
+      background:var(--sky);
+      color:#fff;
       font-size:1.14rem;
       font-weight:600;
       letter-spacing:0.12em;
       text-transform:uppercase;
       cursor:pointer;
-      box-shadow:0 18px 26px rgba(0,32,77,0.3);
+      box-shadow:0 18px 26px rgba(214,54,0,0.15);
       transition:transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
     }
     button:hover{transform:translateY(-2px);}
-    button:active{transform:translateY(1px);box-shadow:0 12px 18px rgba(0,32,77,0.24);}
+    button:active{transform:translateY(1px);box-shadow:0 12px 18px rgba(214,54,0,0.12);}
 
     .telemetry{
       display:flex;flex-direction:column;gap:16px;
@@ -407,7 +407,7 @@ const char MAIN_page[] PROGMEM = R"=====(
       width:100%;
       padding:14px;
       border-radius:16px;
-      border:1px solid rgba(0,32,77,0.12);
+      border:1px solid rgba(214,54,0,0.15);
       background:var(--ice);
       font-size:1.05rem;
       color:var(--navy);
@@ -416,7 +416,7 @@ const char MAIN_page[] PROGMEM = R"=====(
     .telemetry pre{
       height:140px;
       overflow:auto;
-      background:rgba(229,228,226,0.92);
+      background:rgba(255,247,240,0.92);
       font-family:"SFMono-Regular","Roboto Mono",monospace;
       line-height:1.5;
       white-space:pre-wrap;
@@ -426,7 +426,7 @@ const char MAIN_page[] PROGMEM = R"=====(
       flex:1;
       min-height:300px;
       overflow-y:auto;
-      background:rgba(0,32,77,0.05);
+      background:rgba(36,26,18,0.05);
       padding:12px;
       border-radius:12px;
       font-size:0.9rem;
@@ -437,7 +437,7 @@ const char MAIN_page[] PROGMEM = R"=====(
     }
     .hint{
       font-size:0.88rem;
-      color:rgba(0,32,77,0.6);
+      color:rgba(36,26,18,0.6);
       letter-spacing:0.06em;
     }
 
@@ -445,7 +445,7 @@ const char MAIN_page[] PROGMEM = R"=====(
     .conn-bar{
       display:flex;align-items:center;gap:8px;
       font-size:0.75rem;letter-spacing:0.08em;
-      color:rgba(229,228,226,0.85);
+      color:rgba(255,247,240,0.85);
     }
     .conn-dot{
       width:8px;height:8px;border-radius:50%;
@@ -460,11 +460,11 @@ const char MAIN_page[] PROGMEM = R"=====(
     }
     .conn-signal .bar{
       width:3px;
-      background:rgba(229,228,226,0.25);
+      background:rgba(255,247,240,0.25);
       border-radius:1px;
       transition:background 300ms ease;
     }
-    .conn-signal .bar.active{background:rgba(229,228,226,0.9);}
+    .conn-signal .bar.active{background:rgba(255,247,240,0.9);}
     .conn-signal .bar:nth-child(1){height:4px;}
     .conn-signal .bar:nth-child(2){height:7px;}
     .conn-signal .bar:nth-child(3){height:10px;}
@@ -528,17 +528,17 @@ const char MAIN_page[] PROGMEM = R"=====(
       gap:12px;
     }
     .debug-item{
-      background:rgba(229,228,226,0.9);
+      background:rgba(255,247,240,0.9);
       border-radius:16px;
       padding:16px;
-      border:1px solid rgba(0,32,77,0.08);
+      border:1px solid rgba(214,54,0,0.15);
       display:flex;flex-direction:column;gap:6px;
     }
     .debug-label{
       font-size:0.78rem;
       text-transform:uppercase;
       letter-spacing:0.12em;
-      color:rgba(0,32,77,0.5);
+      color:rgba(36,26,18,0.5);
     }
     .debug-value{
       font-size:1.1rem;
@@ -664,7 +664,7 @@ const char MAIN_page[] PROGMEM = R"=====(
   <header class="app-header" id="appHeader">
     <div class="header-left">
       <h1>Probot Driver Station</h1>
-      <span class="header-subtitle">by NFR Products</span>
+      <span class="header-subtitle">by Probot Studio</span>
     </div>
     <nav>
       <a class="nav-link active" data-page="dashboard" onclick="showPage('dashboard')">Dashboard</a>
@@ -1097,8 +1097,8 @@ const char MAIN_page[] PROGMEM = R"=====(
         }else{
           controlState="idle";
           btn.textContent="Init";
-          btn.style.background="var(--navy)";
-          btn.style.color="var(--ice)";
+          btn.style.background="var(--sky)";
+          btn.style.color="#fff";
           stopAutoTimer();
           setPhaseDisplay('stopped');
         }
@@ -1165,8 +1165,8 @@ const char MAIN_page[] PROGMEM = R"=====(
       }else{
         controlState="idle";
         btn.textContent="Init";
-        btn.style.background="var(--navy)";
-        btn.style.color="var(--ice)";
+        btn.style.background="var(--sky)";
+        btn.style.color="#fff";
         stopAutoTimer();
         setPhaseDisplay('stopped');
       }
