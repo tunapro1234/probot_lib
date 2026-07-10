@@ -90,7 +90,7 @@ Hepsi `#include <probot.h>` satırından **önce** tanımlanır:
 
 ## Yarışma günü: kanal planı
 
-- 2.4 GHz'te birbirini **ezmeyen** kanallar: **1, 5, 9, 13**. Aynı anda
+- 2.4 GHz'te birbirini **ezmeyen** kanallar: **1, 6, 11**. Aynı anda
   çalışan robotları bu kanallara **elle** dağıtın — her robota
   `PROBOT_WIFI_AP_CHANNEL` ile sabit ve farklı bir kanal verin.
   Deterministik atama, koordineli bir filoda en güvenli yöntemdir.
@@ -227,7 +227,7 @@ Makine-okur özet: [`llms.txt`](llms.txt) · Tam referans: [`API.md`](API.md)
 | `#error ... PASSWORD` | Makroları `#include <probot.h>`'den önce yazın |
 | Arayüz açılmıyor / 403 | Başka bir cihaz bağlı (tek client kuralı). Diğerini kapatın, ~5 sn bekleyin |
 | Joystick görünmüyor | Kumandada herhangi bir tuşa basın (tarayıcı gamepad'i tuşa basılınca tanır) |
-| Sık kopma | Kanal çakışması — robotları 1/5/9/13'e **elle** dağıtın (her birine farklı sabit kanal) |
+| Sık kopma | Kanal çakışması — robotları 1/6/11'e **elle** dağıtın (her birine farklı sabit kanal) |
 | Servo titriyor | Yukarıdaki "Servo kullanımı" bölümü |
 
 ## Destek ve lisans

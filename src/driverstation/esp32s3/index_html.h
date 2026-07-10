@@ -811,17 +811,17 @@ const char MAIN_page[] PROGMEM = R"=====(
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
             <select id="chSelect" style="flex:1;min-width:0;font-size:1rem;padding:10px;">
               <option value="0">Varsayılana dön (açılışta)</option>
-              <option value="1">1</option><option value="5">5</option>
-              <option value="9">9</option><option value="13">13</option>
+              <option value="1">1</option><option value="6">6</option>
+              <option value="11">11</option>
               <option value="2">2</option><option value="3">3</option>
-              <option value="4">4</option><option value="6">6</option>
+              <option value="4">4</option><option value="5">5</option>
               <option value="7">7</option><option value="8">8</option>
-              <option value="10">10</option><option value="11">11</option>
-              <option value="12">12</option>
+              <option value="9">9</option><option value="10">10</option>
+              <option value="12">12</option><option value="13">13</option>
             </select>
             <button onclick="applyChannel()" style="padding:10px 18px;font-size:0.9rem;">Uygula</button>
           </div>
-          <span class="hint" id="chStatus">1/5/9/13 önerilir</span>
+          <span class="hint" id="chStatus">1/6/11 önerilir</span>
         </div>
       </section>
       <section class="stack-card">

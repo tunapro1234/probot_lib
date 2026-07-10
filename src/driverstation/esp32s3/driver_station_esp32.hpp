@@ -337,15 +337,16 @@ namespace probot::driverstation::esp32 {
   private:
     // ── Helpers ──
 
-    // Pick the least congested of the four non-overlapping 2.4 GHz
-    // channels. Each visible network adds interference weight to
-    // channels within ±3 of its own (20 MHz overlap), stronger signals
-    // weigh more. Ties go to the lower channel.
+    // Pick the least congested of the three classic non-overlapping
+    // 2.4 GHz channels (1/6/11). Each visible network adds interference
+    // weight to channels within ±3 of its own (20 MHz overlap), stronger
+    // signals weigh more. Ties go to the lower channel.
     static int autoSelectChannel() {
-      static constexpr int CANDIDATES[] = {1, 5, 9, 13};
+      static constexpr int CANDIDATES[] = {1, 6, 11};
+      constexpr int NCAND = sizeof(CANDIDATES) / sizeof(CANDIDATES[0]);
       Serial.println("[DS   ] Scanning band for channel auto-select...");
       int n = WiFi.scanNetworks(/*async=*/false, /*show_hidden=*/true);
-      int32_t score[4] = {0, 0, 0, 0};
+      int32_t score[NCAND] = {};
       for (int i = 0; i < n; i++) {
         int ch = WiFi.channel(i);
         int32_t rssi = WiFi.RSSI(i);
@@ -353,18 +354,18 @@ namespace probot::driverstation::esp32 {
         int32_t strength = rssi + 100;
         if (strength < 5)  strength = 5;
         if (strength > 70) strength = 70;
-        for (int c = 0; c < 4; c++) {
+        for (int c = 0; c < NCAND; c++) {
           int d = ch - CANDIDATES[c];
           if (d < 0) d = -d;
           if (d < 4) score[c] += (4 - d) * strength;
         }
       }
       int best = 0;
-      for (int c = 1; c < 4; c++) {
+      for (int c = 1; c < NCAND; c++) {
         if (score[c] < score[best]) best = c;
       }
-      Serial.printf("[DS   ] Scan: %d networks. Scores ch1=%ld ch5=%ld ch9=%ld ch13=%ld -> ch%d\n",
-                    n, (long)score[0], (long)score[1], (long)score[2], (long)score[3],
+      Serial.printf("[DS   ] Scan: %d networks. Scores ch1=%ld ch6=%ld ch11=%ld -> ch%d\n",
+                    n, (long)score[0], (long)score[1], (long)score[2],
                     CANDIDATES[best]);
       WiFi.scanDelete();
       return CANDIDATES[best];
