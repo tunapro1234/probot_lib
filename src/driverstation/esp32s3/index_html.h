@@ -14,12 +14,21 @@ const char MAIN_page[] PROGMEM = R"=====(
   <title>Probot Driver Station</title>
   <style>
     :root{
-      --navy:#241a12;
-      --ice:#FFF7F0;
+      --navy:#241a12;          /* kakao mürekkep (metin) */
+      --ice:#FFF7F0;           /* krem zemin */
+      --surface:#ffffff;       /* kart yüzeyi */
+      --soft:#FFF1EA;          /* yumuşak dolgu */
+      --line:#f1e7df;          /* kenarlık */
+      --muted:#6f6258;         /* soluk metin */
       --start:#28a745;
       --stop:#d93025;
-      --sky:#FF4500;
-      font-family:"Inter","Segoe UI",sans-serif;
+      --stop-deep:#8c0c0c;
+      --sky:#FF4500;           /* marka turuncusu */
+      --sky-soft:#FF8A00;      /* gradyan ortağı */
+      --deep:#D63600;          /* buton ofset gölgesi */
+      --amber:#FFB020;         /* focus vurgusu */
+      --grad-brand:linear-gradient(150deg,var(--sky-soft),var(--sky));
+      font-family:'Baloo 2','Trebuchet MS','Segoe UI',system-ui,sans-serif;
     }
     *{margin:0;padding:0;box-sizing:border-box;}
     body{
@@ -33,30 +42,46 @@ const char MAIN_page[] PROGMEM = R"=====(
       position:sticky;
       top:0;
       z-index:100;
-      padding:16px 28px;
+      padding:12px 28px;
       display:flex;
       align-items:center;
       gap:16px;
       justify-content:space-between;
-      background:var(--navy);
-      color:var(--ice);
-      box-shadow:0 8px 18px rgba(214,54,0,0.16);
-      border-bottom:1px solid rgba(214,54,0,0.15);
+      background:rgba(255,255,255,0.92);
+      color:var(--navy);
+      box-shadow:0 8px 24px rgba(214,54,0,0.08);
+      border-bottom:1px solid var(--line);
+      backdrop-filter:blur(8px);
     }
     .app-header .header-left{
       display:flex;
+      flex-direction:row;
+      align-items:center;
+      gap:12px;
+    }
+    .logo-blob{
+      width:44px;height:44px;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(150deg,var(--amber),var(--sky));
+      border-radius:38% 42% 40% 44%/42% 38% 44% 40%;
+      color:#fff;font-weight:800;font-size:1.5rem;
+      box-shadow:0 5px 0 rgba(214,54,0,0.35);
+    }
+    .header-titles{
+      display:flex;
       flex-direction:column;
-      gap:4px;
+      gap:2px;
     }
     .app-header .header-left h1{
-      font-size:1.5rem;
-      letter-spacing:0.08em;
+      font-size:1.35rem;
+      font-weight:800;
+      letter-spacing:0.01em;
     }
     .app-header .header-left .header-subtitle{
-      font-size:0.82rem;
-      color:rgba(255,247,240,0.8);
-      text-transform:uppercase;
-      letter-spacing:0.08em;
+      font-size:0.78rem;
+      color:var(--muted);
+      font-weight:600;
+      letter-spacing:0.06em;
     }
     .app-header nav{
       display:flex;
@@ -65,21 +90,21 @@ const char MAIN_page[] PROGMEM = R"=====(
       justify-content:center;
     }
     .nav-link{
-      color:var(--ice);
+      color:#5a4636;
       text-decoration:none;
-      letter-spacing:0.1em;
-      font-size:0.85rem;
-      text-transform:uppercase;
-      opacity:0.6;
-      transition:opacity 120ms ease;
+      letter-spacing:0.02em;
+      font-size:0.95rem;
+      font-weight:700;
+      transition:color 120ms ease, background 120ms ease;
       cursor:pointer;
-      padding-bottom:4px;
-      border-bottom:2px solid transparent;
+      padding:7px 16px;
+      border-radius:999px;
     }
-    .nav-link:hover{opacity:0.85;}
+    .nav-link:hover{color:var(--deep);}
     .nav-link.active{
-      opacity:1;
-      border-bottom-color:var(--sky);
+      color:#fff;
+      background:var(--grad-brand);
+      box-shadow:0 4px 0 var(--deep);
     }
     .app-header .header-status{
       display:flex;
@@ -128,8 +153,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 
     main{
       flex:1;
-      background:linear-gradient(180deg,var(--ice) 0%,rgba(255,247,240,0.85) 70%,rgba(255,247,240,0.7) 100%);
-      box-shadow:0 -24px 48px rgba(214,54,0,0.12);
+      background:var(--ice);
       padding:36px 48px 48px;
     }
     .page{display:none;}
@@ -146,20 +170,30 @@ const char MAIN_page[] PROGMEM = R"=====(
       min-width:0;
     }
     .stack-card{
-      background:var(--ice);
-      border-radius:24px;
+      background:var(--surface);
+      border-radius:26px;
       padding:28px;
-      border:1px solid rgba(214,54,0,0.15);
-      box-shadow:0 24px 36px rgba(214,54,0,0.08);
+      border:1px solid var(--line);
+      box-shadow:0 8px 24px rgba(214,54,0,0.08);
       display:flex;
       flex-direction:column;
       gap:20px;
     }
     .stack-card h2{
-      font-size:1.1rem;
-      letter-spacing:0.12em;
+      font-size:1.05rem;
+      font-weight:800;
+      letter-spacing:0.1em;
       text-transform:uppercase;
-      color:rgba(36,26,18,0.85);
+      color:var(--navy);
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .stack-card h2::before{
+      content:"";
+      width:10px;height:10px;flex-shrink:0;
+      background:var(--grad-brand);
+      border-radius:3px;
     }
     .control-row{
       display:grid;
@@ -167,65 +201,73 @@ const char MAIN_page[] PROGMEM = R"=====(
       gap:16px;
     }
     .control{
-      background:rgba(255,247,240,0.9);
+      background:var(--soft);
       border-radius:16px;
       padding:16px;
-      border:1px solid rgba(214,54,0,0.15);
+      border:1px solid var(--line);
       display:flex;
       flex-direction:column;
       gap:10px;
     }
     .control label{
       font-size:0.96rem;
-      letter-spacing:0.08em;
-      color:rgba(36,26,18,0.65);
+      font-weight:600;
+      letter-spacing:0.04em;
+      color:var(--muted);
     }
     .control input[type="number"]{
       padding:10px;
       border-radius:12px;
-      border:1px solid rgba(214,54,0,0.15);
-      background:var(--ice);
+      border:1px solid var(--line);
+      background:#fff;
       text-align:center;
       font-size:1rem;
+      font-weight:700;
       color:var(--navy);
+    }
+    .control input[type="number"]:focus{
+      outline:none;
+      border-color:var(--amber);
+      box-shadow:0 0 0 3px rgba(255,176,32,0.25);
     }
     .auto-progress{
       margin-top:16px;
-      background:linear-gradient(180deg,rgba(36,26,18,0.08),rgba(36,26,18,0.03));
+      background:var(--soft);
       border-radius:16px;
       padding:16px;
-      border:1px solid rgba(214,54,0,0.15);
+      border:1px solid var(--line);
       display:flex;
       flex-direction:column;
       gap:12px;
-      box-shadow:0 16px 28px rgba(214,54,0,0.08);
     }
     .auto-progress-header{
       display:flex;
       justify-content:space-between;
       align-items:center;
       font-size:0.95rem;
-      color:rgba(36,26,18,0.75);
-      letter-spacing:0.08em;
+      font-weight:600;
+      color:var(--muted);
+      letter-spacing:0.06em;
       text-transform:uppercase;
     }
     .auto-progress-header strong{
       font-size:1.25rem;
-      letter-spacing:0.08em;
-      color:rgba(36,26,18,0.8);
+      letter-spacing:0.04em;
+      color:var(--navy);
+      font-variant-numeric:tabular-nums;
     }
     .auto-progress-bar{
       position:relative;
       height:12px;
       border-radius:999px;
-      background:rgba(36,26,18,0.1);
+      background:rgba(214,54,0,0.12);
       overflow:hidden;
     }
     .auto-progress-fill{
       position:absolute;
       left:0;top:0;bottom:0;
       width:0%;
-      background:linear-gradient(90deg,var(--navy),rgba(36,26,18,0.6));
+      background:var(--grad-brand);
       border-radius:inherit;
       transition:width 120ms linear;
     }
@@ -272,8 +314,8 @@ const char MAIN_page[] PROGMEM = R"=====(
       position:absolute;
       width:14px;height:14px;
       border-radius:50%;
-      background:var(--navy);
-      box-shadow:0 0 10px rgba(214,54,0,0.2);
+      background:var(--grad-brand);
+      box-shadow:0 2px 6px rgba(214,54,0,0.4);
       transform:translate(-50%,-50%);
       left:50%;top:50%;
     }
@@ -302,10 +344,10 @@ const char MAIN_page[] PROGMEM = R"=====(
       display:flex;align-items:center;justify-content:center;
     }
     .joy-button.active{
-      background:radial-gradient(circle at 30% 30%,rgba(255,247,240,0.95),rgba(36,26,18,0.2));
-      border-color:rgba(214,54,0,0.2);
-      color:var(--navy);
-      box-shadow:0 10px 20px rgba(214,54,0,0.18),0 0 12px rgba(214,54,0,0.15);
+      background:var(--grad-brand);
+      border-color:var(--deep);
+      color:#fff;
+      box-shadow:0 4px 0 var(--deep);
       transform:translateY(-2px);
     }
     .joy-status{
@@ -354,14 +396,16 @@ const char MAIN_page[] PROGMEM = R"=====(
       display:flex;
       align-items:center;
       justify-content:space-between;
-      background:rgba(255,247,240,0.85);
+      background:var(--soft);
+      border:1px solid var(--line);
       border-radius:16px;
       padding:10px 14px;
     }
     .switch span{
       font-size:0.92rem;
-      letter-spacing:0.1em;
-      color:rgba(36,26,18,0.7);
+      font-weight:600;
+      letter-spacing:0.04em;
+      color:var(--muted);
     }
     .switch input{
       width:46px;height:24px;
@@ -377,28 +421,28 @@ const char MAIN_page[] PROGMEM = R"=====(
       width:20px;height:20px;
       border-radius:50%;
       position:absolute;top:2px;left:3px;
-      background:var(--ice);
-      box-shadow:0 6px 12px rgba(214,54,0,0.12);
+      background:#fff;
+      box-shadow:0 2px 4px rgba(36,26,18,0.25);
       transition:transform 160ms ease;
     }
     .switch input:checked{background:var(--sky);}
     .switch input:checked::after{transform:translateX(20px);}
     button{
       padding:16px;
-      border-radius:18px;
+      border-radius:16px;
       border:none;
-      background:var(--sky);
+      background:var(--grad-brand);
       color:#fff;
       font-size:1.14rem;
-      font-weight:600;
-      letter-spacing:0.12em;
+      font-weight:800;
+      letter-spacing:0.06em;
       text-transform:uppercase;
       cursor:pointer;
-      box-shadow:0 18px 26px rgba(214,54,0,0.15);
+      box-shadow:0 7px 0 var(--deep);
       transition:transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
     }
-    button:hover{transform:translateY(-2px);}
-    button:active{transform:translateY(1px);box-shadow:0 12px 18px rgba(214,54,0,0.12);}
+    button:hover{transform:translateY(-2px);box-shadow:0 9px 0 var(--deep);}
+    button:active{transform:translateY(3px);box-shadow:0 4px 0 var(--deep);}
 
     .telemetry{
       display:flex;flex-direction:column;gap:16px;
@@ -407,17 +451,27 @@ const char MAIN_page[] PROGMEM = R"=====(
       width:100%;
       padding:14px;
       border-radius:16px;
-      border:1px solid rgba(214,54,0,0.15);
-      background:var(--ice);
+      border:1px solid var(--line);
+      background:#fff;
       font-size:1.05rem;
+      font-family:inherit;
+      font-weight:600;
       color:var(--navy);
-      letter-spacing:0.04em;
+      letter-spacing:0.02em;
+    }
+    select:focus{
+      outline:none;
+      border-color:var(--amber);
+      box-shadow:0 0 0 3px rgba(255,176,32,0.25);
     }
     .telemetry pre{
       height:140px;
       overflow:auto;
-      background:rgba(255,247,240,0.92);
-      font-family:"SFMono-Regular","Roboto Mono",monospace;
+      background:var(--navy);
+      color:#ffe1d2;
+      border:none;
+      font-family:"JetBrains Mono","SFMono-Regular","Roboto Mono",monospace;
+      font-weight:400;
       line-height:1.5;
       white-space:pre-wrap;
       word-break:break-word;
@@ -426,26 +480,32 @@ const char MAIN_page[] PROGMEM = R"=====(
       flex:1;
       min-height:300px;
       overflow-y:auto;
-      background:rgba(36,26,18,0.05);
-      padding:12px;
-      border-radius:12px;
+      background:var(--navy);
+      color:#ffe1d2;
+      padding:14px;
+      border-radius:16px;
       font-size:0.9rem;
-      font-family:"SFMono-Regular","Roboto Mono",monospace;
+      font-family:"JetBrains Mono","SFMono-Regular","Roboto Mono",monospace;
       line-height:1.5;
       white-space:pre-wrap;
       word-break:break-word;
     }
     .hint{
       font-size:0.88rem;
-      color:rgba(36,26,18,0.6);
-      letter-spacing:0.06em;
+      color:var(--muted);
+      letter-spacing:0.02em;
     }
 
     /* Connection bar */
     .conn-bar{
       display:flex;align-items:center;gap:8px;
       font-size:0.75rem;letter-spacing:0.08em;
-      color:rgba(255,247,240,0.85);
+      color:var(--muted);
+      font-weight:600;
+      background:var(--soft);
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:6px 12px;
     }
     .conn-dot{
       width:8px;height:8px;border-radius:50%;
@@ -460,11 +520,11 @@ const char MAIN_page[] PROGMEM = R"=====(
     }
     .conn-signal .bar{
       width:3px;
-      background:rgba(255,247,240,0.25);
+      background:rgba(36,26,18,0.15);
       border-radius:1px;
       transition:background 300ms ease;
     }
-    .conn-signal .bar.active{background:rgba(255,247,240,0.9);}
+    .conn-signal .bar.active{background:var(--sky);}
     .conn-signal .bar:nth-child(1){height:4px;}
     .conn-signal .bar:nth-child(2){height:7px;}
     .conn-signal .bar:nth-child(3){height:10px;}
@@ -494,12 +554,14 @@ const char MAIN_page[] PROGMEM = R"=====(
     /* Emergency stop */
     .estop-btn{
       width:100%;margin-top:14px;
-      padding:18px;border:none;border-radius:14px;cursor:pointer;
+      padding:18px;border:none;border-radius:16px;cursor:pointer;
       background:var(--stop);color:#fff;
-      font-size:1.4rem;font-weight:800;letter-spacing:0.12em;
+      font-size:1.4rem;font-weight:800;letter-spacing:0.1em;
       text-transform:uppercase;
+      box-shadow:0 7px 0 var(--stop-deep);
     }
-    .estop-btn:active{filter:brightness(0.85);}
+    .estop-btn:hover{transform:translateY(-2px);box-shadow:0 9px 0 var(--stop-deep);}
+    .estop-btn:active{transform:translateY(3px);box-shadow:0 4px 0 var(--stop-deep);filter:brightness(0.92);}
     .estop-overlay{
       display:none;
       position:fixed;inset:0;z-index:10000;
@@ -516,9 +578,10 @@ const char MAIN_page[] PROGMEM = R"=====(
       letter-spacing:0.08em;opacity:0.9;text-transform:none;
     }
     .estop-overlay button{
-      margin-top:10px;padding:16px 32px;border:none;border-radius:12px;
+      margin-top:10px;padding:16px 32px;border:none;border-radius:16px;
       cursor:pointer;background:#fff;color:#8c0c0c;
       font-size:1.1rem;font-weight:800;letter-spacing:0.06em;
+      box-shadow:0 7px 0 rgba(0,0,0,0.35);
     }
 
     /* Debug grid for Logs page */
@@ -528,22 +591,24 @@ const char MAIN_page[] PROGMEM = R"=====(
       gap:12px;
     }
     .debug-item{
-      background:rgba(255,247,240,0.9);
+      background:var(--soft);
       border-radius:16px;
       padding:16px;
-      border:1px solid rgba(214,54,0,0.15);
+      border:1px solid var(--line);
       display:flex;flex-direction:column;gap:6px;
     }
     .debug-label{
       font-size:0.78rem;
+      font-weight:600;
       text-transform:uppercase;
-      letter-spacing:0.12em;
-      color:rgba(36,26,18,0.5);
+      letter-spacing:0.1em;
+      color:var(--muted);
     }
     .debug-value{
       font-size:1.1rem;
-      font-weight:600;
+      font-weight:700;
       color:var(--navy);
+      font-family:"JetBrains Mono","SFMono-Regular",monospace;
       font-variant-numeric:tabular-nums;
       word-break:break-all;
     }
@@ -663,8 +728,11 @@ const char MAIN_page[] PROGMEM = R"=====(
 <body>
   <header class="app-header" id="appHeader">
     <div class="header-left">
-      <h1>Probot Driver Station</h1>
-      <span class="header-subtitle">by Probot Studio</span>
+      <div class="logo-blob">P</div>
+      <div class="header-titles">
+        <h1>Probot Driver Station</h1>
+        <span class="header-subtitle">by Probot Studio</span>
+      </div>
     </div>
     <nav>
       <a class="nav-link active" data-page="dashboard" onclick="showPage('dashboard')">Dashboard</a>
