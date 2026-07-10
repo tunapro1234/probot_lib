@@ -821,7 +821,7 @@ const char MAIN_page[] PROGMEM = R"=====(
             </select>
             <button onclick="applyChannel()" style="padding:10px 18px;font-size:0.9rem;">Uygula</button>
           </div>
-          <span class="hint" id="chStatus">1/6/11 önerilir</span>
+          <span class="hint" id="chStatus">varsayılanlar: 1/6/11 — 1-13 serbest</span>
         </div>
       </section>
       <section class="stack-card">

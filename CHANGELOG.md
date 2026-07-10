@@ -9,10 +9,11 @@ Biçim [Keep a Changelog](https://keepachangelog.com/), sürümler
 ## [Unreleased]
 
 ### Değişti
-- **Önerilen WiFi kanal planı 1/5/9/13 → 1/6/11** (Tuna kararı, 2026-07-10).
+- **Varsayılan WiFi kanal üçlüsü 1/5/9/13 → 1/6/11** (Tuna kararı, 2026-07-10).
   Kanal auto-select adayları artık `{1, 6, 11}`; arayüzdeki kanal ipucu ve
-  seçim sırası ile README rehberi buna göre güncellendi. Elle kanal seçimi
-  (`PROBOT_WIFI_AP_CHANNEL`) değişmedi — 1-13 arası her kanal hâlâ verilebilir.
+  seçim sırası ile README rehberi buna göre güncellendi. Bunlar sadece
+  varsayılan — elle kanal seçimi (`PROBOT_WIFI_AP_CHANNEL`) değişmedi,
+  1-13 arası her kanal hâlâ verilebilir.
 
 ## [0.3.0] — Kooperatif Yaşam Döngüsü + Acil Durdurma
 
