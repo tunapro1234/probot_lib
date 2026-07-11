@@ -59,6 +59,7 @@ const char MAIN_page[] PROGMEM = R"=====(
       flex-direction:row;
       align-items:center;
       gap:10px;
+      flex:none;
       text-decoration:none;
     }
     .mark{
@@ -75,21 +76,24 @@ const char MAIN_page[] PROGMEM = R"=====(
     @keyframes morph{50%{border-radius:60% 40% 45% 55%/55% 58% 42% 45%;}}
     @keyframes bob{50%{transform:translateY(-2px) rotate(-3deg);}}
     @media(prefers-reduced-motion:reduce){.mark,.mark svg{animation:none;}}
-    .header-titles{
-      display:flex;
-      flex-direction:column;
-      gap:1px;
-    }
     .app-header .header-left h1{
-      font-size:1.15rem;
+      font-size:1.25rem;
       font-weight:800;
       letter-spacing:-0.01em;
+      white-space:nowrap;
+      color:var(--navy);
     }
-    .app-header .header-left .header-subtitle{
-      font-size:0.72rem;
-      color:var(--muted);
-      font-weight:600;
-      letter-spacing:0.04em;
+    /* araç rozeti — site header.js .toolchip birebir */
+    .toolchip{
+      font:700 11.5px/1 'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+      letter-spacing:0.08em;
+      color:var(--deep);
+      background:#fff;
+      border:2px dashed var(--sky);
+      border-radius:999px;
+      padding:6px 12px;
+      white-space:nowrap;
+      flex:none;
     }
     .app-header nav{
       display:flex;
@@ -109,9 +113,6 @@ const char MAIN_page[] PROGMEM = R"=====(
     .nav-link:hover{color:var(--deep);}
     .nav-link.active{
       color:var(--deep);
-      text-decoration:underline;
-      text-underline-offset:5px;
-      text-decoration-thickness:2px;
     }
     .app-header .header-status{
       display:flex;
@@ -603,105 +604,77 @@ const char MAIN_page[] PROGMEM = R"=====(
       word-break:break-all;
     }
 
-    /* Responsive */
-    @media(max-width:992px){
-      .app-header{gap:14px;}
-      .app-header nav{gap:16px;}
-      .nav-link{font-size:0.9rem;}
-      .app-header .header-status{align-items:flex-start;gap:4px;}
-      .app-header .header-status .status-label{font-size:0.6rem;letter-spacing:0.16em;}
-      .app-header .header-status .status-value{font-size:0.9rem;}
-      .app-header .header-status .status-detail{font-size:0.72rem;}
+    /* ============================================================
+       RESPONSIVE — width-based only. Brand (blob + wordmark + chip)
+       stays visible at EVERY width; only DS-specific extras (status
+       block, connection text, tool chip) drop as space tightens.
+       ============================================================ */
+
+    /* Two columns collapse to one before things get cramped */
+    @media(max-width:1024px){
+      main{padding:22px 22px 26px;}
+      .page.active{grid-template-columns:1fr;gap:18px;}
+      .column{gap:18px;}
     }
-    @media(max-width:900px){
-      main{padding:18px 18px 24px;}
-      .page.active{
-        grid-template-columns:1fr;
-        gap:16px;
-      }
-      .column{gap:16px;}
+
+    /* Tighten header spacing; drop the wordy STATUS block first */
+    @media(max-width:1080px){
+      .app-header{gap:16px;}
+      .app-header nav{gap:18px;}
+      .app-header .header-status{display:none;}
+    }
+
+    /* Header wraps to two rows: brand + connection on top, nav below.
+       Brand is NEVER hidden. */
+    @media(max-width:760px){
       .app-header{
         height:auto;
-        flex-direction:column;align-items:flex-start;
-        gap:10px;padding:12px 20px;
+        flex-wrap:wrap;
+        align-items:center;
+        row-gap:10px;
+        gap:12px;
+        padding:12px 20px;
       }
-      .app-header .header-left h1{font-size:1.2rem;}
-      .app-header .header-left .header-subtitle{font-size:0.74rem;}
+      .app-header .header-left{order:1;}
+      #connBar{order:2;margin-left:auto;}
       .app-header nav{
-        order:3;width:100%;
-        flex-wrap:wrap;gap:18px;
-        justify-content:flex-start;
+        order:3;
+        width:100%;
+        margin-right:0;
+        gap:22px;
+        flex-wrap:wrap;
+        padding-top:10px;
+        border-top:1px solid var(--line);
       }
-      .nav-link{font-size:1rem;}
-      .app-header .header-status{display:none;}
-      .stack-card h2{font-size:1rem;}
-    }
-    @media(orientation:portrait){
-      main{padding:18px 18px 24px;}
-      .page.active{
-        grid-template-columns:1fr;
-        gap:16px;
-      }
-      .column{gap:16px;}
-      .app-header{
-        height:auto;
-        flex-direction:column;align-items:flex-start;
-        gap:10px;padding:12px 20px;
-        justify-content:flex-start;
-      }
-      .app-header nav{
-        order:3;width:100%;
-        flex-wrap:wrap;justify-content:flex-start;gap:20px;margin-right:0;
-      }
-      .nav-link{font-size:1.05rem;}
-      .app-header .header-left{gap:10px;}
-      .app-header .header-status{display:none;}
-      body{font-size:1.05rem;line-height:1.5;}
-      .stack-card h2{font-size:1rem;}
+      main{padding:16px 16px 22px;}
+      .page.active{gap:14px;}
+      .column{gap:14px;}
+      .stack-card{padding:16px;}
+      .stack-card h2{font-size:0.95rem;}
+      /* comfortable touch sizing (not oversized) */
       .control-row{grid-template-columns:1fr;gap:12px;}
-      button{font-size:1.25rem;padding:16px;}
-      #robotButton{padding:38px 24px;font-size:2rem;}
-      .control label{font-size:1.05rem;}
-      .control input[type="number"]{font-size:1.2rem;padding:12px;}
-      .switch{flex-direction:row;align-items:center;gap:14px;padding:12px 16px;}
-      .switch span{font-size:1.05rem;}
-      .switch input{width:60px;height:32px;}
-      .switch input::after{width:26px;height:26px;top:3px;left:4px;}
-      .switch input:checked::after{transform:translateX(28px);}
-      select, .telemetry pre{font-size:1.1rem;padding:14px;}
-      .auto-progress-header{font-size:1rem;}
-      .auto-progress-header strong{font-size:1.5rem;}
-      .hint{font-size:0.95rem;}
-      .joy-grid{grid-template-columns:1fr;gap:18px;}
-      .joy-indicator{font-size:1.05rem;}
-      .joy-axes{width:200px;height:200px;margin:0 auto;}
-      .joy-buttons{grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:12px;}
-      .joy-button{width:64px;height:64px;font-size:1rem;margin:0 auto;}
-      .joy-status strong{font-size:1.15rem;}
-      .conn-bar{font-size:0.85rem;}
-      .disconnect-overlay{font-size:2.2rem;}
-      .disconnect-overlay .sub{font-size:1rem;}
-      .mini-joy-axes{width:100px;height:100px;}
-      .mini-joy-info strong{font-size:1.05rem;}
-      .debug-grid{grid-template-columns:1fr 1fr;}
-      .debug-label{font-size:0.8rem;}
-      .debug-value{font-size:1.05rem;}
+      #robotButton{padding:34px 24px;font-size:1.85rem;}
+      .switch{padding:12px 16px;}
+      .switch input{width:56px;height:30px;}
+      .switch input::after{width:24px;height:24px;top:3px;left:4px;}
+      .switch input:checked::after{transform:translateX(26px);}
+      .joy-grid{grid-template-columns:1fr;gap:16px;justify-items:center;text-align:center;}
+      .joy-axes{width:190px;height:190px;}
+      .joy-buttons{grid-template-columns:repeat(auto-fit,minmax(60px,1fr));gap:10px;}
+      .joy-button{width:60px;height:60px;}
+      .mini-joy{justify-content:center;}
     }
-    @media(max-width:1024px) and (orientation:landscape){
-      .app-header{
-        flex-direction:row;align-items:center;justify-content:center;
-        padding:6px 18px;gap:12px;
-      }
-      .app-header .header-left,
-      .app-header .header-status{display:none;}
-      .app-header nav{width:auto;flex:0 1 auto;gap:12px;flex-wrap:wrap;justify-content:center;}
-      .nav-link{font-size:0.78rem;letter-spacing:0.14em;}
-      main{padding:16px 20px 22px;}
-      .page.active{
-        grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-        gap:20px;
-      }
-      .column{gap:20px;}
+
+    /* Narrow phones: shed the tool chip + connection text, keep brand + dot */
+    @media(max-width:460px){
+      .app-header{padding:10px 16px;gap:10px;}
+      .app-header .header-left h1{font-size:1.1rem;}
+      .toolchip{display:none;}
+      #connBar{padding:5px 10px;gap:6px;}
+      .conn-ping,.conn-heap{display:none;}
+      .nav-link{font-size:0.95rem;}
+      .debug-grid{grid-template-columns:1fr;}
+      #robotButton{padding:28px 20px;font-size:1.6rem;}
     }
   </style>
 </head>
@@ -709,10 +682,8 @@ const char MAIN_page[] PROGMEM = R"=====(
   <header class="app-header" id="appHeader">
     <div class="header-left">
       <span class="mark"><svg viewBox="270 195 520 690" aria-hidden="true"><g class="body"><rect x="355" y="294" width="109" height="581" rx="54"/><rect x="355" y="294" width="376" height="353" rx="64"/><circle cx="337" cy="505" r="45"/><circle cx="743" cy="505" r="45"/></g><g class="face"><circle cx="466" cy="468" r="34"/><circle cx="614" cy="468" r="34"/><path d="M500 520 Q520 548 550 530" stroke-width="10" fill="none" stroke-linecap="round"/></g></svg></span>
-      <div class="header-titles">
-        <h1>Probot Driver Station</h1>
-        <span class="header-subtitle">by Probot Studio</span>
-      </div>
+      <h1>Probot Studio</h1>
+      <span class="toolchip">DRIVER STATION</span>
     </div>
     <nav>
       <a class="nav-link active" data-page="dashboard" onclick="showPage('dashboard')">Dashboard</a>
