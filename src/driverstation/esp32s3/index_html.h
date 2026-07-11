@@ -10,6 +10,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval';">
   <title>Probot Driver Station</title>
   <style>
@@ -376,10 +377,19 @@ const char MAIN_page[] PROGMEM = R"=====(
       letter-spacing:0.06em;
     }
     .mini-joy-info .hint a{
-      color:var(--sky);
-      text-decoration:none;
+      color:var(--deep);
+      text-decoration:underline;
+      font-weight:600;
     }
-    .mini-joy-info .hint a:hover{text-decoration:underline;}
+    .mini-joy-info .hint a:hover{color:var(--sky);}
+
+    /* Keyboard focus — visible on every interactive element (a11y) */
+    a:focus-visible, button:focus-visible, select:focus-visible,
+    input:focus-visible, .nav-link:focus-visible{
+      outline:2px solid var(--deep);
+      outline-offset:2px;
+      border-radius:8px;
+    }
 
     .switch{
       display:flex;
@@ -651,9 +661,10 @@ const char MAIN_page[] PROGMEM = R"=====(
       .column{gap:14px;}
       .stack-card{padding:16px;}
       .stack-card h2{font-size:0.95rem;}
-      /* comfortable touch sizing (not oversized) */
+      /* comfortable touch sizing (not oversized — keep the big/loud
+         footprint for EMERGENCY STOP, not Init) */
       .control-row{grid-template-columns:1fr;gap:12px;}
-      #robotButton{padding:34px 24px;font-size:1.85rem;}
+      #robotButton{padding:18px;font-size:1.4rem;}
       .switch{padding:12px 16px;}
       .switch input{width:56px;height:30px;}
       .switch input::after{width:24px;height:24px;top:3px;left:4px;}
@@ -665,16 +676,20 @@ const char MAIN_page[] PROGMEM = R"=====(
       .mini-joy{justify-content:center;}
     }
 
-    /* Narrow phones: shed the tool chip + connection text, keep brand + dot */
+    /* Shed the tool chip + connection numbers early (≤560, matching the
+       site) so the top row never spills to a third line in the 460-560 band */
+    @media(max-width:560px){
+      .toolchip{display:none;}
+      .conn-ping,.conn-heap{display:none;}
+      #connBar{padding:5px 10px;gap:6px;}
+    }
+
+    /* Narrow phones: keep brand + connection dot, single-column details */
     @media(max-width:460px){
       .app-header{padding:10px 16px;gap:10px;}
       .app-header .header-left h1{font-size:1.1rem;}
-      .toolchip{display:none;}
-      #connBar{padding:5px 10px;gap:6px;}
-      .conn-ping,.conn-heap{display:none;}
       .nav-link{font-size:0.95rem;}
       .debug-grid{grid-template-columns:1fr;}
-      #robotButton{padding:28px 20px;font-size:1.6rem;}
     }
   </style>
 </head>
