@@ -14,6 +14,11 @@ maddeleri bu listeden çıkarılmıştır (gerekirse git geçmişine bakın).
   taşıyor mu (sniffer ile), CSA kanal geçişini tabletler takip ediyor mu.
 - **Telemetri tamponu:** 256 bayt yarışma sırasında küçük kalabiliyor;
   daha büyük tampon değerlendir (WS push 0.2.9'da geldi).
+- **Kopma teşhisi (disconnect replay):** robot maç sırasında koptuğunda
+  kopma anını, IEEE reason kodunu ve o andaki durumu (faz, son joystick,
+  RSSI/ping) tek kayıtta ilişkilendir. Arayüzdeki Logs → History grafikleri
+  + `Last Disconnect` alanının üstüne kurulur; "koptuğu an neredeydi/ne
+  yapıyordu" sorusunu sahada cevaplar. (Tuna fikri, 2026-07-16.)
 - **ESP-NOW el kumandası:** bağlantısız kontrol linki (yeniden bağlanma
   problemi yapısal olarak yok); ESP32 el kumandası + robot tarafında
   IGamepadSource implementasyonu.
