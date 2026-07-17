@@ -8,7 +8,13 @@ Biçim [Keep a Changelog](https://keepachangelog.com/), sürümler
 
 ## [Unreleased]
 
-### Breaking — 0.4.0
+_(boş — 0.4.0 sonrası değişiklikler buraya)_
+
+## [0.4.0] — Probot Studio Uyumu — 2026-07-17
+
+> Dev'de; stable'a donanım testleri sonrası çıkacak.
+
+### Breaking
 
 - **FTC OpMode hook seti:** `robotInit()` ve `robotEnd()` tamamen kaldırıldı.
   Yerlerine Autonomous ve TeleOp için ayrı `init`, `initLoop`, `start`,
