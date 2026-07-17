@@ -5,6 +5,7 @@
 //
 // Diğer sürücüler (L298N, TB6612: PWM + DIR pinli) için analogWrite/
 // digitalWrite satırlarını kendi sürücünüze göre uyarlayın.
+// FTC OpMode akışı: modu seç, INIT ile init(), START ile loop(); STOP stop() çağırır.
 
 #define PROBOT_WIFI_AP_SSID     "Probot"
 #define PROBOT_WIFI_AP_PASSWORD "Probot1234"
@@ -36,7 +37,7 @@ void stopMotors() {
   setMotor(RIGHT_RPWM, RIGHT_LPWM, 0, false);
 }
 
-void robotInit() {
+void initDrive() {
   pinMode(LEFT_RPWM, OUTPUT);
   pinMode(LEFT_LPWM, OUTPUT);
   pinMode(RIGHT_RPWM, OUTPUT);
@@ -44,11 +45,7 @@ void robotInit() {
   stopMotors();
 }
 
-void robotEnd() {
-  stopMotors();   // STOP komutunda motorlar güvenli konuma
-}
-
-void teleopInit() {}
+void teleopInit() { initDrive(); }
 
 void teleopLoop() {
   auto js = probot::io::joystick_api::makeDefault();
@@ -60,6 +57,10 @@ void teleopLoop() {
   delay(20);
 }
 
+void teleopStop() {
+  stopMotors();   // TeleOp'tan her çıkışta güvenli konum
+}
+
 // Otonom örneği: 2 saniye ileri git, dur.
 // ÖNEMLİ: autonomousLoop kısa sürede dönmeli — 2 saniyeden uzun bloke
 // olan loop "deadline miss" sayılır: input sıfırlanır, LED kırmızı yanar,
@@ -68,14 +69,24 @@ void teleopLoop() {
 uint32_t autoStartTime = 0;
 
 void autonomousInit() {
-  autoStartTime = millis();
-  setMotor(LEFT_RPWM,  LEFT_LPWM,  0.4f, LEFT_INVERTED);
-  setMotor(RIGHT_RPWM, RIGHT_LPWM, 0.4f, RIGHT_INVERTED);
+  // INIT evresinde robot KIMILDAMAZ — burada yalnız hazırlık yapılır.
+  // Hareket START sonrası autonomousLoop'ta başlar.
+  initDrive();
+  autoStartTime = 0;
 }
 
 void autonomousLoop() {
+  if (autoStartTime == 0) {              // ilk tur = START anı
+    autoStartTime = millis();
+    setMotor(LEFT_RPWM,  LEFT_LPWM,  0.4f, LEFT_INVERTED);
+    setMotor(RIGHT_RPWM, RIGHT_LPWM, 0.4f, RIGHT_INVERTED);
+  }
   if (millis() - autoStartTime >= 2000) {
     stopMotors();
   }
   delay(20);
+}
+
+void autonomousStop() {
+  stopMotors();   // süre sonu, Stop, timeout ve E-stop aynı güvenli çıkışı kullanır
 }

@@ -8,6 +8,7 @@
 #include <Preferences.h>
 #include <DNSServer.h>
 #include <probot/robot/state.hpp>
+#include <probot/core/lifecycle.hpp>
 #include <probot/io/gamepad.hpp>
 #include <probot/telemetry/telemetry.hpp>
 #include "index_html.h"
@@ -400,13 +401,17 @@ namespace probot::driverstation::esp32 {
     }
 
     static uint32_t computeAutoRemainingMs(const robot::StateSnapshot& s, uint32_t now_ms) {
-      if (s.phase != probot::robot::Phase::AUTONOMOUS || !s.autonomousEnabled ||
+      if (s.phase != probot::robot::Phase::AUTO_RUN ||
           s.autoStartMs == 0 || s.autoPeriodSeconds <= 0) {
         return 0;
       }
       uint32_t total_ms = static_cast<uint32_t>(s.autoPeriodSeconds) * 1000u;
       uint32_t elapsed = now_ms - s.autoStartMs;
       return (elapsed >= total_ms) ? 0u : (total_ms - elapsed);
+    }
+
+    static const char* opModeName(robot::OpMode mode) {
+      return mode == robot::OpMode::AUTO ? "auto" : "teleop";
     }
 
     // ── WS push task ──
@@ -421,11 +426,12 @@ namespace probot::driverstation::esp32 {
         joyAge = d < 0 ? 0 : d;   // a frame can land between the two reads
       }
       int n = snprintf(out, out_size,
-        "{\"phase\":%u,\"autonomousEnabled\":%s,\"autoPeriodSeconds\":%d,"
+        "{\"status\":%u,\"phase\":%u,\"selectedMode\":\"%s\",\"autoPeriodSeconds\":%d,"
         "\"autoRemainingMs\":%u,\"rssi\":%d,\"up\":%lu,\"heap\":%lu,\"dm\":%s,"
         "\"estop\":%s,\"joyAgeMs\":%ld,\"sta\":%ld,\"disc\":%u}",
+        static_cast<unsigned>(s.status),
         static_cast<unsigned>(s.phase),
-        s.autonomousEnabled ? "true" : "false",
+        opModeName(s.selectedMode),
         (int)s.autoPeriodSeconds,
         (unsigned)computeAutoRemainingMs(s, now),
         (int)readApRssi(),
@@ -712,7 +718,14 @@ namespace probot::driverstation::esp32 {
       float axes[20]; bool buttons[20]; uint32_t nA = 0, nB = 0;
       parseFloatArray(body, "axes", axes, 20, nA);
       parseBoolArray(body, "buttons", buttons, 20, nB);
-      ds->_gs.write(millis(), axes, nA, buttons, nB);
+      uint32_t now = millis();
+      auto state = ds->_rs.read();
+      bool runPhase = state.phase == robot::Phase::AUTO_RUN ||
+                      state.phase == robot::Phase::TELEOP_RUN;
+      bool running = runPhase && state.status == robot::Status::START &&
+                     !state.deadlineMiss;
+      if (running) ds->_gs.write(now, axes, nA, buttons, nB);
+      else ds->_gs.write(now, nullptr, 0, nullptr, 0);
 
       httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
       return ESP_OK;
@@ -726,13 +739,12 @@ namespace probot::driverstation::esp32 {
       httpd_req_get_url_query_str(req, query, sizeof(query));
 
       char cmd[32] = {0};
-      char autoVal[8] = {0};
+      char modeVal[12] = {0};
       char autoLenVal[8] = {0};
       httpd_query_key_value(query, "cmd", cmd, sizeof(cmd));
-      httpd_query_key_value(query, "auto", autoVal, sizeof(autoVal));
+      httpd_query_key_value(query, "val", modeVal, sizeof(modeVal));
       httpd_query_key_value(query, "autoLen", autoLenVal, sizeof(autoLenVal));
 
-      bool enAuto = atoi(autoVal) != 0;
       int autoLen = atoi(autoLenVal);
       // autoLen*1000 happens in the sysloop — clamp to avoid signed
       // overflow on hostile/typo'd input.
@@ -758,17 +770,39 @@ namespace probot::driverstation::esp32 {
         return ESP_OK;
       }
 
-      if (strcmp(cmd, "init") == 0) {
-        ds->_rs.setStatus(millis(), robot::Status::INIT);
-        ds->_rs.setDeadlineMiss(millis(), false);
+      auto s = ds->_rs.read();
+      auto conflict = [req](const char* body) {
+        httpd_resp_set_status(req, "409 Conflict");
+        httpd_resp_send(req, body, HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
+      };
+
+      uint32_t now = millis();
+      if (strcmp(cmd, "mode") == 0) {
+        if (!core::canAcceptModeChange(s.phase, s.status)) return conflict("STOP before changing mode");
+        robot::OpMode mode;
+        if (strcmp(modeVal, "auto") == 0) mode = robot::OpMode::AUTO;
+        else if (strcmp(modeVal, "teleop") == 0) mode = robot::OpMode::TELEOP;
+        else {
+          httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "val must be auto or teleop");
+          return ESP_OK;
+        }
+        ds->_rs.setSelectedMode(now, mode);
+      } else if (strcmp(cmd, "init") == 0) {
+        if (!core::canAcceptInit(s.phase, s.status)) return conflict("INIT requires STOPPED");
+        if (autoLen > 0) ds->_rs.setAutoPeriodSeconds(now, autoLen);
+        ds->_rs.setStatus(now, robot::Status::INIT);
+        ds->_rs.setDeadlineMiss(now, false);
       } else if (strcmp(cmd, "start") == 0) {
-        ds->_rs.setAutonomous(millis(), enAuto);
-        if (autoLen > 0) ds->_rs.setAutoPeriodSeconds(millis(), autoLen);
-        ds->_rs.setStatus(millis(), robot::Status::START);
-      } else if (strcmp(cmd, "cancelAuto") == 0) {
-        ds->_rs.setAutonomous(millis(), false);
+        if (!core::canAcceptStart(s.phase, s.status)) return conflict("START requires INIT");
+        if (autoLen > 0) ds->_rs.setAutoPeriodSeconds(now, autoLen);
+        ds->_rs.setStatus(now, robot::Status::START);
       } else if (strcmp(cmd, "stop") == 0) {
-        ds->_rs.setStatus(millis(), robot::Status::STOP);
+        if (!core::canAcceptStop(s.phase)) return conflict("STOP requires INIT or RUN");
+        ds->_rs.setStatus(now, robot::Status::STOP);
+      } else {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "unknown command");
+        return ESP_OK;
       }
 
       httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
@@ -834,11 +868,12 @@ namespace probot::driverstation::esp32 {
       if (!ds->enforceOwner(req)) return ESP_OK;
 
       auto s = ds->_rs.read();
-      char buf[160];
+      char buf[192];
       snprintf(buf, sizeof(buf),
-               "{\"phase\":%u,\"autonomousEnabled\":%s,\"autoPeriodSeconds\":%d,\"autoRemainingMs\":%u,\"estop\":%s}",
+               "{\"status\":%u,\"phase\":%u,\"selectedMode\":\"%s\",\"autoPeriodSeconds\":%d,\"autoRemainingMs\":%u,\"estop\":%s}",
+               static_cast<unsigned>(s.status),
                static_cast<unsigned>(s.phase),
-               s.autonomousEnabled ? "true" : "false",
+               opModeName(s.selectedMode),
                (int)s.autoPeriodSeconds,
                (unsigned)computeAutoRemainingMs(s, millis()),
                __atomic_load_n(&probot::robot::g_estop_latched, __ATOMIC_SEQ_CST) ? "true" : "false");

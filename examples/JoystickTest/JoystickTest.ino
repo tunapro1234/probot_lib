@@ -1,4 +1,5 @@
 // JoystickTest - Joystick verilerini seri port ve telemetriye yazdırır.
+// FTC OpMode akışı: modu seç, INIT ile init(), START ile loop(); STOP stop() çağırır.
 
 #define PROBOT_WIFI_AP_SSID     "Probot"
 #define PROBOT_WIFI_AP_PASSWORD "Probot1234"
@@ -6,13 +7,9 @@
 
 #include <probot.h>
 
-void robotInit() {
+void teleopInit() {
   Serial.begin(115200);
 }
-
-void robotEnd() {}
-
-void teleopInit() {}
 
 void teleopLoop() {
   auto js = probot::io::joystick_api::makeDefault();
@@ -48,5 +45,8 @@ void teleopLoop() {
   delay(100);
 }
 
-void autonomousInit() {}
+void teleopStop() {}
+
+void autonomousInit() { Serial.begin(115200); }
 void autonomousLoop() { delay(100); }
+void autonomousStop() {}

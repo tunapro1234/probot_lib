@@ -8,6 +8,28 @@ Biçim [Keep a Changelog](https://keepachangelog.com/), sürümler
 
 ## [Unreleased]
 
+### Breaking — 0.4.0
+
+- **FTC OpMode hook seti:** `robotInit()` ve `robotEnd()` tamamen kaldırıldı.
+  Yerlerine Autonomous ve TeleOp için ayrı `init`, `initLoop`, `start`,
+  `loop`, `stop` hook'ları geldi. `loop`/`stop` zorunlu; diğerleri weak —
+  tanımlanmazsa çalışma anında boş sayılır.
+- **INIT ve START ayrıştı.** INIT ilgili `init()`i bir kez ve `initLoop()`u
+  sürekli çalıştırır; robot input'u nötr ve RSL sabit kalır. START ilgili
+  `start()`ı bir kez çalıştırıp RUN döngüsüne girer.
+- **Auto → TeleOp otomatik çalışma geçişi kalktı.** Auto süresi RUN girişinde
+  başlar; bitince `autonomousStop()` çağrılır, TeleOp önseçilir ve
+  `TRANSITION` fazında yeni bir INIT beklenir.
+- **`robot::Phase` yeniden numaralandırıldı:** `STOPPED=0`, `AUTO_INIT=1`,
+  `AUTO_RUN=2`, `TELEOP_INIT=3`, `TELEOP_RUN=4`, `TRANSITION=5`.
+- **Kontrol protokolü değişti:** `/robotControl` artık ayrı `init`, `start`,
+  `stop` ve `mode&val=auto|teleop` komutlarını kullanır. `/setAutonomous`/
+  `autonomousEnabled` kavramı kaldırıldı; `selectedMode` durum alanı eklendi.
+  Mod INIT/RUN sırasında değiştirilemez (409).
+- E-stop artık `robotEnd()` yerine yalnız INIT/RUN'daki aktif OpMode'un
+  `stop()` hook'unu taze task'ta watchdog'lu çalıştırır; STOPPED/TRANSITION'da
+  kullanıcı hook'u çağırmaz.
+
 ### Değişti
 - **DS arayüzü Probot marka renklerine geçti** (eski NFR lacivert/buz paleti
   kalktı; yerleşim/markup/JS aynı). Krem zemin `#FFF7F0`, kakao mürekkep

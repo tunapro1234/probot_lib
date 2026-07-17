@@ -14,6 +14,7 @@
 //   - Servo sinyal teli -> SERVO_PIN (GPIO 4)
 //   - Servo gücü -> AYRI 5-6 V kaynak (BEC). ESP32 pininden BESLEMEYİN —
 //     WiFi anlık akım çekişleri servoyu titretir. GND'leri ortak bağlayın.
+// FTC OpMode akışı: modu seç, INIT ile init(), START ile loop(); STOP stop() çağırır.
 
 #define PROBOT_WIFI_AP_SSID     "Probot"
 #define PROBOT_WIFI_AP_PASSWORD "Probot1234"
@@ -40,18 +41,18 @@ void servoWriteAngle(float deg) {
   servoWriteUs((uint16_t)(500 + (deg / 180.0f) * 2000));   // 0-180° -> 500-2500 µs
 }
 
-void robotInit() {
+void initServo() {
   // 50 Hz / 14-bit on a fixed high channel. No pulse until the first write
-  // -> the servo doesn't jump on boot. A fixed channel means re-running
-  // robotInit on each Init press just re-uses it (no channel exhaustion).
+  // -> the servo doesn't jump on boot. A fixed channel means each OpMode
+  // init call just re-uses it (no channel exhaustion).
   ledcAttachChannel(SERVO_PIN, SERVO_FREQ_HZ, SERVO_RES_BITS, SERVO_LEDC_CH);
 }
 
-void robotEnd() {
+void stopServo() {
   ledcWrite(SERVO_PIN, 0);   // stop the pulse train — safe state
 }
 
-void teleopInit() {}
+void teleopInit() { initServo(); }
 
 void teleopLoop() {
   auto js = probot::io::joystick_api::makeDefault();
@@ -64,5 +65,8 @@ void teleopLoop() {
   probot::printf("Servo: %.0f derece\n", angle);
 }
 
-void autonomousInit() {}
+void teleopStop() { stopServo(); }
+
+void autonomousInit() { initServo(); }
 void autonomousLoop() {}
+void autonomousStop() { stopServo(); }

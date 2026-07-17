@@ -9,9 +9,14 @@
 Rules that generated code MUST follow:
 
 - Never define `setup()` or `loop()` — the library defines them.
-- The sketch must define all six hooks: `robotInit`, `robotEnd`,
-  `teleopInit`, `teleopLoop`, `autonomousInit`, `autonomousLoop`
-  (empty bodies are fine).
+- Lifecycle is the same FTC OpMode model: select Autonomous/TeleOp, then
+  INIT, START, STOP. Use the main `autonomousInit/Loop/Stop` and
+  `teleopInit/Loop/Stop` triples. The two loop and two stop hooks are required
+  (missing = linker error); init is optional with an empty weak default.
+- Advanced optional hooks: `autonomousInitLoop`/`teleopInitLoop` run between
+  INIT and START with neutral input; `autonomousStart`/`teleopStart` run once
+  at START. Do not put these in beginner examples unless their purpose is
+  needed.
 - Define `PROBOT_WIFI_AP_SSID`, `PROBOT_WIFI_AP_PASSWORD` (min 8 chars)
   and `PROBOT_WIFI_AP_CHANNEL` (1-13) BEFORE `#include <probot.h>`. For
   a fleet, give each robot a distinct fixed channel by hand. Boot-time
@@ -22,12 +27,12 @@ Rules that generated code MUST follow:
   -1..+1, Y is positive up. `probot::io::gamepad()` is the low-level
   service and has NO getLeftX/getA-style methods.
 - Servos: the library provides NO servo class — drive raw LEDC. In
-  `robotInit` call `ledcAttachChannel(pin, 50, 14, 7)` (a HIGH channel, so it
+  the relevant OpMode init call `ledcAttachChannel(pin, 50, 14, 7)` (a HIGH channel, so it
   never shares a timer with `analogWrite` motor PWM → no jitter); in the loop
   `ledcWrite(pin, us * 16383 / 20000)` for a 500-2500 us pulse. Not ESP32Servo,
   not analogWrite (1 kHz can't make a 50 Hz servo frame).
-- `teleopLoop`/`autonomousLoop` are called repeatedly (~50 Hz); do not
-  write infinite loops or block longer than 2 s inside them.
+- initLoop/loop hooks are called repeatedly (~50 Hz); do not write infinite
+  loops or block longer than 2 s inside them.
 - Telemetry to the driver station panel: `probot::printf("v=%.2f\n", v);`
 - Inputs auto-zero 500 ms after the link drops — driving motors directly
   from axis values is safe.

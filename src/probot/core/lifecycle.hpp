@@ -2,134 +2,226 @@
 #include <stdint.h>
 #include <probot/robot/state.hpp>
 
-// Cooperative lifecycle core — pure logic, no FreeRTOS / Arduino deps so it
-// builds and unit-tests on the host. The ESP32 plumbing (the persistent
-// userTask, the sysloop, watchdogs, emergency stop) lives in runtime.hpp and
-// drives these primitives.
+// Cooperative FTC-style OpMode lifecycle core. This file is pure logic:
+// FreeRTOS plumbing, watchdogs and the terminal emergency stop live in
+// runtime.hpp, while host tests exercise the state machine here.
 //
-// Design: there is exactly ONE long-lived user task. It never gets killed
-// during normal operation — a kill mid-transaction is what orphaned a lock
-// (Wire/malloc) and froze the robot in 0.2.x. Phase changes are cooperative:
-// the supervisor publishes a "requested mode"; the user task observes it at a
-// loop boundary and runs the transition hooks itself. The only force is a
-// full reboot (watchdog) or the terminal emergency stop.
+// There is one persistent user task. The supervisor publishes only a desired
+// OpMode/stage; this machine observes it at a user-code boundary and invokes
+// every hook itself. Normal stop/phase changes therefore never interrupt a
+// hook while it owns a bus or allocator lock.
 
 namespace probot::core {
 
-  enum class Mode : uint8_t { STOP = 0, INIT = 1, TELEOP = 2, AUTON = 3 };
+  using OpMode = robot::OpMode;
+  enum class Stage : uint8_t { STOPPED=0, INIT=1, RUN=2, TRANSITION=3 };
 
-  // User lifecycle hooks, indirected so the phase machine is testable with
-  // mock callbacks. Any may be null (treated as empty).
-  struct Hooks {
-    void (*robotInit)();
-    void (*robotEnd)();
-    void (*teleopInit)();
-    void (*teleopLoop)();
-    void (*autonomousInit)();
-    void (*autonomousLoop)();
+  struct DesiredState {
+    OpMode mode;
+    Stage stage;
   };
 
-  // Which mode the user task should be in for a given button Status. Pure.
-  inline Mode modeForStatus(robot::Status st, bool autonomousEnabled) {
-    switch (st) {
-      case robot::Status::INIT:  return Mode::INIT;
-      case robot::Status::START: return autonomousEnabled ? Mode::AUTON : Mode::TELEOP;
-      case robot::Status::STOP:
-      default:                   return Mode::STOP;
+  inline bool operator==(DesiredState a, DesiredState b) {
+    return a.mode == b.mode && a.stage == b.stage;
+  }
+  inline bool operator!=(DesiredState a, DesiredState b) { return !(a == b); }
+
+  // Optional hooks may be null; the four loop/stop hooks are required by the
+  // public API and runtime always supplies them.
+  struct Hooks {
+    void (*autonomousInit)();
+    void (*autonomousInitLoop)();
+    void (*autonomousStart)();
+    void (*autonomousLoop)();
+    void (*autonomousStop)();
+    void (*teleopInit)();
+    void (*teleopInitLoop)();
+    void (*teleopStart)();
+    void (*teleopLoop)();
+    void (*teleopStop)();
+  };
+
+  inline robot::Phase phaseFor(OpMode mode, Stage stage) {
+    if (stage == Stage::TRANSITION) return robot::Phase::TRANSITION;
+    if (stage == Stage::STOPPED) return robot::Phase::STOPPED;
+    if (mode == OpMode::AUTO) {
+      return stage == Stage::INIT ? robot::Phase::AUTO_INIT : robot::Phase::AUTO_RUN;
     }
+    return stage == Stage::INIT ? robot::Phase::TELEOP_INIT : robot::Phase::TELEOP_RUN;
   }
 
-  inline robot::Phase phaseForMode(Mode m) {
-    switch (m) {
-      case Mode::INIT:   return robot::Phase::INITED;
-      case Mode::TELEOP: return robot::Phase::TELEOP;
-      case Mode::AUTON:  return robot::Phase::AUTONOMOUS;
-      case Mode::STOP:
-      default:           return robot::Phase::NOT_INIT;
-    }
+  inline bool isInitPhase(robot::Phase phase) {
+    return phase == robot::Phase::AUTO_INIT || phase == robot::Phase::TELEOP_INIT;
+  }
+  inline bool isRunPhase(robot::Phase phase) {
+    return phase == robot::Phase::AUTO_RUN || phase == robot::Phase::TELEOP_RUN;
+  }
+  inline bool canSelectMode(robot::Phase phase) {
+    return phase == robot::Phase::STOPPED || phase == robot::Phase::TRANSITION;
   }
 
-  // Runs inside the single persistent user task. Owns the current mode and
-  // drives hook calls at safe loop boundaries — never mid-hook, so a stop or
-  // phase change can never kill user code holding a lock.
+  // Command acceptance — the single source of truth shared by the HTTP
+  // handler and host tests. Status closes the supervisor/user-task gap:
+  // after a command is accepted the public phase lags until the hook
+  // returns, so phase alone would accept duplicates (e.g. a second START
+  // while start() is still running).
+  inline bool canAcceptModeChange(robot::Phase phase, robot::Status status) {
+    return canSelectMode(phase) && status == robot::Status::STOP;
+  }
+  inline bool canAcceptInit(robot::Phase phase, robot::Status status) {
+    return canSelectMode(phase) && status == robot::Status::STOP;
+  }
+  inline bool canAcceptStart(robot::Phase phase, robot::Status status) {
+    return isInitPhase(phase) && status == robot::Status::INIT;
+  }
+  inline bool canAcceptStop(robot::Phase phase) {
+    return isInitPhase(phase) || isRunPhase(phase);
+  }
+
   class PhaseMachine {
   public:
-    Mode current() const { return cur_; }
+    OpMode currentMode() const { return cur_.mode; }
+    Stage currentStage() const { return cur_.stage; }
+    DesiredState current() const { return cur_; }
 
-    // One iteration. If the requested mode changed, run the transition
-    // (zero inputs, then the enter hook for the new mode, publishing the
-    // public Phase). Then call the active loop hook once. `onTransition`
-    // (e.g. zero the joystick) runs once per transition; `hb`, if given, is
-    // refreshed on entry to a loop phase so the stall watchdog starts clean.
-    void step(const Hooks& h, Mode requested, robot::StateService& rs, uint32_t now,
-              void (*onTransition)() = nullptr, volatile uint32_t* hb = nullptr) {
-      if (requested != cur_) {
-        if (onTransition) onTransition();
-        enter(h, requested, rs, now);
-        cur_ = requested;
-        if (hb && (cur_ == Mode::TELEOP || cur_ == Mode::AUTON)) *hb = now;
+    // One user-task iteration. `neutralize` is called throughout every
+    // non-RUN stage, not only on entry, so INIT input remains neutral even if
+    // the Driver Station keeps sending controller frames. The heartbeat is
+    // primed immediately before the recurring initLoop/loop hook.
+    void step(const Hooks& h, DesiredState requested, robot::StateService& rs,
+              uint32_t now, void (*neutralize)() = nullptr,
+              volatile uint32_t* hb = nullptr,
+              uint32_t (*clockNow)() = nullptr) {
+      if (requested != cur_) transition(h, requested, rs, now, neutralize, hb, clockNow);
+
+      if (cur_.stage != Stage::RUN && neutralize) neutralize();
+      uint32_t hookStartedAt = clockNow ? clockNow() : now;
+      if (cur_.stage == Stage::INIT) {
+        primeHeartbeat(hookStartedAt, hb);
+        callInitLoop(h, cur_.mode);
+      } else if (cur_.stage == Stage::RUN) {
+        primeHeartbeat(hookStartedAt, hb);
+        callLoop(h, cur_.mode);
       }
-      if (cur_ == Mode::TELEOP) { if (h.teleopLoop) h.teleopLoop(); }
-      else if (cur_ == Mode::AUTON) { if (h.autonomousLoop) h.autonomousLoop(); }
     }
 
   private:
-    void enter(const Hooks& h, Mode m, robot::StateService& rs, uint32_t now) {
-      switch (m) {
-        case Mode::STOP:
-          if (h.robotEnd) h.robotEnd();
-          break;
-        case Mode::INIT:
-          if (h.robotInit) h.robotInit();
-          break;
-        case Mode::TELEOP:
-          if (h.teleopInit) h.teleopInit();
-          break;
-        case Mode::AUTON:
-          // Stamp the autonomous start BEFORE the init hook so the period
-          // timer (and the UI countdown) reference this run, not a stale one.
-          rs.setAutoStartMs(now, now);
-          if (h.autonomousInit) h.autonomousInit();
-          break;
-      }
-      rs.setPhase(now, phaseForMode(m));
+    static void primeHeartbeat(uint32_t now, volatile uint32_t* hb) {
+      if (!hb) return;
+      *hb = now == 0 ? 1u : now;
     }
 
-    Mode cur_ = Mode::STOP;
+    static void callInit(const Hooks& h, OpMode mode) {
+      auto fn = mode == OpMode::AUTO ? h.autonomousInit : h.teleopInit;
+      if (fn) fn();
+    }
+    static void callInitLoop(const Hooks& h, OpMode mode) {
+      auto fn = mode == OpMode::AUTO ? h.autonomousInitLoop : h.teleopInitLoop;
+      if (fn) fn();
+    }
+    static void callStart(const Hooks& h, OpMode mode) {
+      auto fn = mode == OpMode::AUTO ? h.autonomousStart : h.teleopStart;
+      if (fn) fn();
+    }
+    static void callLoop(const Hooks& h, OpMode mode) {
+      auto fn = mode == OpMode::AUTO ? h.autonomousLoop : h.teleopLoop;
+      if (fn) fn();
+    }
+    static void callStop(const Hooks& h, OpMode mode) {
+      auto fn = mode == OpMode::AUTO ? h.autonomousStop : h.teleopStop;
+      if (fn) fn();
+    }
+
+    void publish(robot::StateService& rs, uint32_t now) {
+      rs.setPhase(now, phaseFor(cur_.mode, cur_.stage));
+    }
+
+    void transition(const Hooks& h, DesiredState requested,
+                    robot::StateService& rs, uint32_t now,
+                    void (*neutralize)(), volatile uint32_t* hb,
+                    uint32_t (*clockNow)()) {
+      if (neutralize) neutralize();
+
+      if (requested.stage == Stage::STOPPED || requested.stage == Stage::TRANSITION) {
+        if (cur_.stage == Stage::INIT || cur_.stage == Stage::RUN) callStop(h, cur_.mode);
+        cur_ = requested;
+        publish(rs, now);
+        return;
+      }
+
+      // A mode change while active is not a legal protocol transition. Be
+      // conservative if an internal caller ever requests it: stop the old
+      // OpMode and settle in STOPPED; do not enter the new one in this step.
+      if (requested.mode != cur_.mode &&
+          (cur_.stage == Stage::INIT || cur_.stage == Stage::RUN)) {
+        callStop(h, cur_.mode);
+        cur_ = { requested.mode, Stage::STOPPED };
+        publish(rs, now);
+        return;
+      }
+
+      if (requested.stage == Stage::INIT) {
+        if (cur_.stage != Stage::STOPPED && cur_.stage != Stage::TRANSITION) return;
+        cur_ = requested;
+        publish(rs, now);
+        primeHeartbeat(now, hb);
+        callInit(h, cur_.mode);
+        return;
+      }
+
+      // START is valid only after INIT of the same selected OpMode.
+      if (requested.stage == Stage::RUN) {
+        if (cur_.stage != Stage::INIT || cur_.mode != requested.mode) return;
+        callStart(h, cur_.mode);
+        uint32_t enteredRunAt = clockNow ? clockNow() : now;
+        if (cur_.mode == OpMode::AUTO) rs.setAutoStartMs(enteredRunAt, enteredRunAt);
+        cur_ = requested;
+        publish(rs, enteredRunAt);
+        primeHeartbeat(enteredRunAt, hb);
+      }
+    }
+
+    DesiredState cur_{ OpMode::TELEOP, Stage::STOPPED };
   };
 
-  // Runs inside the sysloop (supervisor). Translates button Status into the
-  // requested mode and enforces the autonomous period — cooperatively, by
-  // flipping the autonomous flag so the mode resolves to TELEOP (no task
-  // kill). Stateless apart from the StateService it reads/writes.
+  // Supervisor-side policy. It never invokes hooks; it only translates the
+  // requested command state and enforces the autonomous RUN duration.
   class Supervisor {
   public:
-    // Returns the mode the user task should run. When estop is latched the
-    // answer is always STOP.
-    Mode update(robot::StateService& rs, uint32_t now, bool estopLatched) {
-      if (estopLatched) return Mode::STOP;
+    DesiredState update(robot::StateService& rs, uint32_t now, bool estopLatched) {
       auto s = rs.read();
-      // Autonomous period expiry. Gate on phase==AUTONOMOUS so we only count
-      // once the user task has actually entered autonomous and stamped a
-      // fresh autoStartMs — otherwise a stale timestamp from a previous run
-      // would expire the new run instantly.
-      if (s.status == robot::Status::START && s.autonomousEnabled &&
-          s.phase == robot::Phase::AUTONOMOUS && s.autoStartMs != 0 &&
+      if (estopLatched) return { s.selectedMode, Stage::STOPPED };
+
+      // Count only a genuinely entered AUTO_RUN with a fresh non-zero stamp.
+      if (s.status == robot::Status::START && s.selectedMode == OpMode::AUTO &&
+          s.phase == robot::Phase::AUTO_RUN && s.autoStartMs != 0 &&
           s.autoPeriodSeconds > 0 &&
           (int32_t)(now - s.autoStartMs) >= s.autoPeriodSeconds * 1000) {
-        rs.setAutonomous(now, false);
-        s.autonomousEnabled = false;
+        rs.setControl(now, robot::Status::STOP, OpMode::TELEOP);
+        return { OpMode::TELEOP, Stage::TRANSITION };
       }
-      return modeForStatus(s.status, s.autonomousEnabled);
+
+      // Between the supervisor's expiry write and the user task's stop hook,
+      // AUTO_RUN is still public. Preserve TRANSITION until stop has run.
+      if (s.phase == robot::Phase::AUTO_RUN && s.status == robot::Status::STOP &&
+          s.selectedMode == OpMode::TELEOP) {
+        return { OpMode::TELEOP, Stage::TRANSITION };
+      }
+      if (s.phase == robot::Phase::TRANSITION && s.status == robot::Status::STOP) {
+        return { s.selectedMode, Stage::TRANSITION };
+      }
+
+      Stage stage = Stage::STOPPED;
+      if (s.status == robot::Status::INIT) stage = Stage::INIT;
+      else if (s.status == robot::Status::START) stage = Stage::RUN;
+      return { s.selectedMode, stage };
     }
   };
 
-  // Stall detection: a loop iteration that hasn't returned within the
-  // deadline. Pure so it is unit-testable.
   inline bool isStalled(robot::Phase phase, uint32_t now, uint32_t heartbeat_ms,
                         uint32_t deadline_ms) {
-    bool loopPhase = (phase == robot::Phase::TELEOP || phase == robot::Phase::AUTONOMOUS);
-    return loopPhase && heartbeat_ms != 0 &&
+    bool userLoopPhase = isInitPhase(phase) || isRunPhase(phase);
+    return userLoopPhase && heartbeat_ms != 0 &&
            (int32_t)(now - heartbeat_ms) > (int32_t)deadline_ms;
   }
 

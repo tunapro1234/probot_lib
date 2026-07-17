@@ -4,15 +4,23 @@
 
 namespace probot::robot {
   enum class Status : uint8_t { INIT=0, START=1, STOP=2 };
-  enum class Phase  : uint8_t { NOT_INIT=0, INITED=1, AUTONOMOUS=2, TELEOP=3 };
+  enum class Phase  : uint8_t {
+    STOPPED=0,
+    AUTO_INIT=1,
+    AUTO_RUN=2,
+    TELEOP_INIT=3,
+    TELEOP_RUN=4,
+    TRANSITION=5
+  };
+  enum class OpMode : uint8_t { AUTO=0, TELEOP=1 };
 
   struct StateSnapshot {
     uint32_t ms;
     uint32_t seq;
     Status   status;
     Phase    phase;
+    OpMode   selectedMode;
     float    batteryVoltage;
-    bool     autonomousEnabled;
     int32_t  autoPeriodSeconds;
     uint32_t autoStartMs;
     int32_t  clientCount;
@@ -24,15 +32,19 @@ namespace probot::robot {
     StateService(){
       _cur = 0;
       StateSnapshot s{};
-      s.ms=0; s.seq=0; s.status=Status::STOP; s.phase=Phase::NOT_INIT; s.batteryVoltage=0.0f;
-      s.autonomousEnabled=false; s.autoPeriodSeconds=30; s.autoStartMs=0; s.clientCount=0; s.deadlineMiss=false;
+      s.ms=0; s.seq=0; s.status=Status::STOP; s.phase=Phase::STOPPED;
+      s.selectedMode=OpMode::TELEOP; s.batteryVoltage=0.0f;
+      s.autoPeriodSeconds=30; s.autoStartMs=0; s.clientCount=0; s.deadlineMiss=false;
       _buf[0] = s; _buf[1] = s;
     }
 
     void setStatus(uint32_t now_ms, Status st){ writeField(now_ms, [&](StateSnapshot& w){ w.status = st; }); }
     void setPhase(uint32_t now_ms, Phase ph){ writeField(now_ms, [&](StateSnapshot& w){ w.phase = ph; }); }
+    void setSelectedMode(uint32_t now_ms, OpMode mode){ writeField(now_ms, [&](StateSnapshot& w){ w.selectedMode = mode; }); }
+    void setControl(uint32_t now_ms, Status st, OpMode mode){
+      writeField(now_ms, [&](StateSnapshot& w){ w.status = st; w.selectedMode = mode; });
+    }
     void setBatteryVoltage(uint32_t now_ms, float v){ writeField(now_ms, [&](StateSnapshot& w){ w.batteryVoltage = v; }); }
-    void setAutonomous(uint32_t now_ms, bool en){ writeField(now_ms, [&](StateSnapshot& w){ w.autonomousEnabled = en; }); }
     void setAutoPeriodSeconds(uint32_t now_ms, int32_t s){ writeField(now_ms, [&](StateSnapshot& w){ w.autoPeriodSeconds = s; }); }
     void setAutoStartMs(uint32_t now_ms, uint32_t ms){ writeField(now_ms, [&](StateSnapshot& w){ w.autoStartMs = ms; }); }
     void setClientCount(uint32_t now_ms, int32_t c){ writeField(now_ms, [&](StateSnapshot& w){ w.clientCount = c; }); }
@@ -47,11 +59,11 @@ namespace probot::robot {
     }
 
     // Convenience getters
-    bool     autonomousEnabled() const { return read().autonomousEnabled; }
     int32_t  autoPeriodSeconds() const { return read().autoPeriodSeconds; }
     uint32_t autoStartMs() const       { return read().autoStartMs; }
     Status   status() const            { return read().status; }
     Phase    phase() const             { return read().phase; }
+    OpMode   selectedMode() const      { return read().selectedMode; }
 
   private:
     template<typename Fn>
@@ -77,8 +89,8 @@ namespace probot::robot {
     return instance;
   }
 
-  // User loop heartbeat — updated by teleop/auto workers each iteration.
-  // Checked by health endpoint and sysloop to detect blocked code.
+  // User-code heartbeat — updated after initLoop/loop iterations.
+  // Checked by health endpoint and sysloop to detect blocked user code.
   inline volatile uint32_t g_loop_heartbeat_ms = 0;
 
   // Driver station activity — updated by HTTP/WS handlers on every request.

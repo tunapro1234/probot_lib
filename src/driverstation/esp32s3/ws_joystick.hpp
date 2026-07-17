@@ -256,8 +256,15 @@ namespace probot::driverstation::esp32 {
         buttons[i] = (p[i / 8] >> (i % 8)) & 1;
       }
 
-      _gs.write(millis(), axes, nA, buttons, nB);
-      __atomic_store_n(&probot::robot::g_ds_last_activity_ms, millis(), __ATOMIC_SEQ_CST);
+      uint32_t now = millis();
+      auto state = probot::robot::state().read();
+      bool runPhase = state.phase == probot::robot::Phase::AUTO_RUN ||
+                      state.phase == probot::robot::Phase::TELEOP_RUN;
+      bool running = runPhase && state.status == probot::robot::Status::START &&
+                     !state.deadlineMiss;
+      if (running) _gs.write(now, axes, nA, buttons, nB);
+      else _gs.write(now, nullptr, 0, nullptr, 0); // INIT/disabled stays neutral
+      __atomic_store_n(&probot::robot::g_ds_last_activity_ms, now, __ATOMIC_SEQ_CST);
     }
 
     uint8_t* trackFd(int fd) {

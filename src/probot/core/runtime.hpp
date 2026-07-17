@@ -14,8 +14,8 @@
 #define PROBOT_DS_TIMEOUT_FORCE_STOP 1
 #endif
 
-// A single teleop/autonomous loop iteration that has not returned within this
-// many ms is treated as STALLED: inputs are zeroed and the robot is held safe
+// A single initLoop/loop iteration that has not returned within this many ms
+// is treated as STALLED: inputs are zeroed and the robot is held safe
 // (no kill, no reboot — see the design notes below). Must stay below the
 // hardware watchdog timeout.
 #ifndef PROBOT_LOOP_DEADLINE_MS
@@ -31,9 +31,9 @@
 #define PROBOT_WDT_TIMEOUT_S 8
 #endif
 
-// Emergency stop: after killing the user task we run robotEnd() in a fresh
-// task; if robotEnd does not return within this budget (e.g. it touches a bus
-// the kill orphaned) the chip reboots instead of hanging.
+// Emergency stop: after killing the user task we run the active OpMode's
+// stop() in a fresh task. If it does not return within this budget (e.g. it
+// touches a bus the kill orphaned), the chip reboots instead of hanging.
 #ifndef PROBOT_ESTOP_END_MS
 #define PROBOT_ESTOP_END_MS 500
 #endif
@@ -46,7 +46,7 @@
 #endif
 
 // Optional robot signal light (FRC-RSL style) on a plain digital pin. The
-// library drives it: BLINK while the robot can move (teleop/autonomous),
+// library drives it: BLINK only in a RUN phase,
 // SOLID ON otherwise (disabled/stopped/e-stopped). -1 = off.
 #ifndef PROBOT_RSL_PIN
 #define PROBOT_RSL_PIN -1
@@ -60,47 +60,65 @@
 
 namespace probot {
   void runtime_setup();
-  // Terminal emergency stop: kill the user task, run robotEnd under a
-  // watchdog, latch dead until reboot. Safe to call from any task.
+  // Terminal emergency stop: kill the user task, run the active stop hook
+  // under a watchdog, latch dead until reboot. Safe to call from any task.
   void emergencyStop();
 }
 
-// User hooks (provided by sketch)
-void robotInit();
-void robotEnd();
-void teleopInit();
-void teleopLoop();
-void autonomousInit();
-void autonomousLoop();
-
 namespace probot {
   namespace detail {
-    using core::Mode;
+    using core::DesiredState;
+    using core::OpMode;
+    using core::Stage;
 
-    // requested mode: written by sysloop, read by the user task.
-    inline volatile uint32_t g_requested_mode = (uint32_t)Mode::STOP;
+    inline uint32_t packRequested(DesiredState s) {
+      return (static_cast<uint32_t>(s.stage) << 8) | static_cast<uint32_t>(s.mode);
+    }
+    inline DesiredState unpackRequested(uint32_t raw) {
+      return { static_cast<OpMode>(raw & 0xffu), static_cast<Stage>((raw >> 8) & 0xffu) };
+    }
+
+    // Desired state: written by sysloop, observed by the persistent user task.
+    inline volatile uint32_t g_requested_state =
+      packRequested({ OpMode::TELEOP, Stage::STOPPED });
 
     inline TaskHandle_t g_user_task    = nullptr;
     inline TaskHandle_t g_sysloop_task = nullptr;
     inline TaskHandle_t g_estop_task   = nullptr;
 
-    // emergency-stop robotEnd watchdog
-    inline volatile uint32_t g_estop_end_start = 0;
-    inline volatile uint32_t g_estop_end_done  = 0;
+    // Emergency-stop active-stop watchdog and captured OpMode.
+    inline volatile uint32_t g_estop_stop_start    = 0;
+    inline volatile uint32_t g_estop_stop_done     = 0;
+    inline volatile uint32_t g_estop_stop_required = 0;
+    inline volatile uint32_t g_estop_stop_mode     = (uint32_t)OpMode::TELEOP;
 
     inline core::PhaseMachine g_machine;
 
+    inline void emptyHook() {}
+
     inline core::Hooks userHooks(){
-      return core::Hooks{ &::robotInit, &::robotEnd, &::teleopInit,
-                          &::teleopLoop, &::autonomousInit, &::autonomousLoop };
+      return core::Hooks{
+        ::autonomousInit ? &::autonomousInit : &emptyHook,
+        ::autonomousInitLoop ? &::autonomousInitLoop : &emptyHook,
+        ::autonomousStart ? &::autonomousStart : &emptyHook,
+        &::autonomousLoop,
+        &::autonomousStop,
+        ::teleopInit ? &::teleopInit : &emptyHook,
+        ::teleopInitLoop ? &::teleopInitLoop : &emptyHook,
+        ::teleopStart ? &::teleopStart : &emptyHook,
+        &::teleopLoop,
+        &::teleopStop
+      };
     }
 
     inline void zeroInputs(){
       probot::io::gamepad().write(millis(), nullptr, 0, nullptr, 0);
     }
 
+    inline uint32_t userClockNow(){ return millis(); }
+
     // ── The single persistent user task (core 1) ──
-    // Created once, NEVER deleted in normal operation. All six hooks run
+    // Created once, NEVER deleted in normal operation. All hooks run
     // here, in sequence, only at loop boundaries — so a Stop or phase change
     // can never interrupt user code mid-transaction and orphan a lock.
     inline void userTask(void*){
@@ -108,18 +126,21 @@ namespace probot {
       auto& rs = probot::robot::state();
       __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, millis(), __ATOMIC_SEQ_CST);
       for(;;){
-        Mode req = (Mode)__atomic_load_n(&g_requested_mode, __ATOMIC_SEQ_CST);
+        DesiredState req = unpackRequested(
+          __atomic_load_n(&g_requested_state, __ATOMIC_SEQ_CST));
         g_machine.step(hooks, req, rs, millis(), &zeroInputs,
-                       &probot::robot::g_loop_heartbeat_ms);
+                       &probot::robot::g_loop_heartbeat_ms, &userClockNow);
         __atomic_store_n(&probot::robot::g_loop_heartbeat_ms, millis(), __ATOMIC_SEQ_CST);
         vTaskDelay(pdMS_TO_TICKS(USER_LOOP_PERIOD_MS));
       }
     }
 
     // ── Emergency stop ──
-    inline void estopEndTask(void*){
-      ::robotEnd();
-      __atomic_store_n(&g_estop_end_done, 1u, __ATOMIC_SEQ_CST);
+    inline void estopStopTask(void*){
+      OpMode mode = (OpMode)__atomic_load_n(&g_estop_stop_mode, __ATOMIC_SEQ_CST);
+      if (mode == OpMode::AUTO) ::autonomousStop();
+      else ::teleopStop();
+      __atomic_store_n(&g_estop_stop_done, 1u, __ATOMIC_SEQ_CST);
       vTaskSuspend(NULL);
     }
 
@@ -135,6 +156,11 @@ namespace probot {
     // (core 0) so it never deletes its own caller. Idempotent.
     inline void runEmergencyStop(){
       if (__atomic_exchange_n(&probot::robot::g_estop_latched, 1u, __ATOMIC_SEQ_CST)) return;
+      auto active = probot::robot::state().read();
+      bool autoActive = active.phase == probot::robot::Phase::AUTO_INIT ||
+                        active.phase == probot::robot::Phase::AUTO_RUN;
+      bool teleopActive = active.phase == probot::robot::Phase::TELEOP_INIT ||
+                          active.phase == probot::robot::Phase::TELEOP_RUN;
       setEnablePin(false);                 // hardware kill path, if wired
       // Kill the single user task. Safe for probot's own portMUX locks (they
       // can't be killed mid critical-section); only a user-held Wire/malloc
@@ -143,12 +169,20 @@ namespace probot {
         vTaskDelete(g_user_task);
         g_user_task = nullptr;
       }
-      // Run robotEnd() in a fresh task under the sysloop watchdog.
-      __atomic_store_n(&g_estop_end_done, 0u, __ATOMIC_SEQ_CST);
-      uint32_t t = millis(); if (t == 0) t = 1;
-      __atomic_store_n(&g_estop_end_start, t, __ATOMIC_SEQ_CST);
-      xTaskCreatePinnedToCore(estopEndTask, "estop", STACK_USER, NULL,
-                              PRIO_USER, &g_estop_task, CORE_CTRL);
+      // STOPPED/TRANSITION has no active OpMode, hence no hook. Otherwise run
+      // exactly that mode's stop hook in a fresh task under the watchdog.
+      bool stopRequired = autoActive || teleopActive;
+      __atomic_store_n(&g_estop_stop_required, stopRequired ? 1u : 0u, __ATOMIC_SEQ_CST);
+      __atomic_store_n(&g_estop_stop_mode,
+                       (uint32_t)(autoActive ? OpMode::AUTO : OpMode::TELEOP),
+                       __ATOMIC_SEQ_CST);
+      __atomic_store_n(&g_estop_stop_done, stopRequired ? 0u : 1u, __ATOMIC_SEQ_CST);
+      if (stopRequired) {
+        uint32_t t = millis(); if (t == 0) t = 1;
+        __atomic_store_n(&g_estop_stop_start, t, __ATOMIC_SEQ_CST);
+        xTaskCreatePinnedToCore(estopStopTask, "estop", STACK_USER, NULL,
+                                PRIO_USER, &g_estop_task, CORE_CTRL);
+      }
       probot::robot::state().setStatus(millis(), probot::robot::Status::STOP);
       probot::telemetry::println("!! EMERGENCY STOP — robot disabled, reboot required");
       Serial.println("[SYS  ] EMERGENCY STOP");
@@ -164,19 +198,25 @@ namespace probot {
         r = 255;                         // solid red — terminal
       } else if (s.deadlineMiss){
         if (on) r = 255;                 // blinking red — stalled (held safe)
+      } else if (s.clientCount <= 0) {
+        b = 255;                         // solid blue — no Driver Station
       } else {
         switch (s.phase){
-          case probot::robot::Phase::NOT_INIT:
+          case probot::robot::Phase::STOPPED:
             b = 255;
-            if (s.clientCount > 0 && !on) b = 0;   // blink blue when a client is connected
+            if (!on) b = 0;              // blink blue — connected, stopped
             break;
-          case probot::robot::Phase::INITED:
+          case probot::robot::Phase::AUTO_INIT:
+          case probot::robot::Phase::TELEOP_INIT:
             r = 255; g = 255;            // solid yellow
             break;
-          case probot::robot::Phase::AUTONOMOUS:
+          case probot::robot::Phase::TRANSITION:
+            if (on){ r = 255; g = 255; } // blink yellow
+            break;
+          case probot::robot::Phase::AUTO_RUN:
             if (on){ r = 255; g = 128; } // blink orange
             break;
-          case probot::robot::Phase::TELEOP:
+          case probot::robot::Phase::TELEOP_RUN:
             if (on) g = 255;             // blink green
             break;
         }
@@ -185,8 +225,8 @@ namespace probot {
 
 #if PROBOT_RSL_PIN >= 0
       // Robot signal light: blink while the robot can move, else solid on.
-      bool moving = !estop && (s.phase == probot::robot::Phase::TELEOP ||
-                               s.phase == probot::robot::Phase::AUTONOMOUS);
+      bool moving = !estop && (s.phase == probot::robot::Phase::TELEOP_RUN ||
+                               s.phase == probot::robot::Phase::AUTO_RUN);
       digitalWrite(PROBOT_RSL_PIN, moving ? (on ? HIGH : LOW) : HIGH);
 #endif
     }
@@ -220,21 +260,22 @@ namespace probot {
           estop = true;
         }
 
-        // estop robotEnd watchdog: if it didn't return in time, reboot
-        // (the kill may have orphaned a bus robotEnd needs).
+        // Active stop watchdog: the task kill may have orphaned a bus lock
+        // needed by the user's stop hook.
         if (estop){
-          uint32_t es = __atomic_load_n(&g_estop_end_start, __ATOMIC_SEQ_CST);
-          if (es != 0 && !__atomic_load_n(&g_estop_end_done, __ATOMIC_SEQ_CST) &&
+          uint32_t es = __atomic_load_n(&g_estop_stop_start, __ATOMIC_SEQ_CST);
+          if (__atomic_load_n(&g_estop_stop_required, __ATOMIC_SEQ_CST) && es != 0 &&
+              !__atomic_load_n(&g_estop_stop_done, __ATOMIC_SEQ_CST) &&
               (int32_t)(now - es) >= (int32_t)PROBOT_ESTOP_END_MS){
-            Serial.println("[SYS  ] estop robotEnd timed out -> restart");
+            Serial.println("[SYS  ] estop stop hook timed out -> restart");
             delay(20);
             ESP.restart();
           }
         }
 
-        // Translate buttons → requested mode (and enforce the auto period).
-        Mode req = sup.update(probot::robot::state(), now, estop);
-        __atomic_store_n(&g_requested_mode, (uint32_t)req, __ATOMIC_SEQ_CST);
+        // Translate command state → desired OpMode/stage and enforce auto time.
+        DesiredState req = sup.update(probot::robot::state(), now, estop);
+        __atomic_store_n(&g_requested_state, packRequested(req), __ATOMIC_SEQ_CST);
 
         // Stall watchdog (halt-safe). A loop iteration past the deadline →
         // zero inputs, flag stalled (red LED), hold. No kill, no reboot.
@@ -290,7 +331,7 @@ namespace probot {
 
   // Request a terminal emergency stop. Safe to call from ANY task, including
   // a user hook: it only sets a flag. The sysloop runs the real sequence
-  // (kill the user task, run robotEnd under a watchdog, latch until reboot),
+  // (kill the user task, run the active stop under a watchdog, latch),
   // so it never deletes its own caller.
   inline void emergencyStop(){
     __atomic_store_n(&probot::robot::g_estop_requested, 1u, __ATOMIC_SEQ_CST);

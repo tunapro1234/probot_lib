@@ -4,7 +4,7 @@ ESP32 tabanlı robot yarışması iletişim kütüphanesi. Robot bir WiFi
 erişim noktası açar, tarayıcıdan çalışan Driver Station arayüzü sunar
 ve joystick verisini WebSocket ile düşük gecikmeyle robota taşır.
 
-**Sürüm 0.3.0** · ESP32 / ESP32-S3 · [API Referansı](API.md) ·
+**dev (0.4.0 adayı)** · ESP32 / ESP32-S3 · [API Referansı](API.md) ·
 [English summary below](#probot-en)
 
 ---
@@ -29,9 +29,7 @@ ve joystick verisini WebSocket ile düşük gecikmeyle robota taşır.
 #define PROBOT_WIFI_AP_CHANNEL  1             // 1-13 (yarışmada elle dağıtın)
 #include <probot.h>
 
-void robotInit() {}                // Init'e basınca 1 kez
-void robotEnd() {}                 // Stop'ta 1 kez — motorları burada durdur
-void teleopInit() {}               // teleop başlarken 1 kez
+void teleopInit() {}               // TeleOp seçiliyken INIT'e basınca 1 kez
 
 void teleopLoop() {                // ~50 Hz tekrar çağrılır
   auto js = probot::io::joystick_api::makeDefault();
@@ -40,19 +38,22 @@ void teleopLoop() {                // ~50 Hz tekrar çağrılır
   // motor kodun burada
   delay(20);
 }
+void teleopStop() {}               // TeleOp'tan her çıkışta güvenli durdur
 
 void autonomousInit() {}
 void autonomousLoop() { delay(100); }
+void autonomousStop() {}           // Auto'dan her çıkışta güvenli durdur
 ```
 
 > `setup()` ve `loop()` **tanımlamayın** — kütüphane kendisi tanımlar.
-> Altı fonksiyonun altısı da sketch'te bulunmak zorundadır.
+> Dört güvenlik hook'u (`autonomousLoop/Stop`, `teleopLoop/Stop`) zorunludur.
+> `init` hook'ları opsiyoneldir; ana iskelette donanım hazırlığı için gösterilir.
 
 1. Yükle → Serial monitörde IP'yi gör (`192.168.4.1`).
 2. Tablet/telefonu `MyRobot` WiFi ağına bağla — karşılama sayfası
    kendiliğinden açılır (captive portal).
 3. Açılmazsa tarayıcıda `http://192.168.4.1` aç.
-4. Kumandayı tablete bağla (USB/Bluetooth) → **Init** → **Start**.
+4. Kumandayı tablete bağla (USB/Bluetooth) → modu seç → **Init** → **Start**.
 
 ## Örnekler
 
@@ -81,11 +82,12 @@ Hepsi `#include <probot.h>` satırından **önce** tanımlanır:
 | `PROBOT_WIFI_PMF_REQUIRED` | `0` | `1`: PMF (802.11w) zorunlu — deauth sahteciliğine karşı koruma, eski tabletlerle uyumsuz olabilir |
 | `PROBOT_CAPTIVE_PORTAL` | `1` | Ağa katılan cihazda karşılama sayfası kendiliğinden açılır; `0` kapatır |
 | `NEOPIXEL_PIN` / `NEOPIXEL_COUNT` | `3` / `1` | Durum LED'i pini/adedi |
-| `PROBOT_LOOP_DEADLINE_MS` | `2000` | Loop turu bu süreyi aşarsa "stalled": input sıfır, halt-safe (öldürme/reboot yok) |
+| `PROBOT_LOOP_DEADLINE_MS` | `2000` | InitLoop/loop turu bu süreyi aşarsa "stalled": input sıfır, halt-safe (öldürme/reboot yok) |
 | `PROBOT_WDT_TIMEOUT_S` | `8` | Donanım watchdog (yalnız sysloop; bir *kütüphane* kilidi reboot ettirir, kullanıcı kodu değil) |
 | `PROBOT_ESTOP_ENABLE_PIN` | `-1` | Kütüphanenin sürdüğü enable GPIO'su (motor sürücü enable / kontaktör). Boot'ta HIGH, acil durdurmada LOW |
-| `PROBOT_ESTOP_END_MS` | `500` | Acil durdurmada `robotEnd()`'e tanınan süre; aşılırsa çip reboot eder |
+| `PROBOT_ESTOP_END_MS` | `500` | Acil durdurmada aktif OpMode `stop()`una tanınan süre; aşılırsa çip reboot eder |
 | `PROBOT_RSL_PIN` | `-1` | Sinyal lambası (RSL) digital pini: hareket edebilirken blink, yoksa sabit açık |
+| `USER_LOOP_PERIOD_MS` | `20` | InitLoop/loop çağrı periyodu (~50 Hz) |
 | `NEOPIXEL_BRIGHTNESS` | `32` | Durum LED'i parlaklığı (0-255) |
 
 ## Yarışma günü: kanal planı
@@ -126,12 +128,12 @@ Servo titremesinin iki yaygın sebebi var; ikisi de kütüphane dışında:
    alttan (0,1,2…) kullandığı için çakışmaz:
    ```cpp
    #define SERVO_PIN 4
-   void robotInit() { ledcAttachChannel(SERVO_PIN, 50, 14, 7); } // 50 Hz, 14-bit, kanal 7
+   void teleopInit() { ledcAttachChannel(SERVO_PIN, 50, 14, 7); } // 50 Hz, 14-bit, kanal 7
    void teleopLoop() {
      uint16_t us = 500 + (angle/180.0f)*2000;        // 0-180° -> 500-2500 µs
      ledcWrite(SERVO_PIN, (uint32_t)us * 16383 / 20000);
    }
-   void robotEnd() { ledcWrite(SERVO_PIN, 0); }      // darbeyi kes
+   void teleopStop() { ledcWrite(SERVO_PIN, 0); }    // darbeyi kes
    ```
    Tam örnek: `examples/ServoTest`.
 2. **Güç:** Servoyu ESP32'nin 5V/3V3 pininden beslemeyin. WiFi anlık
@@ -148,17 +150,18 @@ elle renk atama API'si yoktur (LED'in rengi hep bir anlam taşır).
 
 | Renk | Anlam |
 |---|---|
-| Mavi sabit | Açık, DS bağlı değil |
-| Mavi yanıp sönüyor | DS bağlı, Init bekleniyor |
-| Sarı sabit | Init tamam, Start bekleniyor |
-| Turuncu yanıp sönüyor | Otonom çalışıyor |
-| Yeşil yanıp sönüyor | Teleop çalışıyor |
+| Mavi sabit | DS bağlı değil |
+| Mavi yanıp sönüyor | DS bağlı + STOPPED |
+| Sarı sabit | INIT (Auto veya TeleOp), Start bekleniyor |
+| Sarı yanıp sönüyor | TRANSITION: Auto bitti, TeleOp önseçili; Init bekleniyor |
+| Turuncu yanıp sönüyor | AUTO_RUN |
+| Yeşil yanıp sönüyor | TELEOP_RUN |
 | Kırmızı yanıp sönüyor | Stalled — loop 2 sn'den uzun döndü, güvende tutuluyor |
 | Kırmızı sabit | Acil durdurma (kilitli, reboot gerekli) |
 
 **RSL (sinyal lambası):** `#define PROBOT_RSL_PIN <gpio>` verirseniz kütüphane
-o digital pini sürer — robot **hareket edebilirken** (teleop/otonom) yanıp
-söner, aksi halde **sabit açık** kalır.
+o digital pini yalnız AUTO_RUN/TELEOP_RUN'da yanıp söndürür; INIT, STOPPED,
+TRANSITION ve E-stop'ta **sabit açık** tutar.
 
 ## Bağlantı davranışı (güvenlik)
 
@@ -170,9 +173,16 @@ söner, aksi halde **sabit açık** kalır.
   İkinci cihaz arayüzü açarsa `403` alır. `/health` ve `/info` ise
   sahiplik gerektirmez — hakem/izleme cihazları serbestçe okuyabilir.
 
-## Yaşam döngüsü ve loop sözleşmesi (0.3.0)
+## FTC OpMode yaşam döngüsü
 
-- Altı hook **tek kalıcı task'ta**, yalnız döngü sınırlarında çalışır.
+- Model FTC'deki OpMode akışıyla aynıdır: **Autonomous / TeleOp seç → INIT →
+  START → STOP**. Mod yalnız STOPPED/TRANSITION'da değiştirilebilir.
+- INIT'te ilgili `init()` bir kez, RUN'da `loop()` sürekli, INIT veya RUN'dan
+  her çıkışta ilgili `stop()` bir kez çağrılır.
+- Auto süresi `autonomousStart()` sonrasında başlar. Süre bitince
+  `autonomousStop()` çalışır, TeleOp önseçilir ve sistem TRANSITION'da yeni
+  bir INIT bekler; TeleOp otomatik başlamaz.
+- Tüm hook'lar **tek kalıcı task'ta**, yalnız döngü sınırlarında çalışır.
   Stop/faz değişimi kullanıcı kodunu iş ortasında **kesmez** — bu yüzden
   bir Wire/I2C ya da malloc kilidi asla orphan olmaz (eski sürümlerdeki
   donmanın kök sebebi buydu).
@@ -180,17 +190,29 @@ söner, aksi halde **sabit açık** kalır.
   (öneri < ~2 sn). Blocking serbest, *sonsuz* blocking yasak. I2C/sensör
   çağrılarına timeout koyun — örn. `Wire.begin()` sonrası
   `Wire.setTimeOut(50);` — yoksa takılı bir cihaz turu kilitler.
-- **Stop kooperatiftir:** o anki tur dönünce `robotEnd()` koşar (en fazla
+- **Stop kooperatiftir:** o anki tur dönünce aktif OpMode `stop()`u koşar (en fazla
   bir loop periyodu gecikme). Anında kesme için acil durdurma kullanın.
 - **Stall (halt-safe):** bir tur `PROBOT_LOOP_DEADLINE_MS` (2 sn) içinde
   dönmezse input sıfırlanır, LED kırmızı yanar, robot güvende tutulur —
   **task öldürülmez, çip reboot edilmez** (homing/relative state korunur).
 
+### İleri seviye: initLoop ve start
+
+`autonomousInitLoop()` / `teleopInitLoop()` INIT ile START arasında robot
+kımıldamadan tekrar çağrılır; input nötr ve RSL sabit kalır. Kamera ile saha
+randomizasyonu okumak, gyro/sensör kalibrasyon durumunu yayınlamak veya maç
+öncesi kontrol yapmak içindir. Stall deadline'ı burada da geçerlidir.
+
+`autonomousStart()` / `teleopStart()` START anındaki bir kerelik zaman damgası
+ve state reset işleri içindir. Çoğu robotta loop'un ilk turu yeterlidir; bu
+yüzden ana örneklerde bu ileri seviye hook'lar kullanılmaz.
+
 ## Acil durdurma
 
 - Arayüzdeki kırmızı **EMERGENCY STOP** butonu (ya da
-  `/robotControl?cmd=estop`) kullanıcı task'ını öldürür, `robotEnd()`'i
-  watchdog'lu çalıştırır ve robotu **reboot'a kadar kilitler** (Init/Start
+  `/robotControl?cmd=estop`) kullanıcı task'ını öldürür, INIT/RUN'daki aktif
+  OpMode `stop()`unu taze task'ta watchdog'lu çalıştırır ve robotu **reboot'a
+  kadar kilitler** (STOPPED/TRANSITION'da hook yok; Init/Start
   reddedilir; "Reboot" butonu ya da güç döngüsü temizler). Donmuş bir
   loop'u bile durdurur.
 - Gerçek güvenlik garantisi için **donanım E-stop**'unu güç/enable hattına
@@ -204,16 +226,16 @@ Gemini / ChatGPT / Claude'a robot kodu yazdırırken bu satırları
 prompt'unuzun başına ekleyin:
 
 ```text
-ESP32 için "probot" kütüphanesiyle (0.3.0) Arduino kodu yaz.
+ESP32 için "probot" kütüphanesiyle (0.4.0) Arduino kodu yaz.
 Önce API referansını oku:
 https://raw.githubusercontent.com/probot-studio/probot-core/stable/API.md
 Kurallar:
-- setup()/loop() TANIMLAMA; robotInit, robotEnd, teleopInit, teleopLoop,
-  autonomousInit, autonomousLoop — altısı da tanımlı olacak.
+- setup()/loop() TANIMLAMA. autonomousInit/Loop/Stop ve
+  teleopInit/Loop/Stop üçlülerini kullan; iki loop ve iki stop zorunlu.
 - Joystick: auto js = probot::io::joystick_api::makeDefault();
   js.getLeftY() vb. (-1..+1). probot::io::gamepad() üzerinde getLeftX gibi
   metodlar YOKTUR.
-- Servo için ham LEDC kullan: robotInit'te ledcAttachChannel(pin,50,14,7)
+- Servo için ham LEDC kullan: ilgili init'te ledcAttachChannel(pin,50,14,7)
   (yüksek kanal → motor analogWrite'ıyla çakışmaz), teleopLoop'ta ledcWrite.
 - teleopLoop ~50 Hz çağrılır; içinde sonsuz döngü/uzun blocking yapma.
 ```
@@ -235,8 +257,11 @@ Makine-okur özet: [`llms.txt`](llms.txt) · Tam referans: [`API.md`](API.md)
 
 - Hata bildirimi: https://github.com/probot-studio/probot-core/issues
 - WhatsApp: +90 538 040 81 48
-- Lisans: MIT + Commons Clause — eğitim ve yarışma kullanımı ücretsiz,
-  ticari lisans için tunagul54@gmail.com
+- Katkı: [CONTRIBUTING.md](CONTRIBUTING.md) · Davranış kuralları:
+  [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Lisans: MIT + Commons Clause ([LICENSE](LICENSE) ·
+  [LICENSE-commercial](LICENSE-commercial)) — eğitim ve yarışma kullanımı
+  ücretsiz, ticari lisans için tunagul54@gmail.com
 
 ---
 
@@ -254,10 +279,12 @@ partition scheme.
 
 **Minimal sketch:** see the Turkish quick start above — the code is
 identical. Define the three `PROBOT_WIFI_*` macros, include `probot.h`,
-implement the six lifecycle hooks (`robotInit`, `robotEnd`,
-`teleopInit`, `teleopLoop`, `autonomousInit`, `autonomousLoop`), and
+implement the FTC-style `autonomousInit/Loop/Stop` and
+`teleopInit/Loop/Stop` hooks (both loop and stop hooks are required), and
 read input via `probot::io::joystick_api::makeDefault()`. Do not define
 `setup()`/`loop()` — the library owns them.
 
 Full API reference: [API.md](API.md) · Machine-readable index:
-[llms.txt](llms.txt) · Changes: [CHANGELOG.md](CHANGELOG.md)
+[llms.txt](llms.txt) · Changes: [CHANGELOG.md](CHANGELOG.md) ·
+Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) · License: MIT +
+Commons Clause ([LICENSE](LICENSE) · [LICENSE-commercial](LICENSE-commercial))

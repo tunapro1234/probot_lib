@@ -190,6 +190,36 @@ const char MAIN_page[] PROGMEM = R"=====(
       gap:12px;
       align-items:stretch;
     }
+    .mode-selector{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:6px;
+      padding:5px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:var(--soft);
+    }
+    .mode-selector label{position:relative;cursor:pointer;}
+    .mode-selector input{position:absolute;opacity:0;pointer-events:none;}
+    .mode-selector span{
+      display:block;padding:11px 10px;border-radius:9px;text-align:center;
+      color:var(--muted);font-weight:800;letter-spacing:0.04em;
+      transition:background 140ms ease,color 140ms ease,box-shadow 140ms ease;
+    }
+    .mode-selector input:checked + span{
+      color:#fff;background:var(--grad-brand);box-shadow:0 3px 0 var(--deep);
+    }
+    .mode-selector input:disabled + span{opacity:0.55;cursor:not-allowed;}
+    .match-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+    .match-actions #initButton{background:var(--amber);box-shadow:0 4px 0 #bd7200;color:var(--navy);}
+    .match-actions #startButton{background:var(--start);box-shadow:0 4px 0 #176b2a;}
+    .match-actions #stopButton{background:var(--stop);box-shadow:0 4px 0 var(--stop-deep);}
+    .match-actions button:disabled{
+      opacity:0.35;cursor:not-allowed;transform:none;box-shadow:none;filter:grayscale(0.25);
+    }
+    .match-actions #initButton.transition-ready{
+      outline:3px solid rgba(255,176,32,0.35);outline-offset:2px;
+    }
     .control{
       background:var(--soft);
       border-radius:12px;
@@ -664,7 +694,7 @@ const char MAIN_page[] PROGMEM = R"=====(
       /* comfortable touch sizing (not oversized — keep the big/loud
          footprint for EMERGENCY STOP, not Init) */
       .control-row{grid-template-columns:1fr;gap:12px;}
-      #robotButton{padding:18px;font-size:1.4rem;}
+      .match-actions button{padding:16px 8px;font-size:1rem;}
       .switch{padding:12px 16px;}
       .switch input{width:56px;height:30px;}
       .switch input::after{width:24px;height:24px;top:3px;left:4px;}
@@ -740,18 +770,23 @@ const char MAIN_page[] PROGMEM = R"=====(
     <div class="column">
       <section class="stack-card">
         <h2>Match Control</h2>
+        <div class="mode-selector" id="modeSelector" aria-label="OpMode selection">
+          <label><input type="radio" name="opmode" id="modeAuto" value="auto"><span>Autonomous</span></label>
+          <label><input type="radio" name="opmode" id="modeTeleop" value="teleop" checked><span>TeleOp</span></label>
+        </div>
         <div class="control-row">
-          <button id="robotButton">Init</button>
           <div class="control">
             <label>Autonomous Duration</label>
             <input type="number" id="autoPeriod" value="30" min="1" max="120">
             <span class="hint">Seconds</span>
           </div>
-          <div class="switch">
-            <span>Autonomous</span>
-            <input type="checkbox" id="enableAutonomous" checked>
-          </div>
         </div>
+        <div class="match-actions">
+          <button id="initButton">Init</button>
+          <button id="startButton" disabled>Start</button>
+          <button id="stopButton" disabled>Stop</button>
+        </div>
+        <p class="hint" id="matchStatus">Stopped — Select a mode, then Init</p>
         <button id="estopButton" class="estop-btn">EMERGENCY STOP</button>
         <div class="auto-progress">
           <div class="auto-progress-header">
@@ -946,8 +981,9 @@ const char MAIN_page[] PROGMEM = R"=====(
     }
 
     /* ===== STATE ===== */
-    var controlState="idle";
-    var autoModeEnabled=false;
+    var currentPhase=0;
+    var currentStatus=2; // Status: 0=INIT 1=START 2=STOP
+    var selectedMode="teleop";
     var autoScroll=true;
     var selectedGamepadIndex=-1;
     var gamepads={};
@@ -958,9 +994,11 @@ const char MAIN_page[] PROGMEM = R"=====(
 
     function setPhaseDisplay(mode){
       var map={
-        init:{title:"Init", detail:"Systems primed"},
+        autoInit:{title:"Auto Init", detail:"Waiting for Start"},
+        teleopInit:{title:"TeleOp Init", detail:"Waiting for Start"},
         auto:{title:"Autonomous", detail:"Running script"},
-        teleop:{title:"Teleop", detail:"Drivers in control"},
+        teleop:{title:"TeleOp", detail:"Drivers in control"},
+        transition:{title:"Transition", detail:"Auto bitti — TeleOp için Init"},
         stopped:{title:"Stopped", detail:"Motors safe"},
         standby:{title:"Standby", detail:"Awaiting command"}
       };
@@ -969,6 +1007,12 @@ const char MAIN_page[] PROGMEM = R"=====(
       if(headerStatusDetail){
         if(mode==='auto') headerStatusDetail.textContent='Auto running - '+autoRemaining.toFixed(1)+' s';
         else headerStatusDetail.textContent=next.detail;
+      }
+      var matchStatus=document.getElementById('matchStatus');
+      if(matchStatus){
+        if(mode==='auto') matchStatus.textContent='Auto running — '+autoRemaining.toFixed(1)+' s';
+        else if(mode==='transition') matchStatus.textContent='Auto bitti — TeleOp için Init';
+        else matchStatus.textContent=next.title+' — '+next.detail;
       }
       document.body.dataset.state=mode;
     }
@@ -1036,11 +1080,10 @@ const char MAIN_page[] PROGMEM = R"=====(
       display.textContent=autoRemaining.toFixed(1)+' s';
       var pct=duration>0?Math.max(0,Math.min(100,(autoRemaining/duration)*100)):0;
       fill.style.width=pct+'%';
-      if(autoModeEnabled) setPhaseDisplay('auto');
+      if(currentPhase===2) setPhaseDisplay('auto');
     }
 
     function startAutoTimer(duration){
-      autoModeEnabled=true;
       autoRemaining=duration;
       updateAutoDisplay();
       clearInterval(autoTimer);
@@ -1050,8 +1093,7 @@ const char MAIN_page[] PROGMEM = R"=====(
         if(autoRemaining<=0){
           clearInterval(autoTimer);
           autoTimer=null;
-          autoModeEnabled=false;
-          setPhaseDisplay('teleop');
+          setPhaseDisplay('transition');
         }
       },100);
     }
@@ -1060,79 +1102,63 @@ const char MAIN_page[] PROGMEM = R"=====(
       clearInterval(autoTimer);
       autoTimer=null;
       autoRemaining=0;
-      autoModeEnabled=false;
       updateAutoDisplay();
     }
 
     /* ===== STATE RENDER ===== */
-    /* Fed by 'S' WS frames normally; by the HTTP fallback when WS is down.
-       After a button press we ignore incoming state briefly: an 'S' frame
-       generated BEFORE the command was applied would revert the optimistic
-       UI and a second click would then send the wrong command. */
-    var lastCmdMs=-10000;
+    /* Fed by 'S' WS frames normally; by the HTTP fallback when WS is down. */
     function applyState(data){
         if(!data) return;
         var estopOv=document.getElementById('estopOverlay');
         if(estopOv) estopOv.classList.toggle('show',data.estop===true);
-        if(performance.now()-lastCmdMs<600) return;
-        var btn=document.getElementById('robotButton');
-        if(!btn) return;
-
+        currentPhase=typeof data.phase==='number'?data.phase:0;
+        currentStatus=typeof data.status==='number'?data.status:currentStatus;
+        selectedMode=data.selectedMode==='auto'?'auto':'teleop';
         var autoPeriodEl=document.getElementById('autoPeriod');
-        var autoEnableEl=document.getElementById('enableAutonomous');
-
-        var isAutonomous=(data.phase===2);
-        var isTeleop=(data.phase===3);
-        var isRunning=(isAutonomous||isTeleop);
-        if(autoPeriodEl&&typeof data.autoPeriodSeconds==='number'&&isRunning){
+        if(autoPeriodEl&&typeof data.autoPeriodSeconds==='number'){
           autoPeriodEl.value=data.autoPeriodSeconds;
         }
-        if(autoEnableEl){
-          if(typeof data.autonomousEnabled==='boolean'&&(isAutonomous||isTeleop)){
-            autoEnableEl.checked=data.autonomousEnabled;
-          }
-          autoEnableEl.disabled=isTeleop;
-        }
+
+        var modeAuto=document.getElementById('modeAuto');
+        var modeTeleop=document.getElementById('modeTeleop');
+        var modeUnlocked=(currentPhase===0||currentPhase===5);
+        modeAuto.checked=selectedMode==='auto';
+        modeTeleop.checked=selectedMode==='teleop';
+        modeAuto.disabled=!modeUnlocked;
+        modeTeleop.disabled=!modeUnlocked;
+
+        var initBtn=document.getElementById('initButton');
+        var startBtn=document.getElementById('startButton');
+        var stopBtn=document.getElementById('stopButton');
+        var inInit=(currentPhase===1||currentPhase===3);
+        var inRun=(currentPhase===2||currentPhase===4);
+        initBtn.disabled=!modeUnlocked;
+        startBtn.disabled=!(inInit&&currentStatus===0); // START kabul edildiyse (status=START) ikinciyi kilitle
+        stopBtn.disabled=!(inInit||inRun);
+        initBtn.classList.toggle('transition-ready',currentPhase===5);
 
         var remainingMs=(typeof data.autoRemainingMs==='number')?data.autoRemainingMs:null;
         var remainingSec=remainingMs!==null?Math.max(0,remainingMs)/1000:(parseFloat(autoPeriodEl?autoPeriodEl.value:0)||0);
 
-        if(data.phase===1){
-          controlState="armed";
-          btn.textContent="Start";
-          btn.style.background="var(--start)";
-          btn.style.color="var(--ice)";
+        if(currentPhase===1){
           stopAutoTimer();
-          if(autoEnableEl&&autoEnableEl.checked){
-            autoRemaining=parseFloat(autoPeriodEl?autoPeriodEl.value:0)||0;
-          }else{autoRemaining=0;}
+          autoRemaining=parseFloat(autoPeriodEl?autoPeriodEl.value:0)||0;
           updateAutoDisplay();
-          setPhaseDisplay('init');
-        }else if(data.phase===2){
-          controlState="running";
-          btn.textContent="Stop";
-          btn.style.background="var(--stop)";
-          btn.style.color="var(--ice)";
-          if(data.autonomousEnabled===false){
-            stopAutoTimer();
-            setPhaseDisplay('teleop');
-          }else{
-            stopAutoTimer();
-            if(remainingSec>0) startAutoTimer(remainingSec);
-            else{autoModeEnabled=true;autoRemaining=0;updateAutoDisplay();setPhaseDisplay('auto');}
-          }
-        }else if(data.phase===3){
-          controlState="running";
-          btn.textContent="Stop";
-          btn.style.background="var(--stop)";
-          btn.style.color="var(--ice)";
+          setPhaseDisplay('autoInit');
+        }else if(currentPhase===2){
+          stopAutoTimer();
+          if(remainingSec>0) startAutoTimer(remainingSec);
+          else{autoRemaining=0;updateAutoDisplay();setPhaseDisplay('auto');}
+        }else if(currentPhase===3){
+          stopAutoTimer();
+          setPhaseDisplay('teleopInit');
+        }else if(currentPhase===4){
           stopAutoTimer();
           setPhaseDisplay('teleop');
+        }else if(currentPhase===5){
+          stopAutoTimer();
+          setPhaseDisplay('transition');
         }else{
-          controlState="idle";
-          btn.textContent="Init";
-          btn.style.background="var(--sky)";
-          btn.style.color="#fff";
           stopAutoTimer();
           setPhaseDisplay('stopped');
         }
@@ -1156,56 +1182,36 @@ const char MAIN_page[] PROGMEM = R"=====(
       });
     }
 
-    /* ===== ROBOT BUTTON ===== */
-    function handleRobotButton(){
-      var cmd="";
-      var enableAuto=document.getElementById('enableAutonomous').checked;
+    /* ===== MATCH CONTROL ===== */
+    function sendMatchCommand(cmd){
       var autoLen=Math.max(0,parseFloat(document.getElementById('autoPeriod').value)||0);
-
-      switch(controlState){
-        case "idle": cmd="init"; break;
-        case "armed": cmd="start"; break;
-        default: cmd="stop"; break;
-      }
-
-      lastCmdMs=performance.now();
-      var url='/robotControl?cmd='+cmd+'&auto='+(enableAuto?1:0)+'&autoLen='+autoLen;
+      var url='/robotControl?cmd='+cmd+'&autoLen='+autoLen;
       var ac=new AbortController();
       var tid=setTimeout(function(){ac.abort();},3000);
-      fetch(url,{signal:ac.signal}).then(function(r){
+      return fetch(url,{signal:ac.signal}).then(function(r){
         clearTimeout(tid);
-        if(!r.ok) console.error("Robot command failed:",r.status);
+        if(!r.ok) return r.text().then(function(t){throw new Error(r.status+' '+t);});
+        setTimeout(fetchState,80);
       }).catch(function(err){
         console.error("robotControl fetch error:",err);
       });
-
-      var btn=document.getElementById('robotButton');
-      if(controlState==="idle"){
-        controlState="armed";
-        btn.textContent="Start";
-        btn.style.background="var(--start)";
-        btn.style.color="var(--ice)";
-        stopAutoTimer();
-        autoRemaining=autoLen;
-        updateAutoDisplay();
-        setPhaseDisplay('init');
-      }else if(controlState==="armed"){
-        controlState="running";
-        btn.textContent="Stop";
-        btn.style.background="var(--stop)";
-        btn.style.color="var(--ice)";
-        if(enableAuto&&autoLen>0){startAutoTimer(autoLen);setPhaseDisplay('auto');}
-        else{stopAutoTimer();setPhaseDisplay('teleop');}
-      }else{
-        controlState="idle";
-        btn.textContent="Init";
-        btn.style.background="var(--sky)";
-        btn.style.color="#fff";
-        stopAutoTimer();
-        setPhaseDisplay('stopped');
-      }
     }
-    document.getElementById('robotButton').addEventListener('click',handleRobotButton);
+
+    function selectMode(mode){
+      var ac=new AbortController();
+      var tid=setTimeout(function(){ac.abort();},3000);
+      fetch('/robotControl?cmd=mode&val='+mode,{signal:ac.signal}).then(function(r){
+        clearTimeout(tid);
+        if(!r.ok) return r.text().then(function(t){throw new Error(r.status+' '+t);});
+        selectedMode=mode;
+        setTimeout(fetchState,80);
+      }).catch(function(err){console.error('Mode change failed:',err);fetchState();});
+    }
+    document.getElementById('initButton').addEventListener('click',function(){sendMatchCommand('init');});
+    document.getElementById('startButton').addEventListener('click',function(){sendMatchCommand('start');});
+    document.getElementById('stopButton').addEventListener('click',function(){sendMatchCommand('stop');});
+    document.getElementById('modeAuto').addEventListener('change',function(){if(this.checked)selectMode('auto');});
+    document.getElementById('modeTeleop').addEventListener('change',function(){if(this.checked)selectMode('teleop');});
 
     /* ===== EMERGENCY STOP / REBOOT ===== */
     function sendSimpleCmd(cmd){
@@ -1216,7 +1222,6 @@ const char MAIN_page[] PROGMEM = R"=====(
       }).catch(function(err){console.error(cmd+' fetch error:',err);});
     }
     document.getElementById('estopButton').addEventListener('click',function(){
-      lastCmdMs=performance.now();
       sendSimpleCmd('estop');
       var ov=document.getElementById('estopOverlay');
       if(ov) ov.classList.add('show');
@@ -1663,20 +1668,6 @@ const char MAIN_page[] PROGMEM = R"=====(
       if(autoTimer) autoRemaining=Math.min(autoRemaining,duration);
       else autoRemaining=duration;
       updateAutoDisplay();
-    });
-
-    document.getElementById('enableAutonomous').addEventListener('change',function(e){
-      if(!e.target.checked){
-        if(controlState==="running"){
-          fetch('/robotControl?cmd=cancelAuto').then(function(r){
-            if(!r.ok) throw new Error("Cancel auto failed");
-            stopAutoTimer();
-            setPhaseDisplay('teleop');
-          }).catch(function(err){console.error(err);});
-        }else{
-          stopAutoTimer();
-        }
-      }
     });
 
     /* ===== INIT ===== */

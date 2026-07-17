@@ -8,127 +8,176 @@
 
 namespace robot = probot::robot;
 namespace core  = probot::core;
-using core::Mode;
+using robot::OpMode;
+using core::Stage;
 
 namespace {
   std::vector<std::string> g_calls;
-  int g_transitions = 0;
+  int g_neutralized = 0;
+  uint32_t g_clock_now = 0;
 
-  void h_robotInit()      { g_calls.push_back("robotInit"); }
-  void h_robotEnd()       { g_calls.push_back("robotEnd"); }
-  void h_teleopInit()     { g_calls.push_back("teleopInit"); }
-  void h_teleopLoop()     { g_calls.push_back("teleopLoop"); }
   void h_autoInit()       { g_calls.push_back("autonomousInit"); }
+  void h_autoInitLoop()   { g_calls.push_back("autonomousInitLoop"); }
+  void h_autoStart()      { g_calls.push_back("autonomousStart"); }
   void h_autoLoop()       { g_calls.push_back("autonomousLoop"); }
-  void h_onTransition()   { g_transitions++; }
+  void h_autoStop()       { g_calls.push_back("autonomousStop"); }
+  void h_teleopInit()     { g_calls.push_back("teleopInit"); }
+  void h_teleopInitLoop() { g_calls.push_back("teleopInitLoop"); }
+  void h_teleopStart()    { g_calls.push_back("teleopStart"); }
+  void h_teleopLoop()     { g_calls.push_back("teleopLoop"); }
+  void h_teleopStop()     { g_calls.push_back("teleopStop"); }
+  void h_neutralize()     { ++g_neutralized; }
+  uint32_t h_clockNow()    { return g_clock_now; }
 
   core::Hooks mkHooks(){
-    return core::Hooks{ h_robotInit, h_robotEnd, h_teleopInit,
-                        h_teleopLoop, h_autoInit, h_autoLoop };
+    return core::Hooks{ h_autoInit, h_autoInitLoop, h_autoStart, h_autoLoop,
+                        h_autoStop, h_teleopInit, h_teleopInitLoop,
+                        h_teleopStart, h_teleopLoop, h_teleopStop };
   }
 }
 
-TEST_CASE(mode_for_status){
-  EXPECT_TRUE(core::modeForStatus(robot::Status::STOP,  false) == Mode::STOP);
-  EXPECT_TRUE(core::modeForStatus(robot::Status::INIT,  true)  == Mode::INIT);
-  EXPECT_TRUE(core::modeForStatus(robot::Status::START, false) == Mode::TELEOP);
-  EXPECT_TRUE(core::modeForStatus(robot::Status::START, true)  == Mode::AUTON);
-}
-
-TEST_CASE(lifecycle_full_transition_path){
-  g_calls.clear(); g_transitions = 0;
+TEST_CASE(teleop_init_loop_start_loop_stop_order){
+  g_calls.clear(); g_neutralized = 0;
   robot::StateService rs;
   core::PhaseMachine m;
   auto h = mkHooks();
   volatile uint32_t hb = 0;
 
-  // STOP -> INIT: robotInit runs, phase becomes INITED, no loop hook.
-  m.step(h, Mode::INIT, rs, 100, h_onTransition, &hb);
-  EXPECT_TRUE(m.current() == Mode::INIT);
-  EXPECT_TRUE(rs.read().phase == robot::Phase::INITED);
-  EXPECT_TRUE(g_calls.size() == 1);
-  EXPECT_TRUE(g_calls[0] == "robotInit");
+  m.step(h, {OpMode::TELEOP, Stage::INIT}, rs, 100, h_neutralize, &hb);
+  m.step(h, {OpMode::TELEOP, Stage::INIT}, rs, 120, h_neutralize, &hb);
+  EXPECT_TRUE(rs.read().phase == robot::Phase::TELEOP_INIT);
 
-  // INIT -> TELEOP: teleopInit then teleopLoop; heartbeat reset on entry.
-  m.step(h, Mode::TELEOP, rs, 200, h_onTransition, &hb);
-  EXPECT_TRUE(rs.read().phase == robot::Phase::TELEOP);
-  EXPECT_TRUE(g_calls.size() == 3);
-  EXPECT_TRUE(g_calls[1] == "teleopInit");
-  EXPECT_TRUE(g_calls[2] == "teleopLoop");
-  EXPECT_TRUE(hb == 200u);
+  m.step(h, {OpMode::TELEOP, Stage::RUN}, rs, 140, h_neutralize, &hb);
+  m.step(h, {OpMode::TELEOP, Stage::RUN}, rs, 160, h_neutralize, &hb);
+  EXPECT_TRUE(rs.read().phase == robot::Phase::TELEOP_RUN);
 
-  // Stay in TELEOP: just another loop, no transition.
-  m.step(h, Mode::TELEOP, rs, 220, h_onTransition, &hb);
-  EXPECT_TRUE(g_calls.size() == 4);
-  EXPECT_TRUE(g_calls[3] == "teleopLoop");
+  m.step(h, {OpMode::TELEOP, Stage::STOPPED}, rs, 180, h_neutralize, &hb);
+  EXPECT_TRUE(rs.read().phase == robot::Phase::STOPPED);
 
-  // TELEOP -> STOP: robotEnd, phase NOT_INIT.
-  m.step(h, Mode::STOP, rs, 300, h_onTransition, &hb);
-  EXPECT_TRUE(rs.read().phase == robot::Phase::NOT_INIT);
-  EXPECT_TRUE(g_calls.back() == "robotEnd");
-
-  // Three real transitions (INIT, TELEOP, STOP), not the stay-in-TELEOP.
-  EXPECT_TRUE(g_transitions == 3);
+  const std::vector<std::string> expected{
+    "teleopInit", "teleopInitLoop", "teleopInitLoop",
+    "teleopStart", "teleopLoop", "teleopLoop", "teleopStop"
+  };
+  EXPECT_TRUE(g_calls == expected);
+  EXPECT_TRUE(g_neutralized >= 4); // INIT and STOPPED keep input neutral.
 }
 
-TEST_CASE(lifecycle_autonomous_entry_stamps_start){
+TEST_CASE(auto_period_stops_then_transitions_to_teleop){
+  g_calls.clear();
+  robot::StateService rs;
+  core::PhaseMachine m;
+  core::Supervisor sup;
+  auto h = mkHooks();
+
+  rs.setControl(10, robot::Status::STOP, OpMode::AUTO);
+  m.step(h, sup.update(rs, 10, false), rs, 10);
+  rs.setStatus(20, robot::Status::INIT);
+  m.step(h, sup.update(rs, 20, false), rs, 20);
+  rs.setStatus(30, robot::Status::START);
+  g_clock_now = 1100; // autonomousStart returned after the step's initial timestamp
+  m.step(h, sup.update(rs, 30, false), rs, 1000, nullptr, nullptr, h_clockNow);
+  EXPECT_TRUE(rs.read().phase == robot::Phase::AUTO_RUN);
+  EXPECT_TRUE(rs.read().autoStartMs == 1100u);
+
+  rs.setAutoPeriodSeconds(40, 5);
+  auto desired = sup.update(rs, 6100, false);
+  EXPECT_TRUE(desired.mode == OpMode::TELEOP);
+  EXPECT_TRUE(desired.stage == Stage::TRANSITION);
+  m.step(h, desired, rs, 6100);
+
+  auto s = rs.read();
+  EXPECT_TRUE(s.phase == robot::Phase::TRANSITION);
+  EXPECT_TRUE(s.selectedMode == OpMode::TELEOP);
+  EXPECT_TRUE(s.status == robot::Status::STOP);
+  EXPECT_TRUE(g_calls.back() == "autonomousStop");
+}
+
+TEST_CASE(transition_init_enters_teleop_init){
   g_calls.clear();
   robot::StateService rs;
   core::PhaseMachine m;
   auto h = mkHooks();
 
-  m.step(h, Mode::AUTON, rs, 500, nullptr, nullptr);
-  auto s = rs.read();
-  EXPECT_TRUE(s.phase == robot::Phase::AUTONOMOUS);
-  EXPECT_TRUE(s.autoStartMs == 500u);
+  m.step(h, {OpMode::TELEOP, Stage::TRANSITION}, rs, 10);
+  m.step(h, {OpMode::TELEOP, Stage::INIT}, rs, 20);
+  EXPECT_TRUE(rs.read().phase == robot::Phase::TELEOP_INIT);
   EXPECT_TRUE(g_calls.size() == 2);
-  EXPECT_TRUE(g_calls[0] == "autonomousInit");
-  EXPECT_TRUE(g_calls[1] == "autonomousLoop");
+  EXPECT_TRUE(g_calls[0] == "teleopInit");
+  EXPECT_TRUE(g_calls[1] == "teleopInitLoop");
 }
 
-TEST_CASE(supervisor_modes_and_estop){
+TEST_CASE(stop_from_init_calls_active_stop_once){
+  g_calls.clear();
+  robot::StateService rs;
+  core::PhaseMachine m;
+  auto h = mkHooks();
+
+  m.step(h, {OpMode::TELEOP, Stage::INIT}, rs, 10);
+  m.step(h, {OpMode::TELEOP, Stage::STOPPED}, rs, 20);
+  m.step(h, {OpMode::TELEOP, Stage::STOPPED}, rs, 30);
+  EXPECT_TRUE(g_calls.back() == "teleopStop");
+  int stops = 0;
+  for (const auto& call : g_calls) if (call == "teleopStop") ++stops;
+  EXPECT_TRUE(stops == 1);
+}
+
+TEST_CASE(mode_change_is_rejected_while_init_or_run){
+  EXPECT_TRUE(core::canSelectMode(robot::Phase::STOPPED));
+  EXPECT_TRUE(core::canSelectMode(robot::Phase::TRANSITION));
+  EXPECT_TRUE(!core::canSelectMode(robot::Phase::AUTO_INIT));
+  EXPECT_TRUE(!core::canSelectMode(robot::Phase::AUTO_RUN));
+  EXPECT_TRUE(!core::canSelectMode(robot::Phase::TELEOP_INIT));
+  EXPECT_TRUE(!core::canSelectMode(robot::Phase::TELEOP_RUN));
+}
+
+// HTTP handler'ın kullandığı komut-kabul predicate'leri: public phase, hook
+// dönene kadar geride kalır — status alanı bu pencerede duplicate komutu keser.
+TEST_CASE(command_acceptance_closes_status_phase_gap){
+  using robot::Phase; using robot::Status;
+  // INIT: yalnız STOPPED/TRANSITION + status STOP
+  EXPECT_TRUE(core::canAcceptInit(Phase::STOPPED, Status::STOP));
+  EXPECT_TRUE(core::canAcceptInit(Phase::TRANSITION, Status::STOP));
+  EXPECT_TRUE(!core::canAcceptInit(Phase::STOPPED, Status::INIT));   // INIT kabul edildi, faz henüz eski
+  EXPECT_TRUE(!core::canAcceptInit(Phase::AUTO_RUN, Status::STOP));
+  // START: yalnız INIT fazı + status hâlâ INIT (ikinci START 409)
+  EXPECT_TRUE(core::canAcceptStart(Phase::AUTO_INIT, Status::INIT));
+  EXPECT_TRUE(core::canAcceptStart(Phase::TELEOP_INIT, Status::INIT));
+  EXPECT_TRUE(!core::canAcceptStart(Phase::AUTO_INIT, Status::START)); // start() koşarken duplicate
+  EXPECT_TRUE(!core::canAcceptStart(Phase::STOPPED, Status::INIT));
+  EXPECT_TRUE(!core::canAcceptStart(Phase::AUTO_RUN, Status::START));
+  // MODE: INIT/RUN'da asla
+  EXPECT_TRUE(core::canAcceptModeChange(Phase::TRANSITION, Status::STOP));
+  EXPECT_TRUE(!core::canAcceptModeChange(Phase::TRANSITION, Status::INIT));
+  EXPECT_TRUE(!core::canAcceptModeChange(Phase::TELEOP_RUN, Status::START));
+  // STOP: yalnız INIT/RUN evrelerinde
+  EXPECT_TRUE(core::canAcceptStop(Phase::AUTO_INIT));
+  EXPECT_TRUE(core::canAcceptStop(Phase::TELEOP_RUN));
+  EXPECT_TRUE(!core::canAcceptStop(Phase::STOPPED));
+  EXPECT_TRUE(!core::canAcceptStop(Phase::TRANSITION));
+}
+
+TEST_CASE(stale_auto_start_does_not_expire_before_auto_run){
   robot::StateService rs;
   core::Supervisor sup;
+  rs.setControl(0, robot::Status::START, OpMode::AUTO);
+  rs.setPhase(0, robot::Phase::AUTO_INIT);
+  rs.setAutoStartMs(0, 1000);              // stale stamp from an older run
+  rs.setAutoPeriodSeconds(0, 5);
 
-  rs.setStatus(0, robot::Status::STOP);
-  EXPECT_TRUE(sup.update(rs, 10, false) == Mode::STOP);
-
-  rs.setStatus(0, robot::Status::INIT);
-  EXPECT_TRUE(sup.update(rs, 10, false) == Mode::INIT);
-
-  rs.setStatus(0, robot::Status::START);
-  rs.setAutonomous(0, false);
-  EXPECT_TRUE(sup.update(rs, 10, false) == Mode::TELEOP);
-
-  rs.setAutonomous(0, true);
-  EXPECT_TRUE(sup.update(rs, 10, false) == Mode::AUTON);
-
-  // Latched estop overrides everything.
-  EXPECT_TRUE(sup.update(rs, 10, true) == Mode::STOP);
+  auto desired = sup.update(rs, 9000, false);
+  EXPECT_TRUE(desired.mode == OpMode::AUTO);
+  EXPECT_TRUE(desired.stage == Stage::RUN);
+  EXPECT_TRUE(rs.read().selectedMode == OpMode::AUTO);
+  EXPECT_TRUE(rs.read().status == robot::Status::START);
 }
 
-TEST_CASE(supervisor_auto_period_expiry){
-  robot::StateService rs;
-  core::Supervisor sup;
-  rs.setStatus(0, robot::Status::START);
-  rs.setAutonomous(0, true);
-  rs.setPhase(0, robot::Phase::AUTONOMOUS);   // user task has entered auton
-  rs.setAutoStartMs(0, 1000);
-  rs.setAutoPeriodSeconds(0, 5);              // 5 s window
-
-  // 4 s in: still autonomous.
-  EXPECT_TRUE(sup.update(rs, 5000, false) == Mode::AUTON);
-  EXPECT_TRUE(rs.read().autonomousEnabled == true);
-
-  // 5 s in: period elapsed -> autonomous flag dropped -> TELEOP.
-  EXPECT_TRUE(sup.update(rs, 6000, false) == Mode::TELEOP);
-  EXPECT_TRUE(rs.read().autonomousEnabled == false);
-}
-
-TEST_CASE(stall_detection){
+TEST_CASE(stall_detection_includes_init_loop){
   using core::isStalled;
-  EXPECT_TRUE(isStalled(robot::Phase::TELEOP, 5000, 1000, 2000) == true);   // 4000 > 2000
-  EXPECT_TRUE(isStalled(robot::Phase::TELEOP, 2500, 1000, 2000) == false);  // 1500 < 2000
-  EXPECT_TRUE(isStalled(robot::Phase::INITED, 5000, 1000, 2000) == false);  // not a loop phase
-  EXPECT_TRUE(isStalled(robot::Phase::AUTONOMOUS, 5000, 0, 2000) == false); // no loop yet (hb==0)
+  EXPECT_TRUE(isStalled(robot::Phase::AUTO_INIT, 5000, 1000, 2000));
+  EXPECT_TRUE(isStalled(robot::Phase::TELEOP_INIT, 5000, 1000, 2000));
+  EXPECT_TRUE(isStalled(robot::Phase::AUTO_RUN, 5000, 1000, 2000));
+  EXPECT_TRUE(isStalled(robot::Phase::TELEOP_RUN, 2500, 1000, 2000) == false);
+  EXPECT_TRUE(isStalled(robot::Phase::STOPPED, 5000, 1000, 2000) == false);
+  EXPECT_TRUE(isStalled(robot::Phase::TRANSITION, 5000, 1000, 2000) == false);
+  EXPECT_TRUE(isStalled(robot::Phase::AUTO_INIT, 5000, 0, 2000) == false);
 }

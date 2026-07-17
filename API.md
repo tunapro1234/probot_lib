@@ -1,50 +1,87 @@
-# Probot API Referansı (0.3.0)
+# Probot API Referansı (0.4.0)
 
 Tek sayfalık tam referans. Kurulum ve örnekler için: [README.md](README.md)
 
 ## Program iskeleti
 
-`setup()` ve `loop()` kütüphaneye aittir — sketch'te **tanımlanmaz**.
-Sketch şu altı fonksiyonu tanımlamak **zorundadır** (boş olabilirler):
+Yaşam döngüsü FTC'deki OpMode modelinin aynısıdır. `setup()` ve Arduino
+`loop()` kütüphaneye aittir; sketch'te **tanımlanmaz**. Normal kullanımda
+her mod için `init/loop/stop` üçlüsü yazılır:
 
 ```cpp
-void robotInit();        // Arayüzde Init'e basılınca 1 kez
-void robotEnd();         // Stop'ta 1 kez — motorları güvenli konuma al
-void teleopInit();       // Teleop fazı başlarken 1 kez
-void teleopLoop();       // Teleop boyunca ~50 Hz tekrar çağrılır
-void autonomousInit();   // Otonom fazı başlarken 1 kez
-void autonomousLoop();   // Otonom boyunca ~50 Hz tekrar çağrılır
+void autonomousInit() {}
+void autonomousLoop() {}
+void autonomousStop() {}
+
+void teleopInit() {}
+void teleopLoop() {}
+void teleopStop() {}
 ```
 
-Faz akışı (arayüzdeki tek buton yönetir):
+`autonomousLoop`, `autonomousStop`, `teleopLoop` ve `teleopStop` zorunludur;
+boş da olsalar tanımlanmazlarsa linker hatası oluşur. `init` hook'ları
+opsiyoneldir ama donanım hazırlığı için ana iskelette gösterilir.
+
+| Hook | Çağrı zamanı | Sözleşme |
+|---|---|---|
+| `autonomousInit()` | Auto seçiliyken INIT, 1 kez | Opsiyonel (weak; tanımlanmazsa boş sayılır) |
+| `autonomousInitLoop()` | Auto INIT'ten START'a kadar sürekli | Opsiyonel (weak; tanımlanmazsa boş sayılır) |
+| `autonomousStart()` | Auto START anında, 1 kez | Opsiyonel (weak; tanımlanmazsa boş sayılır) |
+| `autonomousLoop()` | Auto RUN boyunca, `USER_LOOP_PERIOD_MS` | **Zorunlu** |
+| `autonomousStop()` | Auto INIT/RUN'dan her çıkışta, 1 kez | **Zorunlu** |
+| `teleopInit()` | TeleOp seçiliyken INIT, 1 kez | Opsiyonel (weak; tanımlanmazsa boş sayılır) |
+| `teleopInitLoop()` | TeleOp INIT'ten START'a kadar sürekli | Opsiyonel (weak; tanımlanmazsa boş sayılır) |
+| `teleopStart()` | TeleOp START anında, 1 kez | Opsiyonel (weak; tanımlanmazsa boş sayılır) |
+| `teleopLoop()` | TeleOp RUN boyunca, `USER_LOOP_PERIOD_MS` | **Zorunlu** |
+| `teleopStop()` | TeleOp INIT/RUN'dan her çıkışta, 1 kez | **Zorunlu** |
+
+Akış:
 
 ```
-STOP ──Init──▶ INITED ──Start──▶ [AUTONOMOUS (N sn)] ──▶ TELEOP ──Stop──▶ STOP
-                                  (kapatılabilir)
+STOPPED[mode] ──INIT──▶ INIT[mode] ──START──▶ RUN[mode] ──STOP──▶ STOPPED
+                           │                         │
+                           └────────STOP────────────┘
+
+RUN[AUTO] ──süre dolar──▶ autonomousStop() ──▶ TRANSITION[TELEOP]
+TRANSITION ──INIT──▶ INIT[TELEOP]
 ```
 
-- Otonom süresi ve aç/kapa arayüzden seçilir; süre bitince teleop'a
-  kendiliğinden geçilir.
-- **Altı hook, tek kalıcı task'ta** çalışır (**core 1**); boot'ta açılır,
+- Mod yalnız STOPPED/TRANSITION'da seçilir. INIT/RUN sırasında `cmd=mode`
+  409 döndürür; önce STOP gerekir.
+- Otonom sayacı `autonomousStart()` döndükten sonra başlar. Süre bitince
+  TeleOp **çalışmaya başlamaz**; yalnız önseçilir ve yeni bir INIT beklenir.
+- **Tüm hook'lar tek kalıcı task'ta** çalışır (**core 1**); boot'ta açılır,
   normal işleyişte **asla öldürülmez**. WiFi/sunucu core 0'dadır.
 - Geçişler **kooperatiftir**: buton "istenen mod"u set eder, task geçişi
   o anki tur **bittikten sonra**, güvenli sınırda yapar. Bu yüzden bir
   Stop/faz değişimi kullanıcı kodunu iş ortasında (Wire/malloc kilidi
   tutarken) **kesemez** — eski sürümlerdeki orphaned-lock donmasının
   (issue #21) kök sebebi buydu.
-- `Stop`: o anki loop turu dönünce `robotEnd()` çağrılır (en fazla bir
+- `Stop`: o anki tur dönünce aktif modun `stop()` hook'u çağrılır (en fazla bir
   loop periyodu gecikme; loop bloklarsa daha uzun). Anında kesme için
   **acil durdurma** ya da donanım E-stop kullanın.
 - **Sözleşme:** her loop turu bir gün **dönmeli** (öneri < ~2 sn).
   Blocking serbest, *sonsuz* blocking yasak — I2C/sensör çağrılarına
   timeout koyun (`Wire.setTimeOut(50)`).
-- **Stall (halt-safe):** bir loop turu `PROBOT_LOOP_DEADLINE_MS` (2000)
+- **Stall (halt-safe):** bir `initLoop`/`loop` turu `PROBOT_LOOP_DEADLINE_MS` (2000)
   içinde dönmezse input sıfırlanır, LED kırmızı yanıp söner, robot
   güvende tutulur — **task öldürülmez, çip reboot edilmez** (homing
   state'i korunur). Tur dönünce temizlenir.
-- **Acil durdurma (`cmd=estop`):** kullanıcı task'ı öldürülür, `robotEnd()`
-  watchdog'lu çalıştırılır, robot **reboot'a kadar kilitlenir**
+- **Acil durdurma (`cmd=estop`):** kullanıcı task'ı öldürülür; INIT/RUN'daki
+  aktif modun `stop()` hook'u taze task'ta watchdog'lu çalıştırılır. STOPPED/
+  TRANSITION'da hook çağrılmaz. Robot **reboot'a kadar kilitlenir**
   (init/start reddedilir). Bkz. HTTP tablosu + "Acil durdurma".
+
+### İleri seviye hook'lar
+
+`autonomousInitLoop()` / `teleopInitLoop()`, INIT ile START arasında robot
+kımıldamadan kod koşturur; bu evrede input nötr tutulur ve RSL sabittir.
+Kamera ile saha randomizasyonu okumak, gyro/sensör kalibrasyon durumunu
+yayınlamak ve maç öncesi kontrol yapmak için uygundur. Bu hook'lar da stall
+deadline'ına tabidir.
+
+`autonomousStart()` / `teleopStart()` START anındaki bir kerelik zaman damgası
+veya state reset işi içindir. Çoğu robotta `loop()`un ilk turu yeterlidir.
 
 ## Joystick
 
@@ -90,7 +127,7 @@ auto js = probot::io::joystick_api::makeDefault(opt);
 standart düzenle aynı). Farklı kumanda için:
 
 ```cpp
-probot::io::joystick_mapping::setActiveByName("standard"); // robotInit içinde
+probot::io::joystick_mapping::setActiveByName("standard"); // ilgili OpMode init içinde
 // isimler: "logitech-f310"/"f310", "standard"/"xbox"/"ds4", "axis9-dpad", "tuna-default"
 ```
 
@@ -115,12 +152,12 @@ motorlar `analogWrite` ile alttan (0,1,2…) kullanır, çakışmaz:
 
 ```cpp
 #define SERVO_PIN 4
-void robotInit(){ ledcAttachChannel(SERVO_PIN, 50, 14, 7); }  // 50 Hz, 14-bit, kanal 7
+void teleopInit(){ ledcAttachChannel(SERVO_PIN, 50, 14, 7); } // 50 Hz, 14-bit, kanal 7
 void teleopLoop(){
   uint16_t us = 500 + (angle/180.0f)*2000;          // 0-180° -> 500-2500 µs
   ledcWrite(SERVO_PIN, (uint32_t)us * 16383 / 20000);
 }
-void robotEnd(){ ledcWrite(SERVO_PIN, 0); }          // darbeyi kes (güvenli)
+void teleopStop(){ ledcWrite(SERVO_PIN, 0); }        // darbeyi kes (güvenli)
 ```
 
 Tam çalışan örnek: `examples/ServoTest`. Güç uyarıları: README "Servo
@@ -141,18 +178,34 @@ Ek bir sinyal lambası (FRC RSL tarzı) için düz bir digital pin verin:
 #define PROBOT_RSL_PIN 10   // probot.h'den önce
 ```
 
-Kütüphane bu pini sürer: robot **hareket edebilirken** (teleop/otonom) yanıp
-söner, aksi halde (disabled/stop/e-stop) **sabit açık** kalır.
+Kütüphane bu pini yalnız AUTO_RUN/TELEOP_RUN'da yanıp söndürür; INIT,
+STOPPED, TRANSITION ve E-stop'ta **sabit açık** tutar.
 
 ## Robot durumu (ileri seviye)
 
 ```cpp
 auto s = probot::robot::state().read();   // atomik snapshot
 // s.status : Status::INIT/START/STOP
-// s.phase  : Phase::NOT_INIT/INITED/AUTONOMOUS/TELEOP
-// s.autonomousEnabled, s.autoPeriodSeconds, s.autoStartMs
+// s.phase  : STOPPED/AUTO_INIT/AUTO_RUN/TELEOP_INIT/TELEOP_RUN/TRANSITION
+// s.selectedMode : OpMode::AUTO/TELEOP
+// s.autoPeriodSeconds, s.autoStartMs
 // s.clientCount, s.deadlineMiss, s.batteryVoltage
 ```
+
+Protokolde `Phase` sayıları sabittir:
+
+| Değer | Faz |
+|---:|---|
+| 0 | `STOPPED` |
+| 1 | `AUTO_INIT` |
+| 2 | `AUTO_RUN` |
+| 3 | `TELEOP_INIT` |
+| 4 | `TELEOP_RUN` |
+| 5 | `TRANSITION` |
+
+`status`, son kabul edilen komut evresini koruyan sade alan olarak
+`Status::INIT` (0), `Status::START` (1), `Status::STOP` (2) taşır. Gerçek,
+hook'u tamamlanmış evre için daima `phase` kullanılmalıdır.
 
 ## Yapılandırma makroları
 
@@ -162,13 +215,13 @@ README "Ayar makroları". Zorunlu olanlar: `PROBOT_WIFI_AP_PASSWORD`
 kanal seçimi opt-in'dir: `PROBOT_WIFI_AUTO_CHANNEL 1` (varsayılan
 kapalı, filoda önerilmez — bkz. README kanal planı).
 
-Yaşam döngüsü / güvenlik makroları (0.3.0):
+Yaşam döngüsü / güvenlik makroları:
 
 | Makro | Varsayılan | Anlamı |
 |---|---|---|
-| `PROBOT_LOOP_DEADLINE_MS` | 2000 | Bir loop turu bu süreyi aşarsa "stalled" — input sıfır, halt-safe |
+| `PROBOT_LOOP_DEADLINE_MS` | 2000 | Bir initLoop/loop turu bu süreyi aşarsa "stalled" — input sıfır, halt-safe |
 | `PROBOT_WDT_TIMEOUT_S` | 8 | Donanım watchdog (yalnız sysloop abone; > loop deadline olmalı) |
-| `PROBOT_ESTOP_END_MS` | 500 | Acil durdurmada `robotEnd()`'e tanınan süre; aşılırsa reboot |
+| `PROBOT_ESTOP_END_MS` | 500 | Acil durdurmada aktif `stop()` hook'una tanınan süre; aşılırsa reboot |
 | `PROBOT_ESTOP_ENABLE_PIN` | -1 | Kütüphanenin sürdüğü enable GPIO'su (-1 = kapalı). Boot'ta HIGH, estop'ta LOW |
 | `USER_LOOP_PERIOD_MS` | 20 | Loop çağrı periyodu (~50 Hz) |
 
@@ -176,10 +229,10 @@ Yaşam döngüsü / güvenlik makroları (0.3.0):
 
 İki ayrı durdurma var:
 
-- **Stop** (`cmd=stop`): kooperatif. O anki tur dönünce `robotEnd()` koşar.
+- **Stop** (`cmd=stop`): kooperatif. O anki tur dönünce aktif modun `stop()`u koşar.
   Robot tekrar Init/Start edilebilir.
 - **Emergency stop** (`cmd=estop`): terminal. Sırası: latch → enable pini
-  LOW → kullanıcı task'ını öldür → taze task'ta `robotEnd()`'i
+  LOW → kullanıcı task'ını öldür → aktif mod varsa taze task'ta `stop()`unu
   `PROBOT_ESTOP_END_MS` watchdog'lu çalıştır (takılırsa `ESP.restart()`).
   Robot **reboot'a kadar kilitli** — `init`/`start` reddedilir (`cmd=reboot`
   ya da güç döngüsü temizler). Donmuş bir loop'u bile durdurur (task
@@ -192,8 +245,8 @@ Koddan tetikleme:
 probot::emergencyStop();   // her task'tan güvenli, kullanıcı hook'u dahil
 ```
 
-Sadece bir bayrak set eder; gerçek sırayı (task kill → watchdog'lu
-`robotEnd()` → kilit) sysloop yürütür — bu yüzden çağıran task kendini
+Sadece bir bayrak set eder; gerçek sırayı (task kill → watchdog'lu aktif
+`stop()` → kilit) sysloop yürütür — bu yüzden çağıran task kendini
 silmez. Arayüzdeki EMERGENCY STOP butonuyla aynı yola çıkar.
 
 ## HTTP / WebSocket arayüzü
@@ -206,11 +259,14 @@ yazacaksanız:
 | `/` | GET | gerekli | Driver Station arayüzü (SPA) |
 | `/joystick` | WS | gerekli | Çift yönlü binary kanal (çerçeve formatları aşağıda) |
 | `/updateController` | POST | gerekli | JSON fallback: `{"axes":[...],"buttons":[...]}` — WS koptuğunda |
-| `/robotControl?cmd=init\|start\|stop\|cancelAuto&auto=0\|1&autoLen=N` | GET | gerekli | Faz komutları. Estop kilitliyken `init`/`start` reddedilir (409) |
-| `/robotControl?cmd=estop` | GET | gerekli | **Acil durdurma**: kullanıcı task'ı öldürülür, `robotEnd()` watchdog'lu (`PROBOT_ESTOP_END_MS`) çalışır, enable pini kesilir, robot reboot'a kadar kilitlenir |
+| `/robotControl?cmd=mode&val=auto\|teleop` | GET | gerekli | STOPPED/TRANSITION'da OpMode seçer; INIT/RUN'da 409 |
+| `/robotControl?cmd=init&autoLen=N` | GET | gerekli | Seçili modu INIT'e alır; yalnız STOPPED/TRANSITION |
+| `/robotControl?cmd=start&autoLen=N` | GET | gerekli | Seçili modu RUN'a alır; yalnız ilgili INIT fazı |
+| `/robotControl?cmd=stop` | GET | gerekli | INIT/RUN'dan kooperatif stop; diğer fazlarda 409 |
+| `/robotControl?cmd=estop` | GET | gerekli | **Acil durdurma**: kullanıcı task'ı öldürülür, aktif `stop()` watchdog'lu (`PROBOT_ESTOP_END_MS`) çalışır, enable pini kesilir, robot reboot'a kadar kilitlenir |
 | `/robotControl?cmd=reboot` | GET | gerekli | Çipi yeniden başlatır (`ESP.restart()`) — estop kilidini temizlemenin yolu |
 | `/setChannel?ch=N` | GET | gerekli | Kanalı NVS'e kaydet; 1-13 ise CSA ile **canlı** geçiş (zaten o kanaldaysa `live:false`), `0` = kaydı temizle, açılışta firmware varsayılanına dön. Dönüş: `{"ok":b,"ch":N,"live":b}` |
-| `/getState` | GET | gerekli | `{"phase":N,"autonomousEnabled":b,"autoPeriodSeconds":N,"autoRemainingMs":N,"estop":b}` (WS yokken fallback) |
+| `/getState` | GET | gerekli | `{"status":N,"phase":N,"selectedMode":"auto|teleop","autoPeriodSeconds":N,"autoRemainingMs":N,"estop":b}` (WS yokken fallback) |
 | `/telemetry` | GET | gerekli | Telemetri tamponunun içeriği (text) (WS yokken fallback) |
 | `/getBattery` | GET | serbest | Pil gerilimi (şu an kullanıcı beslemeli) |
 | `/health` | GET | serbest | `{"rssi":N,"up":ms,"heap":N,"dm":b,"joyAgeMs":N,"sta":N,"disc":N}` — izleme/hakem için. `joyAgeMs`: son joystick paketinin yaşı (-1 = hiç gelmedi), `sta`: bağlı istemci sayısı, `disc`: son kopuşun IEEE reason kodu |

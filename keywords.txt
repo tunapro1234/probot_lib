@@ -14,12 +14,16 @@ StateService	KEYWORD1
 #######################################
 # Functions (KEYWORD2)
 #######################################
-robotInit	KEYWORD2
-robotEnd	KEYWORD2
-teleopInit	KEYWORD2
-teleopLoop	KEYWORD2
 autonomousInit	KEYWORD2
+autonomousInitLoop	KEYWORD2
+autonomousStart	KEYWORD2
 autonomousLoop	KEYWORD2
+autonomousStop	KEYWORD2
+teleopInit	KEYWORD2
+teleopInitLoop	KEYWORD2
+teleopStart	KEYWORD2
+teleopLoop	KEYWORD2
+teleopStop	KEYWORD2
 makeDefault	KEYWORD2
 getLeftX	KEYWORD2
 getLeftY	KEYWORD2
