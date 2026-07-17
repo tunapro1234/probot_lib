@@ -414,6 +414,13 @@ namespace probot::driverstation::esp32 {
       return mode == robot::OpMode::AUTO ? "auto" : "teleop";
     }
 
+    static unsigned batteryDecivolts(const robot::StateSnapshot& s) {
+      float v = s.batteryVoltage;
+      if (!(v > 0.0f)) return 0;        // unset / NaN -> 0.0 ("no data" in the UI)
+      if (v > 99.9f) v = 99.9f;
+      return (unsigned)(v * 10.0f + 0.5f);
+    }
+
     // ── WS push task ──
     // Streams 'S' (state+health JSON, also the heartbeat) and 'T'
     // (telemetry text) frames so the page never polls over HTTP.
@@ -425,15 +432,19 @@ namespace probot::driverstation::esp32 {
         int32_t d = (int32_t)(now - joyLast);
         joyAge = d < 0 ? 0 : d;   // a frame can land between the two reads
       }
+      // Battery as fixed-point decivolts — float printf support varies by
+      // libc build, and a dropped %f would corrupt the whole JSON frame.
+      unsigned battDv = batteryDecivolts(s);
       int n = snprintf(out, out_size,
         "{\"status\":%u,\"phase\":%u,\"selectedMode\":\"%s\",\"autoPeriodSeconds\":%d,"
-        "\"autoRemainingMs\":%u,\"rssi\":%d,\"up\":%lu,\"heap\":%lu,\"dm\":%s,"
+        "\"autoRemainingMs\":%u,\"batt\":%u.%u,\"rssi\":%d,\"up\":%lu,\"heap\":%lu,\"dm\":%s,"
         "\"estop\":%s,\"joyAgeMs\":%ld,\"sta\":%ld,\"disc\":%u}",
         static_cast<unsigned>(s.status),
         static_cast<unsigned>(s.phase),
         opModeName(s.selectedMode),
         (int)s.autoPeriodSeconds,
         (unsigned)computeAutoRemainingMs(s, now),
+        battDv / 10, battDv % 10,
         (int)readApRssi(),
         (unsigned long)now,
         (unsigned long)ESP.getFreeHeap(),
@@ -868,14 +879,16 @@ namespace probot::driverstation::esp32 {
       if (!ds->enforceOwner(req)) return ESP_OK;
 
       auto s = ds->_rs.read();
+      unsigned battDv = batteryDecivolts(s);
       char buf[192];
       snprintf(buf, sizeof(buf),
-               "{\"status\":%u,\"phase\":%u,\"selectedMode\":\"%s\",\"autoPeriodSeconds\":%d,\"autoRemainingMs\":%u,\"estop\":%s}",
+               "{\"status\":%u,\"phase\":%u,\"selectedMode\":\"%s\",\"autoPeriodSeconds\":%d,\"autoRemainingMs\":%u,\"batt\":%u.%u,\"estop\":%s}",
                static_cast<unsigned>(s.status),
                static_cast<unsigned>(s.phase),
                opModeName(s.selectedMode),
                (int)s.autoPeriodSeconds,
                (unsigned)computeAutoRemainingMs(s, millis()),
+               battDv / 10, battDv % 10,
                __atomic_load_n(&probot::robot::g_estop_latched, __ATOMIC_SEQ_CST) ? "true" : "false");
 
       httpd_resp_set_type(req, "application/json");

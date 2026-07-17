@@ -31,6 +31,18 @@ Biçim [Keep a Changelog](https://keepachangelog.com/), sürümler
   kullanıcı hook'u çağırmaz.
 
 ### Eklendi
+- **DS arayüzü Probot Studio tasarım diline taşındı (v1.2).** Site ile ortak
+  header, 12 kolonluk widget grid'i (yerleşim tek `LAYOUT` objesinden),
+  WPILib usulü Match Control (mod listesi + Init/Start + Stop), faz karosu +
+  maç saati, batarya göstergesi, sinyal widget'ı. Joystick sekmesi: kaynak
+  kartları — **klavye** (yalnız masaüstü, bilinçli etkinleştirme, WASD/ok
+  tuşları rampalı eksen) ve **dokunmatik** (yalnız telefon/tablet, tam ekran
+  sürüş görünümü: alt köşelerde çubuklar, ABXY, üst barda STOP/E-STOP).
+  Logs sekmesi: batarya/RSSI/ping geçmiş grafikleri (kopukluk = grafikte
+  boşluk) + zaman damgalı Event Log (komutlar, faz geçişleri, kopma
+  nedenleri). Telemetri konsolu I/W/E seviye renkleriyle çizilir.
+- **'S' frame'ine ve `/getState`'e `batt` alanı eklendi** — pil gerilimi
+  (`setBatteryVoltage()` beslemeli; `0.0` = veri yok).
 - **Kalıcı hata kodları (PB-Exx) + docs entegrasyonu.** Derleme (`#error`/
   `static_assert`), bağlama rehberi (probot.h yorumu), çalışma zamanı
   telemetri/Serial uyarıları, HTTP 409 gövdeleri ve arayüz bantları artık

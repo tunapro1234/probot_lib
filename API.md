@@ -287,7 +287,7 @@ yazacaksanız:
 | `/robotControl?cmd=estop` | GET | gerekli | **Acil durdurma**: kullanıcı task'ı öldürülür, aktif `stop()` watchdog'lu (`PROBOT_ESTOP_END_MS`) çalışır, enable pini kesilir, robot reboot'a kadar kilitlenir |
 | `/robotControl?cmd=reboot` | GET | gerekli | Çipi yeniden başlatır (`ESP.restart()`) — estop kilidini temizlemenin yolu |
 | `/setChannel?ch=N` | GET | gerekli | Kanalı NVS'e kaydet; 1-13 ise CSA ile **canlı** geçiş (zaten o kanaldaysa `live:false`), `0` = kaydı temizle, açılışta firmware varsayılanına dön. Dönüş: `{"ok":b,"ch":N,"live":b}` |
-| `/getState` | GET | gerekli | `{"status":N,"phase":N,"selectedMode":"auto|teleop","autoPeriodSeconds":N,"autoRemainingMs":N,"estop":b}` (WS yokken fallback) |
+| `/getState` | GET | gerekli | `{"status":N,"phase":N,"selectedMode":"auto|teleop","autoPeriodSeconds":N,"autoRemainingMs":N,"batt":V.V,"estop":b}` (WS yokken fallback). `batt`: `setBatteryVoltage()` ile beslenen gerilim, `0.0` = veri yok |
 | `/telemetry` | GET | gerekli | Telemetri tamponunun içeriği (text) (WS yokken fallback) |
 | `/getBattery` | GET | serbest | Pil gerilimi (şu an kullanıcı beslemeli) |
 | `/health` | GET | serbest | `{"rssi":N,"up":ms,"heap":N,"dm":b,"joyAgeMs":N,"sta":N,"disc":N}` — izleme/hakem için. `joyAgeMs`: son joystick paketinin yaşı (-1 = hiç gelmedi), `sta`: bağlı istemci sayısı, `disc`: son kopuşun IEEE reason kodu |
@@ -325,7 +325,8 @@ Robot → istemci (push):
 'S' 0x53  durum+sağlık JSON'u — değişiklikte bir sonraki tick'te
           (250 ms), değişiklik yoksa en geç ~1.25 sn'de bir (heartbeat
           görevi de görür). Alanlar /getState + /health birleşimi
-          (`estop` alanı dahil: acil durdurma kilidi).
+          (`estop` alanı dahil: acil durdurma kilidi; `batt` alanı
+          dahil: pil gerilimi, 0.0 = veri yok).
 'T' 0x54  telemetri tamponu (text) — içerik değiştiğinde
 ```
 
