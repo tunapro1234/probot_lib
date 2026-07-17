@@ -9,6 +9,7 @@ touches the files when an update is required.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -125,6 +126,26 @@ def update_idf_component(path: Path, version: str) -> bool:
     return updated
 
 
+def update_doc_headers(root: Path, version: str) -> bool:
+    """Rewrite the version shown in human/LLM-facing doc headers."""
+    patterns = [
+        (root / "API.md", re.compile(r"^(# Probot API Referansı \()[\d.]+(\))", re.M)),
+        (root / "llms.txt", re.compile(r"^(> Library version: )[\d.]+", re.M)),
+    ]
+    changed = False
+    for path, pattern in patterns:
+        if not path.exists():
+            raise VersionSyncError(f"Missing {path} required for doc version header")
+        text = path.read_text(encoding="utf-8")
+        new_text, count = pattern.subn(lambda m: m.group(1) + version + (m.group(2) if m.lastindex and m.lastindex >= 2 else ""), text)
+        if count == 0:
+            raise VersionSyncError(f"No version header found in {path}")
+        if new_text != text:
+            path.write_text(new_text, encoding="utf-8")
+            changed = True
+    return changed
+
+
 def main() -> int:
     root = Path(__file__).resolve().parent.parent
     version_path = root / "VERSION"
@@ -139,7 +160,9 @@ def main() -> int:
     idf_yaml_path = root / "idf_component.yml"
     idf_changed = update_idf_component(idf_yaml_path, version)
 
-    if props_changed or json_changed or idf_changed:
+    docs_changed = update_doc_headers(root, version)
+
+    if props_changed or json_changed or idf_changed or docs_changed:
         sys.stdout.write(f"Version metadata synced to {version}\n")
     return 0
 
