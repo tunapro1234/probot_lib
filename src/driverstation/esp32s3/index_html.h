@@ -593,6 +593,14 @@ const char MAIN_page[] PROGMEM = R"=====(
     }
     .estop-btn:hover{transform:translateY(-1px);box-shadow:0 5px 0 var(--stop-deep);}
     .estop-btn:active{transform:translateY(2px);box-shadow:0 2px 0 var(--stop-deep);filter:brightness(0.92);}
+    /* [PB-E10] stall bandı — deadline miss aktifken header altında görünür */
+    .err-banner{
+      background:var(--stop);color:#fff;
+      font-size:0.85rem;font-weight:700;letter-spacing:0.03em;
+      text-align:center;padding:8px 14px;
+    }
+    .err-banner code{font-family:inherit;font-weight:800;}
+
     .estop-overlay{
       display:none;
       position:fixed;inset:0;z-index:10000;
@@ -753,6 +761,11 @@ const char MAIN_page[] PROGMEM = R"=====(
     </div>
   </header>
 
+  <div class="err-banner" id="dmBanner" hidden>
+    <code>PB-E10</code> · Loop takıldı (deadline miss) — girişler sıfırlandı, robot güvende tutuluyor.
+    Ayrıntı: docs &rarr; Hatalar &rarr; PB-E10
+  </div>
+
   <div class="disconnect-overlay" id="disconnectOverlay">
     <span>DISCONNECTED</span>
     <span class="sub">Trying to reconnect...</span>
@@ -760,7 +773,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 
   <div class="estop-overlay" id="estopOverlay">
     <span>EMERGENCY STOPPED</span>
-    <span class="sub">Robot disabled — reboot required to clear</span>
+    <span class="sub">Robot disabled — reboot required to clear · PB-E11 — docs/hatalar#pb-e11</span>
     <button id="rebootButton">Reboot Robot</button>
   </div>
 
@@ -1510,6 +1523,8 @@ const char MAIN_page[] PROGMEM = R"=====(
       lastHeap=(typeof data.heap==='number')?data.heap:0;
       lastUpMs=(typeof data.up==='number')?data.up:0;
       lastDm=!!data.dm;
+      var db=document.getElementById('dmBanner');
+      if(db) db.hidden=!lastDm;
       if(typeof data.joyAgeMs==='number') lastJoyAge=data.joyAgeMs;
       if(typeof data.sta==='number') lastSta=data.sta;
       if(typeof data.disc==='number') lastDisc=data.disc;

@@ -30,6 +30,13 @@ Biçim [Keep a Changelog](https://keepachangelog.com/), sürümler
   `stop()` hook'unu taze task'ta watchdog'lu çalıştırır; STOPPED/TRANSITION'da
   kullanıcı hook'u çağırmaz.
 
+### Eklendi
+- **Kalıcı hata kodları (PB-Exx) + docs entegrasyonu.** Derleme (`#error`/
+  `static_assert`), bağlama rehberi (probot.h yorumu), çalışma zamanı
+  telemetri/Serial uyarıları, HTTP 409 gövdeleri ve arayüz bantları artık
+  kod + `docs/hatalar#pb-eXX` çapası taşır; arayüze görünür PB-E10 stall
+  bandı eklendi. Kayıt tablosu: API.md "Hata kodları".
+
 ### Değişti
 - **DS arayüzü Probot marka renklerine geçti** (eski NFR lacivert/buz paleti
   kalktı; yerleşim/markup/JS aynı). Krem zemin `#FFF7F0`, kakao mürekkep

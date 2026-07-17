@@ -15,9 +15,9 @@
 #include "ws_joystick.hpp"
 
 #ifndef PROBOT_WIFI_AP_PASSWORD
-#error "Driver station AP password not provided. Define PROBOT_WIFI_AP_PASSWORD (>=8 chars) before including probot.h."
+#error "[PB-E01] Driver station AP password not provided. Define PROBOT_WIFI_AP_PASSWORD (>=8 chars) before including probot.h. Docs: probotstudio.com/docs/hatalar/#pb-e01"
 #endif
-static_assert(sizeof(PROBOT_WIFI_AP_PASSWORD) - 1 >= 8, "PROBOT_WIFI_AP_PASSWORD must be at least 8 characters.");
+static_assert(sizeof(PROBOT_WIFI_AP_PASSWORD) - 1 >= 8, "[PB-E01] PROBOT_WIFI_AP_PASSWORD must be at least 8 characters. Docs: probotstudio.com/docs/hatalar/#pb-e01");
 
 #ifndef PROBOT_WIFI_AP_SSID
   #define PROBOT_WIFI_AP_SSID "Probot"
@@ -26,15 +26,15 @@ static_assert(sizeof(PROBOT_WIFI_AP_PASSWORD) - 1 >= 8, "PROBOT_WIFI_AP_PASSWORD
   #endif
   #warning "PROBOT_WIFI_AP_SSID not defined. Using auto-generated SSID (Probot-XXXXXX). Define a custom SSID for better identification."
 #endif
-static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 >= 1, "PROBOT_WIFI_AP_SSID must be at least 1 character.");
+static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 >= 1, "[PB-E03] PROBOT_WIFI_AP_SSID must be at least 1 character. Docs: probotstudio.com/docs/hatalar/#pb-e03");
 #ifdef PROBOT_WIFI_AP_SSID_MAC_SUFFIX
-static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 25, "PROBOT_WIFI_AP_SSID must be 25 characters or fewer when MAC suffix is enabled.");
+static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 25, "[PB-E03] PROBOT_WIFI_AP_SSID must be 25 characters or fewer when MAC suffix is enabled. Docs: probotstudio.com/docs/hatalar/#pb-e03");
 #else
-static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 32, "PROBOT_WIFI_AP_SSID must be 32 characters or fewer.");
+static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 32, "[PB-E03] PROBOT_WIFI_AP_SSID must be 32 characters or fewer. Docs: probotstudio.com/docs/hatalar/#pb-e03");
 #endif
 
 #ifndef PROBOT_WIFI_AP_CHANNEL
-#error "WiFi AP channel not provided. Define PROBOT_WIFI_AP_CHANNEL (1-13) before including probot.h."
+#error "[PB-E02] WiFi AP channel not provided. Define PROBOT_WIFI_AP_CHANNEL (1-13) before including probot.h. Docs: probotstudio.com/docs/hatalar/#pb-e02"
 #endif
 
 // Boot-time auto channel select is OPT-IN and OFF by default. A robot scans
@@ -48,10 +48,10 @@ static_assert(sizeof(PROBOT_WIFI_AP_SSID) - 1 <= 32, "PROBOT_WIFI_AP_SSID must b
 
 #if PROBOT_WIFI_AUTO_CHANNEL
 static_assert(PROBOT_WIFI_AP_CHANNEL >= 0 && PROBOT_WIFI_AP_CHANNEL <= 13,
-              "PROBOT_WIFI_AP_CHANNEL must be 0-13 (used as the fallback when the auto-select scan finds nothing).");
+              "[PB-E02] PROBOT_WIFI_AP_CHANNEL must be 0-13 (used as the fallback when the auto-select scan finds nothing). Docs: probotstudio.com/docs/hatalar/#pb-e02");
 #else
 static_assert(PROBOT_WIFI_AP_CHANNEL >= 1 && PROBOT_WIFI_AP_CHANNEL <= 13,
-              "PROBOT_WIFI_AP_CHANNEL must be 1-13. To auto-pick the channel at boot, set PROBOT_WIFI_AUTO_CHANNEL 1 (single-robot use only).");
+              "[PB-E02] PROBOT_WIFI_AP_CHANNEL must be 1-13. To auto-pick the channel at boot, set PROBOT_WIFI_AUTO_CHANNEL 1 (single-robot use only). Docs: probotstudio.com/docs/hatalar/#pb-e02");
 #endif
 
 // How long the owner slot survives without any request from the owning
@@ -779,7 +779,7 @@ namespace probot::driverstation::esp32 {
 
       uint32_t now = millis();
       if (strcmp(cmd, "mode") == 0) {
-        if (!core::canAcceptModeChange(s.phase, s.status)) return conflict("STOP before changing mode");
+        if (!core::canAcceptModeChange(s.phase, s.status)) return conflict("[PB-E20] STOP before changing mode — docs/hatalar#pb-e20");
         robot::OpMode mode;
         if (strcmp(modeVal, "auto") == 0) mode = robot::OpMode::AUTO;
         else if (strcmp(modeVal, "teleop") == 0) mode = robot::OpMode::TELEOP;
@@ -789,16 +789,16 @@ namespace probot::driverstation::esp32 {
         }
         ds->_rs.setSelectedMode(now, mode);
       } else if (strcmp(cmd, "init") == 0) {
-        if (!core::canAcceptInit(s.phase, s.status)) return conflict("INIT requires STOPPED");
+        if (!core::canAcceptInit(s.phase, s.status)) return conflict("[PB-E20] INIT requires STOPPED — docs/hatalar#pb-e20");
         if (autoLen > 0) ds->_rs.setAutoPeriodSeconds(now, autoLen);
         ds->_rs.setStatus(now, robot::Status::INIT);
         ds->_rs.setDeadlineMiss(now, false);
       } else if (strcmp(cmd, "start") == 0) {
-        if (!core::canAcceptStart(s.phase, s.status)) return conflict("START requires INIT");
+        if (!core::canAcceptStart(s.phase, s.status)) return conflict("[PB-E20] START requires INIT — docs/hatalar#pb-e20");
         if (autoLen > 0) ds->_rs.setAutoPeriodSeconds(now, autoLen);
         ds->_rs.setStatus(now, robot::Status::START);
       } else if (strcmp(cmd, "stop") == 0) {
-        if (!core::canAcceptStop(s.phase)) return conflict("STOP requires INIT or RUN");
+        if (!core::canAcceptStop(s.phase)) return conflict("[PB-E20] STOP requires INIT or RUN — docs/hatalar#pb-e20");
         ds->_rs.setStatus(now, robot::Status::STOP);
       } else {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "unknown command");

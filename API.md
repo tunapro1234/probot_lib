@@ -225,6 +225,25 @@ Yaşam döngüsü / güvenlik makroları:
 | `PROBOT_ESTOP_ENABLE_PIN` | -1 | Kütüphanenin sürdüğü enable GPIO'su (-1 = kapalı). Boot'ta HIGH, estop'ta LOW |
 | `USER_LOOP_PERIOD_MS` | 20 | Loop çağrı periyodu (~50 Hz) |
 
+## Hata kodları (PB-Exx)
+
+Kütüphanenin ürettiği her hata/uyarı kalıcı bir kod taşır; ayrıntılı çözüm
+dokümanın **Hatalar** sayfasındadır: `probotstudio.com/docs/hatalar/#pb-eXX`.
+
+| Kod | Yüzey | Anlamı |
+|---|---|---|
+| PB-E01 | Derleme | `PROBOT_WIFI_AP_PASSWORD` eksik ya da 8 karakterden kısa |
+| PB-E02 | Derleme | `PROBOT_WIFI_AP_CHANNEL` eksik ya da 1-13 dışında |
+| PB-E03 | Derleme | SSID uzunluk kuralları (MAC ekiyle ≤25, eksiz ≤32) |
+| PB-E04 | Bağlama | Zorunlu hook tanımsız — `undefined reference to teleopLoop()` vb. Dördü de (boş olsa bile) tanımlanmalı |
+| PB-E05 | Bağlama | `setup()`/`loop()` sketch'te tanımlanmış — kütüphaneye aittir, hook'ları kullanın |
+| PB-E10 | Çalışma | Deadline miss / stall — bir `initLoop`/`loop` turu `PROBOT_LOOP_DEADLINE_MS`'i aştı; girişler sıfır, halt-safe |
+| PB-E11 | Çalışma | Emergency stop kilitli — reboot gerekli |
+| PB-E12 | Çalışma | DS bağlantısı koptu → robot durduruldu (`PROBOT_DS_TIMEOUT_FORCE_STOP=1`) |
+| PB-E13 | Çalışma | DS bağlantısı koptu → joystick nötr, yeniden bağlanma bekleniyor (`FORCE_STOP=0`) |
+| PB-E14 | Çalışma | E-stop'ta `stop()` hook'u `PROBOT_ESTOP_END_MS` içinde dönmedi → çip reboot |
+| PB-E20 | HTTP | Komut geçersiz evrede (409) — `mode`/`init`/`start`/`stop` evre kuralları |
+
 ## Acil durdurma
 
 İki ayrı durdurma var:
