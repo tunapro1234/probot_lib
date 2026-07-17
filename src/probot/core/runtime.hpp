@@ -5,6 +5,7 @@
 #include <probot/core/core_config.hpp>
 #include <probot/core/wdt.hpp>
 #include <probot/core/lifecycle.hpp>
+#include <probot/io/battery.hpp>
 
 // Driver-station inactivity → STOP (1, default, safe) or just disconnect (0).
 #ifndef PROBOT_DS_TIMEOUT_MS
@@ -318,6 +319,9 @@ namespace probot {
           probot::driverstation::detail::g_driver_station->expireOwnerIfIdle();
           probot::driverstation::detail::g_driver_station->processDns();
         }
+#if PROBOT_BATTERY_ENABLED
+        probot::io::battery::poll(now);
+#endif
 #endif
 
         if (now - lastLed >= 500){

@@ -31,6 +31,14 @@ Biçim [Keep a Changelog](https://keepachangelog.com/), sürümler
   kullanıcı hook'u çağırmaz.
 
 ### Eklendi
+- **Gerçek batarya ölçümü.** İki opsiyonel kaynak: gerilim bölücü + ADC1 pini
+  (`PROBOT_BATTERY_ADC_PIN` + `_R_TOP_K`/`_R_BOT_K`) ya da INA219/INA226 I2C
+  sensörü (`PROBOT_BATTERY_INA 219|226`). Sysloop'ta 250 ms örnekleme, EMA
+  yumuşatma, yalnız 0.1 V değişimde yayın; INA'dan `currentAmps()` ile akım.
+  Elle besleme için `probot::setBatteryVoltage(v)` sarmalayıcısı. Yeni hata
+  kodları: PB-E104 (ADC pini ADC1 değil / dirençler eksik), PB-E105 (kaynak
+  çakışması), PB-E306 (INA'ya ulaşılamıyor). Arayüz göstergesi son ~8 sn'nin
+  ortalamasını çizer; Logs → History grafiği örnekleri ortalamasız gösterir.
 - **DS arayüzü Probot Studio tasarım diline taşındı (v1.2).** Site ile ortak
   header, 12 kolonluk widget grid'i (yerleşim tek `LAYOUT` objesinden),
   WPILib usulü Match Control (mod listesi + Init/Start + Stop), faz karosu +

@@ -87,6 +87,12 @@ Hepsi `#include <probot.h>` satırından **önce** tanımlanır:
 | `PROBOT_ESTOP_ENABLE_PIN` | `-1` | Kütüphanenin sürdüğü enable GPIO'su (motor sürücü enable / kontaktör). Boot'ta HIGH, acil durdurmada LOW |
 | `PROBOT_ESTOP_END_MS` | `500` | Acil durdurmada aktif OpMode `stop()`una tanınan süre; aşılırsa çip reboot eder |
 | `PROBOT_RSL_PIN` | `-1` | Sinyal lambası (RSL) digital pini: hareket edebilirken blink, yoksa sabit açık |
+| `PROBOT_BATTERY_ADC_PIN` | kapalı | Batarya ölçümü, yöntem 1: gerilim bölücünün orta ucu. **ADC1 pini şart (GPIO1-10)** — ADC2 WiFi açıkken çalışmaz [PB-E104] |
+| `PROBOT_BATTERY_R_TOP_K` / `_R_BOT_K` | — | Bölücü dirençleri, kΩ (batarya tarafı / GND tarafı). 3S için öneri: 100k/22k → 12.6 V'ta 2.27 V |
+| `PROBOT_BATTERY_INA` | kapalı | Batarya ölçümü, yöntem 2: I2C sensör — `219` ya da `226`. ADC yöntemiyle birlikte kullanılamaz [PB-E105] |
+| `PROBOT_BATTERY_INA_ADDR` | `0x40` | INA I2C adresi |
+| `PROBOT_BATTERY_INA_SDA` / `_SCL` | kart default'u | INA için I2C pinleri |
+| `PROBOT_BATTERY_TRIM` | `1.0f` | Multimetreyle ince ayar çarpanı (0.5-2.0) |
 | `USER_LOOP_PERIOD_MS` | `20` | InitLoop/loop çağrı periyodu (~50 Hz) |
 | `NEOPIXEL_BRIGHTNESS` | `32` | Durum LED'i parlaklığı (0-255) |
 
@@ -162,6 +168,62 @@ elle renk atama API'si yoktur (LED'in rengi hep bir anlam taşır).
 **RSL (sinyal lambası):** `#define PROBOT_RSL_PIN <gpio>` verirseniz kütüphane
 o digital pini yalnız AUTO_RUN/TELEOP_RUN'da yanıp söndürür; INIT, STOPPED,
 TRANSITION ve E-stop'ta **sabit açık** tutar.
+
+## Batarya ölçümü
+
+Arayüzdeki batarya göstergesini beslemenin üç yolu var (hiçbiri açık değilse
+gösterge "Veri yok" der):
+
+**1) Gerilim bölücü + ADC** — iki dirençle en ucuz çözüm:
+
+```
+BAT+ ──[100k]──┬──[22k]── GND
+               │
+             GPIO5 (ADC1) ── 100nF ── GND
+```
+
+```cpp
+#define PROBOT_BATTERY_ADC_PIN  5     // GPIO1-10 arası ŞART (ADC1)
+#define PROBOT_BATTERY_R_TOP_K  100
+#define PROBOT_BATTERY_R_BOT_K  22
+```
+
+- Pin **GPIO1-10** arasından seçilmeli: ADC2 pinleri (GPIO11-20) WiFi
+  açıkken çalışmaz — yanlış pin derlemede [PB-E104] ile yakalanır.
+- 100k/22k, 3S LiPo'nun 12.6 V tepesini 2.27 V'a indirir (ADC'nin doğrusal
+  bölgesi). Orta uca 100nF kondansatör koyun; bölücüyü **ana anahtarın
+  sonrasına** bağlayın ki robot kapalıyken pili süzmesin (~0.1 mA).
+- Okuma eFuse kalibrasyonlu, 8 örnek ortalama + yumuşatma ile ~%1-2
+  doğruluktadır; multimetreyle fark görürseniz `PROBOT_BATTERY_TRIM` ile
+  ince ayar yapın.
+
+**2) INA219 / INA226 I2C sensörü** — daha hassas, lehim istemez:
+
+```cpp
+#define PROBOT_BATTERY_INA       226   // ya da 219
+// opsiyonel: PROBOT_BATTERY_INA_ADDR / _SDA / _SCL
+```
+
+Sensöre ulaşılamazsa çalışma zamanında [PB-E306] uyarısı düşer ve gösterge
+"Veri yok"a döner. INA'nın shunt'ı üzerinden anlık akım da okunur:
+`probot::io::battery::currentAmps()`.
+
+> **INA'nın I2C bus'ını kullanıcı kodundan kullanmayın.** Kütüphane INA'yı
+> kendi görev döngüsünden okur; aynı `Wire` bus'ına robot kodunuzdan ikinci
+> bir cihaz (IMU, OLED...) bağlarsanız okumalar karışabilir. Kendi I2C
+> cihazınız varsa ya batarya için ADC yöntemini seçin ya da cihazınızı
+> `Wire1`'e (ayrı pinler) taşıyın.
+>
+> **Shunt notu:** akım hesabı `PROBOT_BATTERY_INA_SHUNT_MOHM` (default 100)
+> ile yapılır. INA226'nın ±81.92 mV shunt aralığı 100 mΩ ile ±0.82 A'da
+> doyar — modülünüzdeki shunt değerini (örn. 2 mΩ) tanımlayın. Gerilim
+> ölçümü shunt'tan bağımsızdır.
+
+**3) Elle besleme** — kendi ölçümünüz varsa: `probot::setBatteryVoltage(v)`.
+
+Gösterge (Dashboard) son ~8 saniyenin ortalamasını gösterir; **Logs →
+History** grafiği örnekleri ortalamasız çizer — motor yükünde gerilim
+çöküşünü (sag) oradan izleyin.
 
 ## Bağlantı davranışı (güvenlik)
 

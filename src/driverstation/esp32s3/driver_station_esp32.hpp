@@ -9,6 +9,7 @@
 #include <DNSServer.h>
 #include <probot/robot/state.hpp>
 #include <probot/core/lifecycle.hpp>
+#include <probot/io/battery.hpp>
 #include <probot/io/gamepad.hpp>
 #include <probot/telemetry/telemetry.hpp>
 #include "index_html.h"
@@ -415,10 +416,9 @@ namespace probot::driverstation::esp32 {
     }
 
     static unsigned batteryDecivolts(const robot::StateSnapshot& s) {
-      float v = s.batteryVoltage;
-      if (!(v > 0.0f)) return 0;        // unset / NaN -> 0.0 ("no data" in the UI)
-      if (v > 99.9f) v = 99.9f;
-      return (unsigned)(v * 10.0f + 0.5f);
+      // unset / NaN -> 0 ("no data" in the UI); tek yuvarlama mantığı
+      // battery.hpp'de yaşar.
+      return probot::io::battery::detail::toDecivolts(s.batteryVoltage);
     }
 
     // ── WS push task ──

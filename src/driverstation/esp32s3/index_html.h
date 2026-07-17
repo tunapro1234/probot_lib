@@ -1482,29 +1482,42 @@ const char MAIN_page[] PROGMEM = R"=====(
     $id('sigSta').textContent=String(lastSta);
   }
 
-  /* ---- Battery (kullanıcı setBatteryVoltage ile besler; 0 = veri yok) ---- */
+  /* ---- Battery ----
+     Değer robottan gelir (batt alanı: PROBOT_BATTERY_ADC_PIN / _INA ile
+     otomatik ya da setBatteryVoltage ile elle; 0 = veri yok).
+     GÖSTERGE son ~8 örneğin (≈8 sn) ortalamasını çizer — anlık sag/sıçrama
+     paneli oynatmaz. Logs'taki History grafiği HAM örnekleri çizer; motor
+     altındaki gerilim çöküşü (sag) oradan okunur. */
   var BATT_LEN=157.1; // ark uzunluğu (dasharray)
+  var battWin=[];
+  var BATT_WIN_N=8;
   function updateBattery(v){
     lastBatt=v;
     var arc=$id('battArc'),read=$id('battRead'),pctEl=$id('battPct'),meta=$id('battMeta');
     if(!(v>0.05)){
+      battWin.length=0;
       arc.style.strokeDashoffset=BATT_LEN;
       read.innerHTML='--<small>V</small>';read.style.color='';
       pctEl.textContent='--';
-      meta.textContent='Veri yok · setBatteryVoltage()';
+      meta.textContent='Veri yok · batarya ölçümü kapalı';
       $id('chBattV').textContent='--';
       return;
     }
-    /* 3S LiPo varsayımıyla doluluk (10.5-12.6 V); gerilim her zaman ham gösterilir */
-    var pct=Math.max(0,Math.min(1,(v-10.5)/(12.6-10.5)));
+    battWin.push(v);
+    if(battWin.length>BATT_WIN_N) battWin.shift();
+    var avg=0;
+    for(var i=0;i<battWin.length;i++) avg+=battWin[i];
+    avg/=battWin.length;
+    /* 3S LiPo varsayımıyla doluluk (10.5-12.6 V); gerilim ortalama gösterilir */
+    var pct=Math.max(0,Math.min(1,(avg-10.5)/(12.6-10.5)));
     arc.style.strokeDashoffset=(BATT_LEN*(1-pct)).toFixed(1);
-    var col=v>11.6?'var(--green)':v>11.0?'var(--amber)':'var(--stop)';
+    var col=avg>11.6?'var(--green)':avg>11.0?'var(--amber)':'var(--stop)';
     arc.style.stroke=col;
-    read.innerHTML=v.toFixed(1)+'<small>V</small>';
+    read.innerHTML=avg.toFixed(1)+'<small>V</small>';
     read.style.color=col;
     pctEl.textContent=Math.round(pct*100)+'%';
-    meta.textContent=v>11.6?'Nominal':v>11.0?'Azalıyor':'DÜŞÜK — pili değiştir';
-    $id('chBattV').textContent=v.toFixed(1)+' V';
+    meta.textContent=avg>11.6?'Nominal':avg>11.0?'Azalıyor':'DÜŞÜK — pili değiştir';
+    $id('chBattV').textContent=v.toFixed(1)+' V'; // grafik etiketi ham değer
   }
 
   /* ---- System Status ışıkları ---- */
@@ -1704,6 +1717,7 @@ const char MAIN_page[] PROGMEM = R"=====(
     if(overlay) overlay.classList.toggle('show',down);
     if(down!==linkWasDown){
       evlog(down?'err':'info',down?'Bağlantı koptu':'Bağlantı geri geldi');
+      if(down) battWin.length=0; // kopukluk sırasında pil değişmiş olabilir — bayat ortalama taşınmasın
       linkWasDown=down;
     }
     updateLights();

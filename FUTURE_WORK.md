@@ -3,8 +3,11 @@
 Kütüphane 0.2.7'den beri yalnızca iletişim katmanıdır; motor/encoder/IMU
 maddeleri bu listeden çıkarılmıştır (gerekirse git geçmişine bakın).
 
-- **Pil gerilimi ölçümü:** ESP32 ADC + gerilim bölücü ile `batteryVoltage`
-  alanını doldur, arayüzde göster (`/getBattery` ve UI hazır, veri yok).
+- **Akım telemetrisi arayüze:** INA yolunda akım zaten okunuyor
+  (`probot::io::battery::currentAmps()`) ama S frame'inde/arayüzde yok.
+  Logs → History'ye akım grafiği eklenirse motor stall → sag → brownout
+  zinciri gerilimle yan yana izlenir (kopma teşhisiyle birleşir).
+  (Pil gerilimi ölçümünün kendisi 0.4.0'da geldi: bölücü + INA219/226.)
 - **Saha test kampanyası:** `connection-test/` düzeneği ile C senaryosu
   (30+ dk stabilite) ve B senaryosu (worst-case tek kanal) koşulmadı —
   0.2.8/0.2.9 bağlantı değişikliklerini sahada doğrula.
@@ -32,8 +35,11 @@ maddeleri bu listeden çıkarılmıştır (gerekirse git geçmişine bakın).
 The library is communication-only since 0.2.7; motor/encoder/IMU items
 were dropped from this list (see git history if needed).
 
-- **Battery voltage:** feed `batteryVoltage` via ESP32 ADC + divider;
-  `/getBattery` and the UI exist but receive no data today.
+- **Current telemetry in the UI:** the INA path already reads current
+  (`probot::io::battery::currentAmps()`) but it is not in the S frame or
+  the UI. A current chart next to voltage in Logs → History would expose
+  the motor-stall → sag → brownout chain (pairs with disconnect replay).
+  (Battery voltage measurement itself shipped in 0.4.0: divider + INA.)
 - **Field test campaign:** run connection-test scenario C (30+ min
   stability) and scenario B (worst-case single channel) to validate the
   0.2.8/0.2.9 connectivity changes under real RF load.

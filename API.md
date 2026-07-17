@@ -237,6 +237,8 @@ zamanı · **E4xx** protokol/HTTP (E409, HTTP 409'un karşılığıdır).
 | PB-E101 | Derleme | `PROBOT_WIFI_AP_PASSWORD` eksik ya da 8 karakterden kısa |
 | PB-E102 | Derleme | `PROBOT_WIFI_AP_CHANNEL` eksik ya da 1-13 dışında |
 | PB-E103 | Derleme | SSID uzunluk kuralları (MAC ekiyle ≤25, eksiz ≤32) |
+| PB-E104 | Derleme | Batarya ADC konfigürasyonu geçersiz — pin ADC1 dışında (S3'te GPIO1-10 şart; ADC2 WiFi açıkken çalışmaz) ya da bölücü dirençleri (`_R_TOP_K`/`_R_BOT_K`) eksik |
+| PB-E105 | Derleme | Batarya kaynak çakışması/geçersiz seçim — hem `PROBOT_BATTERY_ADC_PIN` hem `PROBOT_BATTERY_INA` tanımlı; ya da `_INA` 219/226 değil; ya da `_TRIM` 0.5-2.0 dışında |
 | PB-E201 | Bağlama | Zorunlu hook tanımsız — `undefined reference to teleopLoop()` vb. Dördü de (boş olsa bile) tanımlanmalı |
 | PB-E202 | Bağlama | `setup()`/`loop()` sketch'te tanımlanmış — kütüphaneye aittir, hook'ları kullanın |
 | PB-E301 | Çalışma | Deadline miss / stall — bir `initLoop`/`loop` turu `PROBOT_LOOP_DEADLINE_MS`'i aştı; girişler sıfır, halt-safe |
@@ -244,6 +246,7 @@ zamanı · **E4xx** protokol/HTTP (E409, HTTP 409'un karşılığıdır).
 | PB-E303 | Çalışma | DS bağlantısı koptu → robot durduruldu (`PROBOT_DS_TIMEOUT_FORCE_STOP=1`) |
 | PB-E304 | Çalışma | DS bağlantısı koptu → joystick nötr, yeniden bağlanma bekleniyor (`FORCE_STOP=0`) |
 | PB-E305 | Çalışma | E-stop'ta `stop()` hook'u `PROBOT_ESTOP_END_MS` içinde dönmedi → çip reboot |
+| PB-E306 | Çalışma | Batarya sensörüne (INA219/INA226) I2C'de ulaşılamıyor — arayüz "Veri yok"a düşer, bağlantı/adres kontrol edin |
 | PB-E409 | HTTP | Komut geçersiz evrede (409) — `mode`/`init`/`start`/`stop` evre kuralları |
 
 ## Acil durdurma
@@ -287,9 +290,9 @@ yazacaksanız:
 | `/robotControl?cmd=estop` | GET | gerekli | **Acil durdurma**: kullanıcı task'ı öldürülür, aktif `stop()` watchdog'lu (`PROBOT_ESTOP_END_MS`) çalışır, enable pini kesilir, robot reboot'a kadar kilitlenir |
 | `/robotControl?cmd=reboot` | GET | gerekli | Çipi yeniden başlatır (`ESP.restart()`) — estop kilidini temizlemenin yolu |
 | `/setChannel?ch=N` | GET | gerekli | Kanalı NVS'e kaydet; 1-13 ise CSA ile **canlı** geçiş (zaten o kanaldaysa `live:false`), `0` = kaydı temizle, açılışta firmware varsayılanına dön. Dönüş: `{"ok":b,"ch":N,"live":b}` |
-| `/getState` | GET | gerekli | `{"status":N,"phase":N,"selectedMode":"auto|teleop","autoPeriodSeconds":N,"autoRemainingMs":N,"batt":V.V,"estop":b}` (WS yokken fallback). `batt`: `setBatteryVoltage()` ile beslenen gerilim, `0.0` = veri yok |
+| `/getState` | GET | gerekli | `{"status":N,"phase":N,"selectedMode":"auto|teleop","autoPeriodSeconds":N,"autoRemainingMs":N,"batt":V.V,"estop":b}` (WS yokken fallback). `batt`: pil gerilimi (bölücü/INA otomatik ya da `setBatteryVoltage()` elle), `0.0` = veri yok |
 | `/telemetry` | GET | gerekli | Telemetri tamponunun içeriği (text) (WS yokken fallback) |
-| `/getBattery` | GET | serbest | Pil gerilimi (şu an kullanıcı beslemeli) |
+| `/getBattery` | GET | serbest | Pil gerilimi (kaynak: `PROBOT_BATTERY_ADC_PIN` bölücü, `PROBOT_BATTERY_INA` sensörü ya da elle `probot::setBatteryVoltage()`) |
 | `/health` | GET | serbest | `{"rssi":N,"up":ms,"heap":N,"dm":b,"joyAgeMs":N,"sta":N,"disc":N}` — izleme/hakem için. `joyAgeMs`: son joystick paketinin yaşı (-1 = hiç gelmedi), `sta`: bağlı istemci sayısı, `disc`: son kopuşun IEEE reason kodu |
 | `/info` | GET | serbest | SSID, kanal + `chSource` (macro/nvs/auto), IP, çip/heap/flash |
 | `/portal` | GET | serbest | Captive portal karşılama sayfası (`PROBOT_CAPTIVE_PORTAL 0` ile kapatılır) |
