@@ -184,8 +184,8 @@ namespace probot {
                                 PRIO_USER, &g_estop_task, CORE_CTRL);
       }
       probot::robot::state().setStatus(millis(), probot::robot::Status::STOP);
-      probot::telemetry::println("!! [PB-E11] EMERGENCY STOP — robot disabled, reboot required — docs/hatalar#pb-e11");
-      Serial.println("[SYS  ] [PB-E11] EMERGENCY STOP — docs: probotstudio.com/docs/hatalar/#pb-e11");
+      probot::telemetry::println("!! [PB-E302] EMERGENCY STOP — robot disabled, reboot required — docs/hatalar#pb-e302");
+      Serial.println("[SYS  ] [PB-E302] EMERGENCY STOP — docs: probotstudio.com/docs/hatalar/#pb-e302");
     }
 
     inline void updateLed(bool estop){
@@ -267,7 +267,7 @@ namespace probot {
           if (__atomic_load_n(&g_estop_stop_required, __ATOMIC_SEQ_CST) && es != 0 &&
               !__atomic_load_n(&g_estop_stop_done, __ATOMIC_SEQ_CST) &&
               (int32_t)(now - es) >= (int32_t)PROBOT_ESTOP_END_MS){
-            Serial.println("[SYS  ] [PB-E14] estop stop hook timed out -> restart — docs: probotstudio.com/docs/hatalar/#pb-e14");
+            Serial.println("[SYS  ] [PB-E305] estop stop hook timed out -> restart — docs: probotstudio.com/docs/hatalar/#pb-e305");
             delay(20);
             ESP.restart();
           }
@@ -286,7 +286,7 @@ namespace probot {
           if (stalled && !s.deadlineMiss){
             probot::robot::state().setDeadlineMiss(now, true);
             zeroInputs();
-            probot::telemetry::println("!! [PB-E10] LOOP STALLED — inputs zeroed, holding safe (no reboot) — docs/hatalar#pb-e10");
+            probot::telemetry::println("!! [PB-E301] LOOP STALLED — inputs zeroed, holding safe (no reboot) — docs/hatalar#pb-e301");
           } else if (!stalled && s.deadlineMiss){
             probot::robot::state().setDeadlineMiss(now, false);   // recovered
           }
@@ -299,10 +299,10 @@ namespace probot {
               (int32_t)(now - dsAct) > (int32_t)PROBOT_DS_TIMEOUT_MS){
             Serial.printf("[SYS  ] DS timeout: no activity for %lu ms\n", (unsigned long)(now - dsAct));
 #if PROBOT_DS_TIMEOUT_FORCE_STOP
-            probot::telemetry::println("!! [PB-E12] DS CONNECTION LOST — stopping robot — docs/hatalar#pb-e12");
+            probot::telemetry::println("!! [PB-E303] DS CONNECTION LOST — stopping robot — docs/hatalar#pb-e303");
             probot::robot::state().setStatus(now, Status::STOP);
 #else
-            probot::telemetry::println("!! [PB-E13] DS CONNECTION LOST — joystick neutral, waiting reconnect — docs/hatalar#pb-e13");
+            probot::telemetry::println("!! [PB-E304] DS CONNECTION LOST — joystick neutral, waiting reconnect — docs/hatalar#pb-e304");
 #endif
 #ifdef ESP32
             if (probot::driverstation::detail::g_driver_station){

@@ -593,7 +593,7 @@ const char MAIN_page[] PROGMEM = R"=====(
     }
     .estop-btn:hover{transform:translateY(-1px);box-shadow:0 5px 0 var(--stop-deep);}
     .estop-btn:active{transform:translateY(2px);box-shadow:0 2px 0 var(--stop-deep);filter:brightness(0.92);}
-    /* [PB-E10] stall bandı — deadline miss aktifken header altında görünür */
+    /* [PB-E301] stall bandı — deadline miss aktifken header altında görünür */
     .err-banner{
       background:var(--stop);color:#fff;
       font-size:0.85rem;font-weight:700;letter-spacing:0.03em;
@@ -762,8 +762,8 @@ const char MAIN_page[] PROGMEM = R"=====(
   </header>
 
   <div class="err-banner" id="dmBanner" hidden>
-    <code>PB-E10</code> · Loop takıldı (deadline miss) — girişler sıfırlandı, robot güvende tutuluyor.
-    Ayrıntı: docs &rarr; Hatalar &rarr; PB-E10
+    <code>PB-E301</code> · Loop takıldı (deadline miss) — girişler sıfırlandı, robot güvende tutuluyor.
+    Ayrıntı: docs &rarr; Hatalar &rarr; PB-E301
   </div>
 
   <div class="disconnect-overlay" id="disconnectOverlay">
@@ -773,7 +773,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 
   <div class="estop-overlay" id="estopOverlay">
     <span>EMERGENCY STOPPED</span>
-    <span class="sub">Robot disabled — reboot required to clear · PB-E11 — docs/hatalar#pb-e11</span>
+    <span class="sub">Robot disabled — reboot required to clear · PB-E302 — docs/hatalar#pb-e302</span>
     <button id="rebootButton">Reboot Robot</button>
   </div>
 

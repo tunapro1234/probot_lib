@@ -247,12 +247,12 @@ Makine-okur özet: [`llms.txt`](llms.txt) · Tam referans: [`API.md`](API.md)
 | Belirti | Çözüm |
 |---|---|
 | "Sketch too big" | Partition Scheme → Huge APP (3MB No OTA) |
-| `#error ... [PB-E01/E02]` | Makroları `#include <probot.h>`'den önce yazın — docs/hatalar#pb-e01 |
+| `#error ... [PB-E101/E02]` | Makroları `#include <probot.h>`'den önce yazın — docs/hatalar#pb-e101 |
 | Arayüz açılmıyor / 403 | Başka bir cihaz bağlı (tek client kuralı). Diğerini kapatın, ~5 sn bekleyin |
 | Joystick görünmüyor | Kumandada herhangi bir tuşa basın (tarayıcı gamepad'i tuşa basılınca tanır) |
 | Sık kopma | Kanal çakışması — robotlara **farklı sabit kanallar** verin (varsayılanlar: 1/6/11) |
-| `undefined reference to teleopLoop` | Zorunlu hook eksik [PB-E04] — dördünü de tanımlayın (boş olabilir) |
-| Kırmızı yanıp sönen LED, robot tepkisiz | Deadline miss [PB-E10] — loop 2 sn dönmedi; docs/hatalar#pb-e10 |
+| `undefined reference to teleopLoop` | Zorunlu hook eksik [PB-E201] — dördünü de tanımlayın (boş olabilir) |
+| Kırmızı yanıp sönen LED, robot tepkisiz | Deadline miss [PB-E301] — loop 2 sn dönmedi; docs/hatalar#pb-e301 |
 | Servo titriyor | Yukarıdaki "Servo kullanımı" bölümü |
 
 ## Destek ve lisans

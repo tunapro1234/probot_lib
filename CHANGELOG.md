@@ -34,7 +34,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/), sürümler
 - **Kalıcı hata kodları (PB-Exx) + docs entegrasyonu.** Derleme (`#error`/
   `static_assert`), bağlama rehberi (probot.h yorumu), çalışma zamanı
   telemetri/Serial uyarıları, HTTP 409 gövdeleri ve arayüz bantları artık
-  kod + `docs/hatalar#pb-eXX` çapası taşır; arayüze görünür PB-E10 stall
+  kod + `docs/hatalar#pb-eXX` çapası taşır; arayüze görünür PB-E301 stall
   bandı eklendi. Kayıt tablosu: API.md "Hata kodları".
 
 ### Değişti
