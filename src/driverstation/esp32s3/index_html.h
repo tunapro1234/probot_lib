@@ -442,31 +442,60 @@ const char MAIN_page[] PROGMEM = R"=====(
       backdrop-filter:blur(8px);
     }
     .drv-x{
-      width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:#fff;
+      width:36px;height:36px;flex:none;border-radius:8px;border:1px solid var(--line);background:#fff;
       color:var(--muted);cursor:pointer;display:grid;place-items:center;padding:0;
     }
     .drv-x svg{width:18px;height:18px;}
-    .drv-phase{font-size:1rem;font-weight:800;color:var(--ink);}
+    .drv-phase{font-size:1rem;font-weight:800;color:var(--ink);white-space:nowrap;}
     .drv-clock{font:800 1.05rem/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink);}
+    .drv-auto{font:800 0.72rem/1 var(--mono);font-variant-numeric:tabular-nums;color:#8a5a00;
+      background:rgba(255,176,32,0.18);border-radius:6px;padding:5px 8px;white-space:nowrap;}
+    .drv-batt{font:800 0.8rem/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap;}
     .drv-flex{flex:1;}
-    .drv-stop{
-      border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;
-      font:800 0.8rem var(--font);letter-spacing:0.06em;padding:9px 16px;cursor:pointer;
-      box-shadow:0 2px 0 var(--line);
+    /* maç kontrolü sürüş ekranında: mod segmenti + Init/Start + STOP + E-STOP */
+    .drv-modes{display:flex;gap:3px;flex:none;background:var(--soft);border:1px solid var(--line);
+      border-radius:8px;padding:3px;}
+    .drv-modes.locked{opacity:.55;pointer-events:none;}
+    .drv-mode{border:1px solid transparent;background:none;color:var(--muted);
+      font:800 0.72rem var(--font);padding:6px 9px;border-radius:6px;cursor:pointer;}
+    .drv-mode.on{background:#fff;color:var(--ink);border-color:var(--line);box-shadow:0 1px 0 var(--line);}
+    .drv-init{
+      flex:none;background:var(--green);color:#fff;border:1px solid var(--green-deep);border-radius:8px;
+      font:800 0.8rem var(--font);letter-spacing:0.05em;padding:9px 14px;cursor:pointer;
+      box-shadow:0 2px 0 var(--green-deep);white-space:nowrap;
     }
+    .drv-init:active{transform:translateY(1px);box-shadow:0 1px 0 var(--green-deep);}
+    .drv-init[disabled]{opacity:.45;pointer-events:none;}
+    .drv-stop{
+      flex:none;border:1px solid var(--stop);background:#fff;color:var(--stop);border-radius:8px;
+      font:800 0.8rem var(--font);letter-spacing:0.06em;padding:9px 16px;cursor:pointer;
+      box-shadow:0 2px 0 var(--stop);
+    }
+    .drv-stop:active{transform:translateY(1px);box-shadow:0 1px 0 var(--stop);}
+    .drv-stop[disabled]{opacity:.45;pointer-events:none;}
     .drv-estop{
-      display:flex;align-items:center;gap:7px;
+      display:flex;align-items:center;gap:7px;flex:none;
       background:#a31515;color:#fff;border:1px solid #6d0808;border-radius:8px;
       font:800 0.8rem var(--font);letter-spacing:0.08em;padding:9px 14px;cursor:pointer;
       box-shadow:0 2px 0 #6d0808;
     }
     .drv-estop svg{width:14px;height:14px;fill:#fff;}
-    .drv-rotate{
-      position:absolute;top:52px;left:0;right:0;z-index:2;display:none;
-      text-align:center;font-size:0.72rem;font-weight:700;color:#8a5a00;
-      background:rgba(255,176,32,0.18);padding:6px 12px;
+    /* Dar yatay ekranda önce süsler feda edilir; Init/STOP/E-STOP daima kalır */
+    @media (orientation:landscape) and (max-width:760px){.drv-batt{display:none;}}
+    @media (orientation:landscape) and (max-width:640px){.drv-clock{display:none;}.drv-top{gap:7px;padding:0 8px;}}
+    /* ===== DİKEY: sürüş ekranı DİK DURMAZ — 90° döndürülür =====
+       Kullanıcı telefonu dik tutsa bile sürüş arayüzü yan durur; doğal
+       hareket telefonu yan çevirmektir. (Destekleyen tarayıcılarda ayrıca
+       fullscreen + orientation.lock('landscape') denenir.) Çubuk matematiği
+       stickMove içinde döndürmeye göre düzeltilir. */
+    @media(orientation:portrait){
+      .drive-ov{
+        width:100vh;height:100vw;
+        left:100vw;top:0;
+        transform:rotate(90deg);
+        transform-origin:left top;
+      }
     }
-    @media(orientation:portrait){.drv-rotate{display:block;}}
     .stick-zone{
       position:absolute;bottom:0;top:52px;width:50%;z-index:1;
     }
@@ -508,13 +537,16 @@ const char MAIN_page[] PROGMEM = R"=====(
     }
     .ab:active,.ab.on{background:var(--grad-brand);color:#fff;border-color:var(--orange-700);box-shadow:0 1px 0 var(--orange-700);}
     .ab.ky{left:40px;top:0;} .ab.kx{left:0;top:40px;} .ab.kb{left:80px;top:40px;} .ab.ka{left:40px;top:80px;}
-    /* dar/dikey: ABXY sağ çubuğun ÜSTÜNE (sol çubuğa binmesin) */
-    @media(max-width:600px), (orientation:portrait){
+    /* Dar YATAY ekran: ABXY sağ çubuğun üstüne, çubuklar küçülür.
+       (orientation:portrait koşulu YOK — dikte overlay 90° döner ve efektif
+       genişlik 100vh olur; viewport'a bakan dar-ekran kuralları orada yanlış
+       tetiklenirdi.) */
+    @media (orientation:landscape) and (max-width:600px){
       .drv-abxy{right:20px;bottom:184px; /* env() fallback */
         right:calc(20px + env(safe-area-inset-right,0px));
         bottom:calc(184px + env(safe-area-inset-bottom,0px));}
     }
-    @media(max-width:760px){
+    @media (orientation:landscape) and (max-width:760px){
       .drv-abxy{width:112px;height:112px;}
       .ab{width:46px;height:46px;font-size:0.9rem;}
       .ab.ky{left:33px;} .ab.kx{left:0;top:33px;} .ab.kb{left:66px;top:33px;} .ab.ka{left:33px;top:66px;}
@@ -936,15 +968,21 @@ const char MAIN_page[] PROGMEM = R"=====(
     <div class="drv-top">
       <button class="drv-x" id="driveCloseBtn" aria-label="Kapat"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
       <span class="drv-phase" id="drvPhase">Standby</span>
+      <span class="drv-auto" id="drvAuto" hidden>AUTO 0.0s</span>
       <span class="drv-clock" id="drvClock">00:00</span>
+      <span class="drv-batt" id="drvBatt" hidden></span>
       <span class="drv-flex"></span>
-      <button class="drv-stop" id="drvStop">STOP</button>
+      <div class="drv-modes" id="drvModes">
+        <button class="drv-mode" data-mode="auto">Auto</button>
+        <button class="drv-mode on" data-mode="teleop">Teleop</button>
+      </div>
+      <button class="drv-init" id="drvInit" disabled>Init</button>
+      <button class="drv-stop" id="drvStop" disabled>STOP</button>
       <button class="drv-estop" id="drvEstop">
         <svg viewBox="0 0 24 24"><path d="M7.8 2h8.4L22 7.8v8.4L16.2 22H7.8L2 16.2V7.8L7.8 2z"/></svg>
         E-STOP
       </button>
     </div>
-    <div class="drv-rotate" id="drvRotate">Telefonu yan çevirin — sürüş yatay ekran için tasarlandı</div>
     <div class="stick-zone zl" id="zoneL"><div class="socket"><div class="knob" id="knobL"></div></div><span class="zl-lbl">SOL</span></div>
     <div class="stick-zone zr" id="zoneR"><div class="socket"><div class="knob" id="knobR"></div></div><span class="zl-lbl">SAĞ</span></div>
     <div class="drv-abxy" id="drvAbxy">
@@ -1224,6 +1262,16 @@ const char MAIN_page[] PROGMEM = R"=====(
       en.disabled=true;
     }
     $id('mcDisable').disabled=!(inInit||inRun);
+
+    /* sürüş ekranındaki maç kontrolü ana kontrollerin aynasıdır */
+    var drvInit=$id('drvInit');
+    drvInit.textContent=en.textContent;
+    drvInit.disabled=en.disabled;
+    $id('drvStop').disabled=!(inInit||inRun);
+    $id('drvModes').classList.toggle('locked',!modeSelectable);
+    document.querySelectorAll('#drvModes .drv-mode').forEach(function(m){
+      m.classList.toggle('on',m.dataset.mode===selectedMode);
+    });
   }
 
   function sendMatchCommand(cmd){
@@ -1878,6 +1926,7 @@ const char MAIN_page[] PROGMEM = R"=====(
     sendNeutralFrame(); // kaynak değişiminde robot ANINDA nötr görsün
     renderSourceCards();
     evlog('info','Joystick kaynağı: '+SRC_NAME[st]);
+    if(st==='touch') openDrive(); // dokunmatikte varsayılan görünüm sürüş ekranıdır
   }
   $id('srcKeyboardBtn').addEventListener('click',function(){setSource(JSTATE.source==='keyboard'?'none':'keyboard');});
   $id('srcTouchBtn').addEventListener('click',function(){setSource(JSTATE.source==='touch'?'none':'touch');});
@@ -1899,20 +1948,57 @@ const char MAIN_page[] PROGMEM = R"=====(
     if(KB_BTN[e.code]!==undefined) JSTATE.btn[KB_BTN[e.code]]=false;
   });
 
-  /* ---- dokunmatik kaynağı: sürüş ekranı + sanal çubuklar ---- */
+  /* ---- dokunmatik kaynağı: SÜRÜŞ EKRANI (drive dash) ----
+     Dokunmatik etkinleşince normal dashboard DEĞİL bu ekran gelir: çubuklar +
+     ABXY + üst barda TAM maç kontrolü (mod, Init/Start, STOP, E-STOP) —
+     sürücü maçı yönetmek için ekran değiştirmez. */
   var driveOv=$id('driveOverlay');
-  function openDrive(){if(JSTATE.source==='touch')driveOv.hidden=false;}
+  function drvRotated(){
+    return !driveOv.hidden&&window.matchMedia('(orientation:portrait)').matches;
+  }
+  /* Destekleyen tarayıcıda (Android Chrome) yatay kilit; iOS'ta CSS 90°
+     döndürme devreye girer — arayüz dikte bile yan durur. */
+  function tryLockLandscape(){
+    var el=document.documentElement;
+    var fs;
+    try{fs=el.requestFullscreen?el.requestFullscreen():Promise.reject();}catch(e){fs=Promise.reject();}
+    Promise.resolve(fs).catch(function(){}).then(function(){
+      if(screen.orientation&&screen.orientation.lock) return screen.orientation.lock('landscape');
+    }).catch(function(){});
+  }
+  function releaseOrientation(){
+    try{if(screen.orientation&&screen.orientation.unlock) screen.orientation.unlock();}catch(e){}
+    if(document.fullscreenElement&&document.exitFullscreen){
+      document.exitFullscreen().catch(function(){});
+    }
+  }
+  function openDrive(){
+    if(JSTATE.source!=='touch') return;
+    driveOv.hidden=false;
+    tryLockLandscape();
+    renderMC(); // sürüş ekranı kontrolleri güncel gelsin
+  }
   function closeDrive(){
     if(driveOv.hidden) return;
     driveOv.hidden=true;resetStick('L');resetStick('R');
     JSTATE.btn=JSTATE.btn.map(function(){return false;}); // basılı ABXY kalmasın
     document.querySelectorAll('#drvAbxy .ab').forEach(function(b){b.classList.remove('on');});
     sendNeutralFrame();
+    releaseOrientation();
   }
   $id('driveOpenBtn').addEventListener('click',openDrive);
   $id('driveCloseBtn').addEventListener('click',closeDrive);
+  $id('drvInit').addEventListener('click',function(){
+    if(currentPhase===0||currentPhase===5) sendMatchCommand('init');
+    else if(currentPhase===1||currentPhase===3) sendMatchCommand('start');
+  });
   $id('drvStop').addEventListener('click',function(){sendMatchCommand('stop');});
   $id('drvEstop').addEventListener('click',doEstop);
+  document.querySelectorAll('#drvModes .drv-mode').forEach(function(m){
+    m.addEventListener('click',function(){
+      if((currentPhase===0||currentPhase===5)&&currentStatus===2) selectMode(m.dataset.mode);
+    });
+  });
 
   var sticks={L:{ptr:null,el:$id('knobL'),zone:$id('zoneL'),axX:0,axY:1},
               R:{ptr:null,el:$id('knobR'),zone:$id('zoneR'),axX:2,axY:3}};
@@ -1926,6 +2012,11 @@ const char MAIN_page[] PROGMEM = R"=====(
     var st=sticks[k];
     var face=st.el.parentElement.getBoundingClientRect();
     var dx=cx-(face.left+face.width/2), dy=cy-(face.top+face.height/2);
+    if(drvRotated()){
+      /* Ekran 90° döndürülmüş: viewport deltasını arayüz-yerel eksene çevir
+         (x_yerel = y_viewport, y_yerel = -x_viewport) — çubuk parmağı izler. */
+      var t=dx; dx=dy; dy=-t;
+    }
     var d=Math.hypot(dx,dy)||1;
     var lim=Math.min(d,STICK_R);
     dx=dx/d*lim; dy=dy/d*lim;
@@ -2073,10 +2164,16 @@ const char MAIN_page[] PROGMEM = R"=====(
       sendInput(src);
     }
 
-    // sürüş ekranı üst barı faz/saat aynası
+    // sürüş ekranı üst barı: faz/saat + auto geri sayımı + batarya aynası
     if(!driveOv.hidden){
       $id('drvPhase').textContent=$id('phaseLabel').textContent;
       $id('drvClock').textContent=$id('matchClock').textContent;
+      var da=$id('drvAuto');
+      if(currentPhase===2){da.hidden=false;da.textContent='AUTO '+autoRemaining.toFixed(1)+'s';}
+      else da.hidden=true;
+      var db=$id('drvBatt');
+      if(lastBatt>0.05){db.hidden=false;db.textContent=lastBatt.toFixed(1)+'V';}
+      else db.hidden=true;
     }
     requestAnimationFrame(inputLoop);
   }
