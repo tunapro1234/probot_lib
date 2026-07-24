@@ -4,8 +4,8 @@ ESP32 tabanlı robot yarışması iletişim kütüphanesi. Robot bir WiFi
 erişim noktası açar, tarayıcıdan çalışan Driver Station arayüzü sunar
 ve joystick verisini WebSocket ile düşük gecikmeyle robota taşır.
 
-**dev (0.4.0 adayı)** · ESP32 / ESP32-S3 · [API Referansı](API.md) ·
-[English summary below](#probot-en)
+**dev (0.4.0 adayı)** · ESP32 / ESP32-S3 · [Dokümanlar](https://probotstudio.com/docs) ·
+[API Referansı](API.md) · [English summary below](#probot-en)
 
 ---
 
@@ -309,13 +309,13 @@ Makine-okur özet: [`llms.txt`](llms.txt) · Tam referans: [`API.md`](API.md)
 | Belirti | Çözüm |
 |---|---|
 | "Sketch too big" | Partition Scheme → Huge APP (3MB No OTA) |
-| `#error ... [PB-E101/E02]` | Makroları `#include <probot.h>`'den önce yazın — docs/hatalar#pb-e101 |
+| `#error ... [PB-E101/E02]` | Makroları `#include <probot.h>`'den önce yazın — [detay](https://probotstudio.com/docs/hatalar/#pb-e101) |
 | Arayüz açılmıyor / 403 | Başka bir cihaz bağlı (tek client kuralı). Diğerini kapatın, ~5 sn bekleyin |
 | Joystick görünmüyor | Kumandada herhangi bir tuşa basın (tarayıcı gamepad'i tuşa basılınca tanır) |
 | Kumandam yok | Joystick sekmesi → **Klavye** (bilgisayarda) ya da **Dokunmatik** (telefonda) kaynağını elle etkinleştirin — otomatik seçilmez |
 | Sık kopma | Kanal çakışması — robotlara **farklı sabit kanallar** verin (varsayılanlar: 1/6/11) |
 | `undefined reference to teleopLoop` | Zorunlu hook eksik [PB-E201] — dördünü de tanımlayın (boş olabilir) |
-| Kırmızı yanıp sönen LED, robot tepkisiz | Deadline miss [PB-E301] — loop 2 sn dönmedi; docs/hatalar#pb-e301 |
+| Kırmızı yanıp sönen LED, robot tepkisiz | Deadline miss [PB-E301] — loop 2 sn dönmedi; [detay](https://probotstudio.com/docs/hatalar/#pb-e301) |
 | Servo titriyor | Yukarıdaki "Servo kullanımı" bölümü |
 
 ## Destek ve lisans
@@ -349,7 +349,8 @@ implement the FTC-style `autonomousInit/Loop/Stop` and
 read input via `probot::io::joystick_api::makeDefault()`. Do not define
 `setup()`/`loop()` — the library owns them.
 
-Full API reference: [API.md](API.md) · Machine-readable index:
+Docs site: [probotstudio.com/docs](https://probotstudio.com/docs) · Full API
+reference: [API.md](API.md) · Machine-readable index:
 [llms.txt](llms.txt) · Changes: [CHANGELOG.md](CHANGELOG.md) ·
 Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) · License: MIT +
 Commons Clause ([LICENSE](LICENSE) · [LICENSE-commercial](LICENSE-commercial))
